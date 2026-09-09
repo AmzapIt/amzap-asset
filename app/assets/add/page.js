@@ -45,6 +45,8 @@ const statuses = [
 const initialForm = {
   // General Information
   type: "Notebook",
+  assetCode: "",
+  receivedDate: "",
   assetName: "",
   brand: "",
   model: "",
@@ -111,6 +113,7 @@ const initialForm = {
 // เพิ่ม Field ใหม่ได้โดยไม่ต้องเขียน JSX Input ซ้ำทุกครั้ง
 // name ต้องตรงกับ Property ใน initialForm
 const generalFields = [
+  { name: "receivedDate", label: "Received Date", type: "date" },
   { name: "assetName", label: "Asset Name", required: true },
   { name: "brand", label: "Brand" },
   { name: "model", label: "Model" },
@@ -341,6 +344,9 @@ function CollapsibleSection({ title, description, children }) {
 // ยังไม่ได้เชื่อมครบ จึงต้องป้องกันการบันทึกข้อมูลไม่ครบ
 const supportedFields = [
   "type",
+  "assetCode",
+  "receivedDate",
+  "assetOwner",
   "assetName",
   "brand",
   "model",
@@ -367,6 +373,7 @@ export default function AddAssetPage() {
 
   // State หลักของ Form
   const [form, setForm] = useState(initialForm);
+  const [hasAssetCode, setHasAssetCode] = useState(false);
 
   // เก็บไฟล์ที่เลือกไว้ชั่วคราว ยังไม่ได้ Upload
   const [photo, setPhoto] = useState(null);
@@ -407,31 +414,34 @@ export default function AddAssetPage() {
 
     setMessage("");
 
-    // ตรวจว่าผู้ใช้กรอก Field ที่ API ยังไม่รองรับหรือไม่
-    const hasUnconnectedData =
-      Object.entries(form).some(
-        ([name, value]) =>
-          !supportedFields.includes(name) && value !== ""
-      ) ||
-      photo !== null ||
-      documents.length > 0;
+    if (hasAssetCode && !form.assetCode.trim()) {
+      setMessage("กรุณาระบุ Asset Code หรือยกเลิกตัวเลือกว่ามีรหัสแล้ว");
+      return;
+    }
 
-    // ถ้ามีข้อมูลที่ยังไม่รองรับ จะไม่บันทึกแบบเงียบ ๆ
-    // เพื่อป้องกันผู้ใช้เข้าใจว่าข้อมูลทุกหมวดถูกเก็บแล้ว
-    if (hasUnconnectedData) {
-      setMessage(
-        "มีข้อมูลในหมวดที่ยังไม่ได้เชื่อม API เช่น Assignment, Vendor, Technical, Security หรือไฟล์ จึงยังไม่บันทึก เพื่อป้องกันข้อมูลหาย"
-      );
+    // เตือนก่อนบันทึกถ้ามีข้อมูลที่ API ยังไม่รองรับ
+    const hasUnconnectedData = Object.entries(form).some(
+      ([name, value]) =>
+        !supportedFields.includes(name) && value !== ""
+    ) || photo !== null || documents.length > 0;
+
+    if (
+      hasUnconnectedData &&
+      !window.confirm(
+        "มีข้อมูลในหมวดที่ยังไม่ได้เชื่อม API หรือไฟล์แนบ ข้อมูลส่วนนี้จะยังไม่ถูกบันทึก ต้องการบันทึกเฉพาะข้อมูลที่รองรับต่อหรือไม่?"
+      )
+    ) {
       return;
     }
 
     setSaving(true);
 
     try {
-      // ส่งเฉพาะ Field ที่ API ปัจจุบันรองรับ
+      // ถ้าไม่ส่ง Asset Code ให้ Database/trigger ตรวจ counter ล่าสุดและสร้างรหัสถัดไป
       const payload = Object.fromEntries(
         supportedFields.map((name) => [name, form[name]])
       );
+      payload.assetCode = hasAssetCode ? form.assetCode.trim() : null;
 
       // ส่งข้อมูลไป Backend
       const response = await fetch("/api/assets", {
@@ -459,7 +469,11 @@ export default function AddAssetPage() {
 
       // แสดง Alert หลังบันทึกสำเร็จ
       window.alert(
-        `บันทึกข้อมูลสำเร็จ\nAsset Code: ${assetCode}`
+        `บันทึกข้อมูลสำเร็จ\nAsset Code: ${assetCode}${
+          hasUnconnectedData
+            ? "\n\nหมายเหตุ: ข้อมูลในหมวดที่ยังไม่เชื่อม API และไฟล์แนบยังไม่ได้บันทึก"
+            : ""
+        }`
       );
 
       // กลับหน้า Asset List
@@ -521,20 +535,38 @@ export default function AddAssetPage() {
                 </select>
               </div>
 
-              {/* Asset Code แสดงตัวอย่างเท่านั้น */}
+              {/* Asset Code: กรอกเองได้เมื่อมีรหัสอยู่แล้ว */}
               <div>
-                <label className="mb-2 block font-medium">
-                  Asset Code
+                <label className="mb-2 flex items-center gap-2 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={hasAssetCode}
+                    onChange={(event) =>
+                      setHasAssetCode(event.target.checked)
+                    }
+                  />
+                  มี Asset Code อยู่แล้ว
                 </label>
 
                 <input
-                  readOnly
-                  value={`${selectedType?.prefix || ""}-AMZ… (สร้างเมื่อบันทึก)`}
-                  className="w-full rounded-lg border bg-gray-100 p-3"
+                  name="assetCode"
+                  value={
+                    hasAssetCode
+                      ? form.assetCode
+                      : `${selectedType?.prefix || ""}-AMZ… (สร้างเมื่อบันทึก)`
+                  }
+                  onChange={handleChange}
+                  readOnly={!hasAssetCode}
+                  placeholder="เช่น NB-AMZ-2026-0001"
+                  className={`w-full rounded-lg border p-3 ${
+                    hasAssetCode ? "bg-white" : "bg-gray-100"
+                  }`}
                 />
 
                 <p className="mt-1 text-sm text-gray-500">
-                  PostgreSQL จะสร้างรหัสจริงตามประเภทที่เลือก
+                  {hasAssetCode
+                    ? "ระบบจะบันทึกรหัสนี้ตามที่กรอก"
+                    : "Database จะตรวจเลขล่าสุดแล้วสร้างรหัสถัดไป"}
                 </p>
               </div>
 

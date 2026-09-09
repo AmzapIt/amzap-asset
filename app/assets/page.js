@@ -1,28 +1,93 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import AssetTable from "./AssetTable";
 
+// ==================================================
+// 1. ให้หน้านี้ทำงานบน Node.js
+// เพราะใช้ pg เชื่อม PostgreSQL
+// ==================================================
 export const runtime = "nodejs";
+
+// ให้ดึงข้อมูลใหม่เมื่อมี Request เข้ามา
 export const dynamic = "force-dynamic";
 
+// ==================================================
+// 2. Server Component
+// ทำหน้าที่อ่านข้อมูลจาก PostgreSQL
+// ==================================================
 export default async function AssetsPage() {
-  const result = await query(`
-    SELECT
-      id,
-      asset_code,
-      asset_name,
-      brand,
-      model,
-      status,
-      TO_CHAR(purchase_date, 'DD/MM/YYYY') AS purchase_date
-    FROM v_asset_list
-    ORDER BY id DESC
-  `);
+  let assets = [];
+  let loadError = false;
 
-  const assets = result.rows;
+  try {
+    // ==================================================
+    // 3. Query ข้อมูลจริง
+    // JOIN asset_types เพื่อเอาชื่อประเภทมาแสดง
+    // ==================================================
+    const result = await query(`
+            SELECT
+            a.id,
+            a.asset_code,
+            a.asset_name,
+            a.brand,
+            a.model,
+            a.serial_number,
+            a.status,
+
+            -- วันที่รับเข้า ไม่ใช่วันที่ซื้อ
+            TO_CHAR(
+              a.received_date,
+              'DD/MM/YYYY'
+            ) AS received_date,
+
+            -- ชื่อประเภท เช่น Monitor / Notebook
+            t.name AS asset_type,
+
+            -- ใช้ Asset Owner แบบข้อความเป็นผู้ครอบครองหลัก
+            -- ถ้ายังไม่มี ให้แสดงผู้รับมอบหมายปัจจุบันแทน
+            COALESCE(NULLIF(a.asset_owner_name, ''), p.full_name) AS current_holder,
+
+            -- สถานที่ของรายการมอบหมาย ถ้าไม่มีใช้สถานที่ของ Asset
+            l.name AS location
+
+          FROM assets a
+
+          JOIN asset_types t
+            ON t.id = a.asset_type_id
+
+          -- รายการมอบหมายปัจจุบัน
+          LEFT JOIN asset_assignments aa
+            ON aa.asset_id = a.id
+          AND aa.returned_date IS NULL
+
+          -- ชื่อผู้ครอบครอง
+          LEFT JOIN people p
+            ON p.id = aa.assigned_to
+
+          -- สถานที่ปัจจุบัน
+          LEFT JOIN locations l
+            ON l.id = COALESCE(aa.location_id, a.location_id)
+
+          ORDER BY a.id DESC
+    `);
+
+    // rows คือ Array ของข้อมูลที่ PostgreSQL ส่งกลับมา
+    assets = result.rows;
+
+  } catch (error) {
+    // แสดง Error จริงใน Terminal ฝั่ง Server
+    console.error("Load assets error:", error);
+
+    // ใช้แสดงข้อความบนหน้าเว็บ
+    loadError = true;
+  }
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
+        {/* ==========================================
+            HEADER
+        ========================================== */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">
@@ -30,10 +95,11 @@ export default async function AssetsPage() {
             </h1>
 
             <p className="mt-2 text-gray-500">
-              ข้อมูลทรัพย์สินจาก PostgreSQL
+              จัดการข้อมูลทรัพย์สิน IT
             </p>
           </div>
 
+          {/* ไปหน้า Add Asset ที่เราทำไว้แล้ว */}
           <Link
             href="/assets/add"
             className="rounded-lg bg-black px-4 py-2 text-white"
@@ -42,64 +108,18 @@ export default async function AssetsPage() {
           </Link>
         </div>
 
-        <div className="mt-8 overflow-hidden rounded-lg bg-white shadow">
-          <div className="border-b p-4">
-            <h2 className="font-semibold">
-              Asset List ({assets.length})
-            </h2>
+        {/* ==========================================
+            ASSET LIST
+        ========================================== */}
+        {loadError ? (
+          <div className="mt-6 rounded-lg bg-red-50 p-4 text-red-700">
+            ไม่สามารถโหลดข้อมูลจาก PostgreSQL ได้
+            กรุณาตรวจสอบ Terminal
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-4">Asset Code</th>
-                  <th className="p-4">Asset Name</th>
-                  <th className="p-4">Brand</th>
-                  <th className="p-4">Model</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Purchase Date</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {assets.map((asset) => (
-                  <tr key={asset.id} className="border-t">
-                    <td className="p-4 font-medium">
-                      {asset.asset_code}
-                    </td>
-
-                    <td className="p-4">
-                      {asset.asset_name}
-                    </td>
-
-                    <td className="p-4">
-                      {asset.brand || "-"}
-                    </td>
-
-                    <td className="p-4">
-                      {asset.model || "-"}
-                    </td>
-
-                    <td className="p-4">
-                      {asset.status}
-                    </td>
-
-                    <td className="p-4">
-                      {asset.purchase_date || "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {assets.length === 0 && (
-            <p className="p-6 text-center text-gray-500">
-              ยังไม่มีข้อมูลทรัพย์สิน
-            </p>
-          )}
-        </div>
+        ) : (
+          // ส่ง Array จาก PostgreSQL ไปให้ Client Component
+          <AssetTable assets={assets} />
+        )}
       </div>
     </main>
   );

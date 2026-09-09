@@ -90,7 +90,9 @@ export async function POST(request) {
   // 2. ดึงค่าจาก Form
   // เช่น body.type = "Monitor"
   const type = text(body.type);
+  const assetCode = text(body.assetCode);
   const assetName = text(body.assetName);
+  const assetOwner = text(body.assetOwner);
   const status = text(body.status) || "In Stock";
 
   // รายการสถานะที่ Database อนุญาต
@@ -120,6 +122,7 @@ export async function POST(request) {
   }
 
   // 3. เตรียมข้อมูลวันที่และราคา
+  const receivedDate = text(body.receivedDate);
   const purchaseDate = text(body.purchaseDate);
   const purchasePrice = text(body.purchasePrice);
   const warrantyStart = text(body.warrantyStart);
@@ -128,6 +131,7 @@ export async function POST(request) {
   // ตรวจสอบวันที่ก่อนส่งเข้า PostgreSQL
   if (
     ![
+      receivedDate,
       purchaseDate,
       warrantyStart,
       warrantyEnd,
@@ -190,9 +194,62 @@ if (
     const assetTypeId = typeResult.rows[0].id;
 
     // 5. INSERT ข้อมูลลงตาราง assets
+    const insertColumns = assetCode ? "asset_code,\n        " : "";
+    const insertValues = assetCode ? "$1,\n        " : "";
+    const firstValue = assetCode ? "$2" : "$1";
+    const insertParameters = assetCode
+      ? [
+          assetCode,
+          assetTypeId,
+          receivedDate,
+          assetOwner,
+          assetName,
+          text(body.brand),
+          text(body.model),
+          text(body.serialNumber),
+          text(body.computerName),
+          text(body.description),
+          status,
+          purchaseDate,
+          purchasePrice,
+          "THB",
+          text(body.poNumber),
+          text(body.invoiceNumber),
+          warrantyStart,
+          warrantyEnd,
+          text(body.warrantyType),
+          text(body.costCenter),
+          text(body.notes),
+        ]
+      : [
+          assetTypeId,
+          receivedDate,
+          assetOwner,
+          assetName,
+          text(body.brand),
+          text(body.model),
+          text(body.serialNumber),
+          text(body.computerName),
+          text(body.description),
+          status,
+          purchaseDate,
+          purchasePrice,
+          "THB",
+          text(body.poNumber),
+          text(body.invoiceNumber),
+          warrantyStart,
+          warrantyEnd,
+          text(body.warrantyType),
+          text(body.costCenter),
+          text(body.notes),
+        ];
+
     const result = await query(
       `INSERT INTO assets (
+        ${insertColumns} 
         asset_type_id,
+        received_date,
+        asset_owner_name,
         asset_name,
         brand,
         model,
@@ -212,31 +269,16 @@ if (
         notes
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17, $18
+        ${insertValues}${firstValue}, $${assetCode ? 3 : 2}, $${assetCode ? 4 : 3},
+        $${assetCode ? 5 : 4}, $${assetCode ? 6 : 5}, $${assetCode ? 7 : 6},
+        $${assetCode ? 8 : 7}, $${assetCode ? 9 : 8}, $${assetCode ? 10 : 9},
+        $${assetCode ? 11 : 10}, $${assetCode ? 12 : 11}, $${assetCode ? 13 : 12},
+        $${assetCode ? 14 : 13}, $${assetCode ? 15 : 14}, $${assetCode ? 16 : 15},
+        $${assetCode ? 17 : 16}, $${assetCode ? 18 : 17}, $${assetCode ? 19 : 18},
+        $${assetCode ? 20 : 19}, $${assetCode ? 21 : 20}
       )
       RETURNING id, asset_code, asset_name`,
-      [
-        assetTypeId,                 // $1
-        assetName,                   // $2
-        text(body.brand),            // $3
-        text(body.model),            // $4
-        text(body.serialNumber),     // $5
-        text(body.computerName),     // $6
-        text(body.description),      // $7
-        status,                      // $8
-        purchaseDate,                // $9
-        purchasePrice,               // $10
-        "THB",                       // $11
-        text(body.poNumber),         // $12
-        text(body.invoiceNumber),    // $13
-        warrantyStart,               // $14
-        warrantyEnd,                 // $15
-        text(body.warrantyType),     // $16
-        text(body.costCenter),       // $17
-        text(body.notes),            // $18
-      ]
+      insertParameters
     );
 
     // 6. PostgreSQL INSERT สำเร็จ
