@@ -1,6 +1,7 @@
 "use client";
-
+import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 // ==================================================
 // 1. สีของ Status
@@ -30,6 +31,8 @@ export default function AssetTable({ assets }) {
   // เก็บสถานะที่เลือก เช่น In Use
   const [selectedStatus, setSelectedStatus] = useState("");
 
+    // ใช้เปลี่ยนหน้าเมื่อผู้ใช้คลิกแถว
+  const router = useRouter();
   // ==================================================
   // 3. สร้างรายการประเภทจากข้อมูลจริง
   // Set ใช้ตัดชื่อประเภทที่ซ้ำกันออก
@@ -181,7 +184,10 @@ export default function AssetTable({ assets }) {
             {filteredAssets.map((asset) => (
                 <tr
                 key={asset.id}
-                className="border-t hover:bg-gray-50"
+                className="cursor-pointer border-t hover:bg-gray-50"
+
+                // คลิกตรงไหนของแถวก็เปิด Detail ของ Asset นั้น
+                onClick={() => router.push(`/assets/${asset.id}`)}
                 >
                 {/* รหัสทรัพย์สิน */}
                 <td className="p-4 font-medium">
