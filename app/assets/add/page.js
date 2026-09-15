@@ -1,8 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import AssetLookups from "@/app/components/AssetLookups";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 // ==================================================
@@ -45,6 +45,9 @@ const statuses = [
 const initialForm = {
   // General Information
   type: "Notebook",
+  // Asset Code ตัวเต็ม
+  // เช่น NB-AMZ26-001
+  // ค่านี้จะถูกประกอบตอนกด Save
   assetCode: "",
   receivedDate: "",
   assetName: "",
@@ -170,8 +173,20 @@ const collapsibleGroups = [
       { name: "macAddress", label: "MAC Address" },
       { name: "operatingSystem", label: "Operating System" },
       { name: "cpu", label: "CPU" },
-      { name: "ramGb", label: "RAM (GB)", type: "number", min: "0", step: "0.01" },
-      { name: "storageGb", label: "Storage (GB)", type: "number", min: "0", step: "0.01" },
+      {
+        name: "ramGb",
+        label: "RAM (GB)",
+        type: "number",
+        min: "0",
+        step: "0.01",
+      },
+      {
+        name: "storageGb",
+        label: "Storage (GB)",
+        type: "number",
+        min: "0",
+        step: "0.01",
+      },
       { name: "biosFirmware", label: "BIOS / Firmware" },
       { name: "vlan", label: "VLAN", type: "number", min: "1", max: "4094" },
       { name: "managementIp", label: "Management IP" },
@@ -231,14 +246,12 @@ const inputClass =
 // รับข้อมูล Field แล้วเลือกว่าจะสร้าง input, select หรือ textarea
 function FormField({ field, form, onChange }) {
   // อ่านค่าจาก State เช่น form.brand หรือ form.purchaseDate
+  if (["department","location","vendor"].includes(field.name)) return null;
   const value = form[field.name] ?? "";
 
   return (
     <div>
-      <label
-        htmlFor={field.name}
-        className="mb-2 block font-medium"
-      >
+      <label htmlFor={field.name} className="mb-2 block font-medium">
         {field.label}
         {field.required && <span className="text-red-600"> *</span>}
       </label>
@@ -278,6 +291,30 @@ function FormField({ field, form, onChange }) {
           rows={3}
           className={inputClass}
         />
+      ) : field.type === "date" ? (
+        <div className="relative">
+          <input
+            id={field.name}
+            name={field.name}
+            type="date"
+            value={value}
+            onChange={onChange}
+            required={field.required || false}
+            min={
+              field.name === "warrantyEnd"
+                ? form.warrantyStart || undefined
+                : field.min
+            }
+            max={field.max}
+            className={`${inputClass.replace("text-gray-900", "text-transparent")} caret-transparent [&::-webkit-datetime-edit]:opacity-0`}
+          />
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-y-0 left-3 right-12 flex items-center ${value ? "text-gray-900" : "text-gray-400"}`}
+          >
+            {formatDate(value) || "dd/mm/yyyy"}
+          </span>
+        </div>
       ) : (
         // Field ทั่วไปใช้ input
         <input
@@ -296,13 +333,6 @@ function FormField({ field, form, onChange }) {
           step={field.step}
           className={inputClass}
         />
-      )}
-
-      {/* แสดงวันที่แบบ dd/mm/yyyy ใต้ช่อง Date */}
-      {field.type === "date" && (
-        <p className="mt-1 text-sm text-gray-500">
-          {formatDate(value) || "ยังไม่ได้เลือก"}
-        </p>
       )}
     </div>
   );
@@ -325,9 +355,7 @@ function CollapsibleSection({ title, description, children }) {
 
       {/* ส่วนนี้จะซ่อนอยู่จนกว่าผู้ใช้จะกดเปิด */}
       <div className="border-t px-6 py-5">
-        <p className="mb-5 text-sm text-gray-500">
-          {description}
-        </p>
+        <p className="mb-5 text-sm text-gray-500">{description}</p>
 
         {children}
       </div>
@@ -343,6 +371,7 @@ function CollapsibleSection({ title, description, children }) {
 // ส่วน Assignment, Technical, Security, Vendor และไฟล์
 // ยังไม่ได้เชื่อมครบ จึงต้องป้องกันการบันทึกข้อมูลไม่ครบ
 const supportedFields = [
+  "department", "location", "vendor",
   "type",
   "assetCode",
   "receivedDate",
@@ -372,8 +401,38 @@ export default function AddAssetPage() {
   const router = useRouter();
 
   // State หลักของ Form
+  // ==================================================
   const [form, setForm] = useState(initialForm);
-  const [hasAssetCode, setHasAssetCode] = useState(false);
+
+  // ==================================================
+  // เลขท้าย Asset Code จำนวน 3 หลัก
+  //
+  // ตัวอย่าง:
+  // 001
+  // 025
+  // 999
+  //
+  // ระบบจะเอาไปต่อกับ Prefix เช่น:
+  // NB-AMZ26- + 001
+  //
+  // ผลลัพธ์:
+  // NB-AMZ26-001
+  // ==================================================
+  const [assetCodeNumber, setAssetCodeNumber] = useState("");
+
+  // ==================================================
+  // รายชื่อพนักงานสำหรับ Asset Owner
+  // ==================================================
+
+  // เก็บรายชื่อพนักงานที่ status = 1
+  // ข้อมูลมาจาก GET /api/users/active
+  const [activeUsers, setActiveUsers] = useState([]);
+
+  // ใช้บอกว่า Dropdown กำลังโหลดรายชื่ออยู่
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  // เก็บ Error ถ้าโหลดรายชื่อพนักงานไม่สำเร็จ
+  const [usersError, setUsersError] = useState("");
 
   // เก็บไฟล์ที่เลือกไว้ชั่วคราว ยังไม่ได้ Upload
   const [photo, setPhoto] = useState(null);
@@ -383,11 +442,104 @@ export default function AddAssetPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  // ==================================================
+  // โหลดรายชื่อพนักงาน Active
+  //
+  // ทำงานตอนเปิดหน้า Add Asset ครั้งแรก
+  //
+  // API จะดึง:
+  // SELECT id, full_name, status
+  // FROM public."user"
+  // WHERE status = 1
+  // ==================================================
+  useEffect(() => {
+    async function loadActiveUsers() {
+      try {
+        // เริ่ม Loading
+        setLoadingUsers(true);
+
+        // ล้าง Error เก่า
+        setUsersError("");
+
+        // ==================================================
+        // เรียก API รายชื่อพนักงาน
+        // ==================================================
+        const response = await fetch("/api/users/active");
+
+        const data = await response.json();
+
+        // ถ้า API Error เช่น 500
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "โหลดรายชื่อพนักงานไม่สำเร็จ");
+        }
+
+        // ==================================================
+        // เก็บรายชื่อพนักงานลง State
+        //
+        // activeUsers จะมีหน้าตาประมาณ:
+        //
+        // [
+        //   {
+        //     id: 1,
+        //     full_name: "สมชาย ใจดี",
+        //     status: 1
+        //   }
+        // ]
+        // ==================================================
+        setActiveUsers(data.users || []);
+      } catch (error) {
+        console.error("Load Asset Owner users error:", error);
+
+        // แสดง Error ใต้ Dropdown
+        setUsersError(error.message || "โหลดรายชื่อพนักงานไม่สำเร็จ");
+      } finally {
+        // โหลดเสร็จแล้ว
+        setLoadingUsers(false);
+      }
+    }
+
+    // เรียกตอนเปิดหน้า
+    loadActiveUsers();
+  }, []);
+
   // หา Prefix ของประเภทที่เลือก
   // เช่น Notebook → NB, Monitor → MON
-  const selectedType = assetTypes.find(
-    (item) => item.name === form.type
-  );
+
+  const selectedType = assetTypes.find((item) => item.name === form.type);
+  // ==================================================
+  // ปีปัจจุบันแบบ 2 หลัก
+  //
+  // 2026 -> "26"
+  // 2027 -> "27"
+  // ==================================================
+  const currentYear = String(new Date().getFullYear()).slice(-2);
+
+  // ==================================================
+  // สร้างส่วนหน้าของ Asset Code อัตโนมัติ
+  //
+  // Notebook:
+  // NB-AMZ26-
+  //
+  // Monitor:
+  // MON-AMZ26-
+  //
+  // Printer:
+  // PRN-AMZ26-
+  // ==================================================
+  const assetCodePrefix = `${selectedType?.prefix || ""}-AMZ${currentYear}-`;
+
+  // ==================================================
+  // Asset Code ตัวเต็ม
+  //
+  // ตัวอย่าง:
+  // assetCodePrefix = "NB-AMZ26-"
+  // assetCodeNumber = "001"
+  //
+  // fullAssetCode = "NB-AMZ26-001"
+  // ==================================================
+  // Asset Code ตัวเต็มที่จะส่งไป Backend
+  // เช่น NB-AMZ26-001
+  const fullAssetCode = `${assetCodePrefix}${assetCodeNumber}`;
 
   // ==================================================
   // 9. เมื่อผู้ใช้แก้ข้อมูลใน Form
@@ -414,21 +566,41 @@ export default function AddAssetPage() {
 
     setMessage("");
 
-    if (hasAssetCode && !form.assetCode.trim()) {
-      setMessage("กรุณาระบุ Asset Code หรือยกเลิกตัวเลือกว่ามีรหัสแล้ว");
+    // ==================================================
+    // ตรวจเลขท้าย Asset Code
+    //
+    // ต้องกรอกให้ครบ 3 หลัก
+    // และต้องเป็นตัวเลข 0-9 เท่านั้น
+    //
+    // ถูก:
+    // 001
+    // 025
+    // 999
+    //
+    // ผิด:
+    // 1
+    // 01
+    // ABC
+    // 12A
+    // ==================================================
+    if (!/^\d{3}$/.test(assetCodeNumber)) {
+      setMessage("กรุณากรอกเลข Asset Code ให้ครบ 3 หลัก เช่น 001");
+
       return;
     }
 
     // เตือนก่อนบันทึกถ้ามีข้อมูลที่ API ยังไม่รองรับ
-    const hasUnconnectedData = Object.entries(form).some(
-      ([name, value]) =>
-        !supportedFields.includes(name) && value !== ""
-    ) || photo !== null || documents.length > 0;
+    const hasUnconnectedData =
+      Object.entries(form).some(
+        ([name, value]) => !supportedFields.includes(name) && value !== "",
+      ) ||
+      photo !== null ||
+      documents.length > 0;
 
     if (
       hasUnconnectedData &&
       !window.confirm(
-        "มีข้อมูลในหมวดที่ยังไม่ได้เชื่อม API หรือไฟล์แนบ ข้อมูลส่วนนี้จะยังไม่ถูกบันทึก ต้องการบันทึกเฉพาะข้อมูลที่รองรับต่อหรือไม่?"
+        "มีข้อมูลในหมวดที่ยังไม่ได้เชื่อม API หรือไฟล์แนบ ข้อมูลส่วนนี้จะยังไม่ถูกบันทึก ต้องการบันทึกเฉพาะข้อมูลที่รองรับต่อหรือไม่?",
       )
     ) {
       return;
@@ -438,10 +610,24 @@ export default function AddAssetPage() {
 
     try {
       // ถ้าไม่ส่ง Asset Code ให้ Database/trigger ตรวจ counter ล่าสุดและสร้างรหัสถัดไป
+      // ==================================================
+      // สร้าง Payload จากข้อมูลใน Form
+      // ==================================================
       const payload = Object.fromEntries(
-        supportedFields.map((name) => [name, form[name]])
+        supportedFields.map((name) => [name, form[name]]),
       );
-      payload.assetCode = hasAssetCode ? form.assetCode.trim() : null;
+
+      // ==================================================
+      // ประกอบ Asset Code ตัวเต็มก่อนส่งไป API
+      //
+      // ตัวอย่าง:
+      // Prefix          = NB-AMZ26-
+      // assetCodeNumber = 001
+      //
+      // ส่งไป API:
+      // assetCode = NB-AMZ26-001
+      // ==================================================
+      payload.assetCode = fullAssetCode;
 
       // ส่งข้อมูลไป Backend
       const response = await fetch("/api/assets", {
@@ -473,7 +659,7 @@ export default function AddAssetPage() {
           hasUnconnectedData
             ? "\n\nหมายเหตุ: ข้อมูลในหมวดที่ยังไม่เชื่อม API และไฟล์แนบยังไม่ได้บันทึก"
             : ""
-        }`
+        }`,
       );
 
       // กลับหน้า Asset List
@@ -491,16 +677,12 @@ export default function AddAssetPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Add Asset
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-800">Add Asset</h1>
 
-        <p className="mt-2 text-gray-500">
-          ลงทะเบียนทรัพย์สิน IT
-        </p>
+        <p className="mt-2 text-gray-500">ลงทะเบียนทรัพย์สิน IT</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-
+          <AssetLookups form={form} onChange={handleChange} />
           {/* ==========================================
               GENERAL INFORMATION
               หมวดนี้แสดงตลอด ไม่ต้องกดเปิด
@@ -517,9 +699,7 @@ export default function AddAssetPage() {
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
               {/* Asset Type */}
               <div>
-                <label className="mb-2 block font-medium">
-                  Asset Type
-                </label>
+                <label className="mb-2 block font-medium">Asset Type</label>
 
                 <select
                   name="type"
@@ -535,38 +715,116 @@ export default function AddAssetPage() {
                 </select>
               </div>
 
-              {/* Asset Code: กรอกเองได้เมื่อมีรหัสอยู่แล้ว */}
+              {/* ==================================================
+                  ASSET CODE
+
+                  ระบบสร้างส่วนหน้าให้อัตโนมัติ:
+                  NB-AMZ26-
+
+                  ผู้ใช้กรอกเฉพาะเลขท้าย 3 หลัก:
+                  001
+
+                  ผลลัพธ์:
+                  NB-AMZ26-001
+              ================================================== */}
               <div>
-                <label className="mb-2 flex items-center gap-2 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={hasAssetCode}
-                    onChange={(event) =>
-                      setHasAssetCode(event.target.checked)
-                    }
-                  />
-                  มี Asset Code อยู่แล้ว
+                <label
+                  htmlFor="assetCodeNumber"
+                  className="mb-2 block font-medium"
+                >
+                  Asset Code
                 </label>
 
-                <input
-                  name="assetCode"
-                  value={
-                    hasAssetCode
-                      ? form.assetCode
-                      : `${selectedType?.prefix || ""}-AMZ… (สร้างเมื่อบันทึก)`
-                  }
-                  onChange={handleChange}
-                  readOnly={!hasAssetCode}
-                  placeholder="เช่น NB-AMZ-2026-0001"
-                  className={`w-full rounded-lg border p-3 ${
-                    hasAssetCode ? "bg-white" : "bg-gray-100"
-                  }`}
-                />
+                {/* ==================================================
+                    แยก Prefix และเลขท้ายออกเป็นคนละช่อง
+                ================================================== */}
+                <div className="flex">
+                  {/* ================================================
+                      Prefix
 
-                <p className="mt-1 text-sm text-gray-500">
-                  {hasAssetCode
-                    ? "ระบบจะบันทึกรหัสนี้ตามที่กรอก"
-                    : "Database จะตรวจเลขล่าสุดแล้วสร้างรหัสถัดไป"}
+                      ระบบสร้างอัตโนมัติตาม Asset Type + ปี
+                      ผู้ใช้แก้ไม่ได้
+
+                      ตัวอย่าง:
+                      NB-AMZ26-
+                  ================================================= */}
+                  <div
+                    className="
+                      flex items-center
+                      rounded-l-lg
+                      border
+                      border-r-0
+                      border-gray-300
+                      bg-gray-100
+                      px-3
+                      font-medium
+                      text-gray-700
+                    "
+                  >
+                    {assetCodePrefix}
+                  </div>
+
+                  {/* ================================================
+                      Running Number
+
+                      ผู้ใช้กรอกเอง
+                      ต้องเป็นเลข 3 หลัก
+
+                      ตัวอย่าง:
+                      001
+                      025
+                      999
+                  ================================================= */}
+                  <input
+                    id="assetCodeNumber"
+                    // ใช้ text แทน number
+                    // เพื่อให้เลข 001 ไม่กลายเป็น 1
+                    type="text"
+                    // มือถือจะแสดง Keyboard ตัวเลข
+                    inputMode="numeric"
+                    // กรอกได้สูงสุด 3 ตัว
+                    maxLength={3}
+                    // ค่าปัจจุบัน
+                    value={assetCodeNumber}
+                    onChange={(event) => {
+                      // ============================================
+                      // อนุญาตเฉพาะตัวเลข 0-9
+                      //
+                      // ถ้าพิมพ์:
+                      // 0 -> 0
+                      // 01 -> 01
+                      // 001 -> 001
+                      //
+                      // ถ้าพิมพ์ตัวอักษร จะถูกตัดออก
+                      // ============================================
+                      const value = event.target.value.replace(/\D/g, "");
+
+                      setAssetCodeNumber(value);
+                    }}
+                    placeholder="001"
+                    className="
+                      w-24
+                      rounded-r-lg
+                      border
+                      border-gray-300
+                      bg-white
+                      p-3
+                      text-center
+                      font-medium
+                      outline-none
+                      focus:border-blue-500
+                    "
+                  />
+                </div>
+
+                {/* ==================================================
+                    Preview Asset Code ตัวเต็ม
+                ================================================== */}
+                <p className="mt-2 text-sm text-gray-500">
+                  Asset Code:{" "}
+                  <span className="font-medium text-gray-700">
+                    {assetCodeNumber ? fullAssetCode : `${assetCodePrefix}XXX`}
+                  </span>
                 </p>
               </div>
 
@@ -583,16 +841,12 @@ export default function AddAssetPage() {
 
             {/* Photo ยังไม่ Upload */}
             <div className="mt-5">
-              <label className="mb-2 block font-medium">
-                Photo
-              </label>
+              <label className="mb-2 block font-medium">Photo</label>
 
               <input
                 type="file"
                 accept="image/*"
-                onChange={(event) =>
-                  setPhoto(event.target.files?.[0] || null)
-                }
+                onChange={(event) => setPhoto(event.target.files?.[0] || null)}
                 className={inputClass}
               />
 
@@ -619,17 +873,92 @@ export default function AddAssetPage() {
                 {group.fields
                   // Field ที่มี types จะแสดงเฉพาะประเภทนั้น
                   .filter(
-                    (field) =>
-                      !field.types || field.types.includes(form.type)
+                    (field) => !field.types || field.types.includes(form.type),
                   )
-                  .map((field) => (
-                    <FormField
-                      key={field.name}
-                      field={field}
-                      form={form}
-                      onChange={handleChange}
-                    />
-                  ))}
+                  .map((field) => {
+                    // ==================================================
+                    // Asset Owner ใช้ Dropdown รายชื่อพนักงาน
+                    //
+                    // ไม่ใช้ FormField ปกติ เพราะเราต้องการ
+                    // รายชื่อแบบ Dynamic จาก Database
+                    // ==================================================
+                    if (field.name === "assetOwner") {
+                      return (
+                        <div key={field.name}>
+                          <label
+                            htmlFor="assetOwner"
+                            className="mb-2 block font-medium"
+                          >
+                            Asset Owner
+                          </label>
+
+                          <select
+                            id="assetOwner"
+                            // ต้องตรงกับ initialForm.assetOwner
+                            name="assetOwner"
+                            // ค่าที่เลือกคือ User ID
+                            value={form.assetOwner}
+                            // ใช้ handleChange เดิม
+                            // เมื่อเลือกแล้ว:
+                            // form.assetOwner = user.id
+                            onChange={handleChange}
+                            // ระหว่างโหลดรายชื่อ
+                            // ปิด Dropdown ชั่วคราว
+                            disabled={loadingUsers}
+                            className={inputClass}
+                          >
+                            {/* ================================
+                          ค่าเริ่มต้นของ Dropdown
+                      ================================= */}
+                            <option value="">
+                              {loadingUsers
+                                ? "กำลังโหลดรายชื่อพนักงาน..."
+                                : "-- เลือก Asset Owner --"}
+                            </option>
+
+                            {/* ================================
+                          แสดงรายชื่อพนักงาน Active
+
+                          สิ่งที่ผู้ใช้เห็น:
+                          user.full_name
+
+                          สิ่งที่ Form เก็บ:
+                          user.id
+                      ================================= */}
+                            {/* แสดงชื่อพนักงาน แต่เก็บ User ID เป็นค่าของตัวเลือก
+    เช่น ผู้ใช้เห็นชื่อ "สมชาย" แต่ form.assetOwner เก็บ "27"
+    ใช้ String ให้ตรงกับค่าที่ HTML select ส่งผ่าน onChange */}
+                            {activeUsers.map((user) => (
+                              <option key={user.id} value={String(user.id)}>
+                                {user.full_name}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* ================================
+                        แสดง Error ถ้าโหลดรายชื่อไม่ได้
+                    ================================= */}
+                          {usersError && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {usersError}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // ==================================================
+                    // Field อื่นยังใช้ FormField เดิมทั้งหมด
+                    // ==================================================
+                    return (
+                      <FormField
+                        key={field.name}
+                        field={field}
+                        form={form}
+                        onChange={handleChange}
+                      />
+                    );
+                  })}
               </div>
             </CollapsibleSection>
           ))}
@@ -643,9 +972,7 @@ export default function AddAssetPage() {
             description="เอกสารประกอบและประวัติทรัพย์สิน"
           >
             <div>
-              <label className="mb-2 block font-medium">
-                Documents
-              </label>
+              <label className="mb-2 block font-medium">Documents</label>
 
               <input
                 type="file"
@@ -664,8 +991,8 @@ export default function AddAssetPage() {
             </div>
 
             <p className="mt-4 text-sm text-gray-500">
-              ประวัติการมอบหมาย/คืน การซ่อม และ Audit Log
-              จะเชื่อมหลังจากสร้าง Asset และมี ID ใน Database แล้ว
+              ประวัติการมอบหมาย/คืน การซ่อม และ Audit Log จะเชื่อมหลังจากสร้าง
+              Asset และมี ID ใน Database แล้ว
             </p>
           </CollapsibleSection>
 

@@ -23,7 +23,7 @@ export async function GET() {
         success: false,
         error: "Database connection failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

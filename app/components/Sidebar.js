@@ -42,6 +42,7 @@ export default function Sidebar() {
       {/* เมนูเริ่มใต้เส้นคั่นของส่วนหัว และซ่อนทั้งหมดเมื่อย่อแถบ */}
       {!isCollapsed && (
         <nav className="mt-6 flex flex-col gap-3">
+          {["departments","locations","vendors"].map(kind => <Link key={kind} href={`/master/${kind}`} className="rounded-md px-3 py-2 capitalize hover:bg-gray-100">{kind}</Link>)}
           <Link
             href="/"
             className="rounded-md px-3 py-2 font-semibold text-gray-800 hover:bg-gray-100 hover:text-blue-600"
@@ -54,6 +55,17 @@ export default function Sidebar() {
           >
             Asset List
           </Link>
+
+          <Link
+            href="/users"
+            className="rounded-md px-3 py-2 font-semibold text-gray-800 hover:bg-gray-100 hover:text-blue-600"
+          >
+            User Management
+          </Link>
+
+
+
+
         </nav>
       )}
     </aside>

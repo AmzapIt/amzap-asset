@@ -1,3 +1,4 @@
+import AssignmentForm from "./AssignmentForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { query } from "@/lib/db";
@@ -93,10 +94,9 @@ function DetailSection({ title, children }) {
 // ==================================================
 async function readOptional(tableName, sql, values = []) {
   // ตรวจว่าตารางมีอยู่จริงก่อน
-  const check = await query(
-    "SELECT to_regclass($1) AS table_name",
-    [`public.${tableName}`]
-  );
+  const check = await query("SELECT to_regclass($1) AS table_name", [
+    `public.${tableName}`,
+  ]);
 
   if (!check.rows[0].table_name) {
     return null;
@@ -115,9 +115,10 @@ async function readLookup(tableName, ids) {
   if (validIds.length === 0) return [];
 
   const lookupSql = {
-    people: "SELECT * FROM public.people WHERE id = ANY($1::bigint[])",
+    user: 'SELECT * FROM public."user" WHERE id = ANY($1::bigint[])',
     locations: "SELECT * FROM public.locations WHERE id = ANY($1::bigint[])",
-    departments: "SELECT * FROM public.departments WHERE id = ANY($1::bigint[])",
+    departments:
+      "SELECT * FROM public.departments WHERE id = ANY($1::bigint[])",
     vendors: "SELECT * FROM public.vendors WHERE id = ANY($1::bigint[])",
   };
 
@@ -136,15 +137,47 @@ async function getAssetDetail(id) {
   // ไม่บังคับว่าต้องมี received_date หรือฟิลด์ใหม่ทุกตัว
   const result = await query(
     `
-      SELECT
-        a.*,
-        t.name AS asset_type
-      FROM public.assets a
-      LEFT JOIN public.asset_types t
-        ON t.id = a.asset_type_id
-      WHERE a.id = $1
-    `,
-    [id]
+    SELECT
+      a.*,
+          -- ส่ง DATE เป็น yyyy-mm-dd โดยตรง ไม่แปลงผ่าน JavaScript Date/UTC
+          -- ป้องกันวันที่ถอยหนึ่งวันทุกครั้งที่เปิดฟอร์มแล้วบันทึก
+          a.received_date::text AS received_date,
+          a.purchase_date::text AS purchase_date,
+          a.warranty_start::text AS warranty_start,
+          a.warranty_end::text AS warranty_end,
+
+      -- ชื่อประเภท Asset
+      t.name AS asset_type,
+
+      -- ==================================================
+      -- Asset Owner ปัจจุบัน
+      --
+      -- assets.asset_owner_id เก็บ user.id
+      -- เรา JOIN เพื่อเอาชื่อจริงมาใช้ในหน้า Edit
+      -- ==================================================
+      u.full_name AS asset_owner_name,
+
+      -- เก็บ status ของ Owner เดิมไว้ด้วย
+      -- เพื่อรู้ว่า Owner คนเดิม Active หรือ Inactive
+      u.status AS asset_owner_status
+
+    FROM public.assets a
+
+    LEFT JOIN public.asset_types t
+      ON t.id = a.asset_type_id
+
+    -- ==================================================
+    -- "user" ต้องใส่ double quote
+    -- เพราะ USER เป็น keyword ของ PostgreSQL
+    -- ==================================================
+    LEFT JOIN public."user" u
+      ON u.id = a.asset_owner_id
+
+    WHERE a.id = $1
+
+    LIMIT 1
+  `,
+    [id],
   );
 
   const asset = result.rows[0];
@@ -164,32 +197,32 @@ async function getAssetDetail(id) {
     readOptional(
       "asset_assignments",
       "SELECT * FROM public.asset_assignments WHERE asset_id = $1 ORDER BY id DESC",
-      [id]
+      [id],
     ),
     readOptional(
       "asset_technical",
       "SELECT * FROM public.asset_technical WHERE asset_id = $1 LIMIT 1",
-      [id]
+      [id],
     ),
     readOptional(
       "asset_security",
       "SELECT * FROM public.asset_security WHERE asset_id = $1 LIMIT 1",
-      [id]
+      [id],
     ),
     readOptional(
       "asset_documents",
       "SELECT * FROM public.asset_documents WHERE asset_id = $1 ORDER BY id DESC",
-      [id]
+      [id],
     ),
     readOptional(
       "asset_audit_logs",
       "SELECT * FROM public.asset_audit_logs WHERE asset_id = $1 ORDER BY id DESC LIMIT 20",
-      [id]
+      [id],
     ),
     readOptional(
       "asset_maintenance",
       "SELECT * FROM public.asset_maintenance WHERE asset_id = $1 ORDER BY id DESC LIMIT 20",
-      [id]
+      [id],
     ),
   ]);
 
@@ -199,8 +232,7 @@ async function getAssetDetail(id) {
 
   // ดึงรายชื่อที่เกี่ยวข้องกับ Asset นี้เท่านั้น
   const [people, locations, departments, vendors] = await Promise.all([
-    readLookup("people", [
-      asset.asset_owner_id,
+    readLookup("user", [
       ...(assignments ?? []).map((item) => item.assigned_to),
     ]),
     readLookup("locations", [
@@ -293,17 +325,26 @@ export default async function AssetDetailPage({ params }) {
     vendorMap,
   } = data;
 
+  const [activeUsers, availableLocations] = await Promise.all([
+    query('SELECT u.id,u.employee_code,u.full_name,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.status=1 ORDER BY u.full_name'),
+    query('SELECT id,name FROM public.locations ORDER BY name'),
+  ]);
+
   // Helper แปลง ID เป็นชื่อจริง
   function personName(personId) {
     if (personId == null) return null;
-    return peopleMap.get(String(personId))?.full_name
-      ?? `ไม่พบรายชื่อ (ID ${personId})`;
+    return (
+      peopleMap.get(String(personId))?.full_name ??
+      `ไม่พบรายชื่อ (ID ${personId})`
+    );
   }
 
   function departmentName(departmentId) {
     if (departmentId == null) return null;
-    return departmentMap.get(String(departmentId))?.name
-      ?? `ไม่พบแผนก (ID ${departmentId})`;
+    return (
+      departmentMap.get(String(departmentId))?.name ??
+      `ไม่พบแผนก (ID ${departmentId})`
+    );
   }
 
   function locationName(locationId) {
@@ -313,23 +354,26 @@ export default async function AssetDetailPage({ params }) {
 
     if (!location) return `ไม่พบ Location (ID ${locationId})`;
 
-    return [
-      location.name,
-      location.building,
-      location.floor,
-      location.room,
-    ].filter(Boolean).join(" / ");
+    return [location.name, location.building, location.floor, location.room]
+      .filter(Boolean)
+      .join(" / ");
   }
 
-  const vendorName = asset.vendor_id == null
-    ? null
-    : vendorMap.get(String(asset.vendor_id))?.name
-      ?? `ไม่พบ Vendor (ID ${asset.vendor_id})`;
+  // Owner และ assignee อ้างอิง public."user" แต่เป็นคนละบทบาท
+  const ownerName = asset.asset_owner_id == null
+    ? "ไม่มี Asset Owner"
+    : (asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`) +
+      (String(asset.asset_owner_status) === "0" ? " (Inactive)" : "");
+
+  const vendorName =
+    asset.vendor_id == null
+      ? null
+      : (vendorMap.get(String(asset.vendor_id))?.name ??
+        `ไม่พบ Vendor (ID ${asset.vendor_id})`);
 
   // Location ปัจจุบันใช้จาก Assignment ก่อน
   // ถ้าไม่มีจึงใช้ Location ที่เก็บใน Asset
-  const currentLocationId =
-    currentAssignment?.location_id ?? asset.location_id;
+  const currentLocationId = currentAssignment?.location_id ?? asset.location_id;
 
   const currentDepartmentId =
     currentAssignment?.department_id ?? asset.owning_department_id;
@@ -337,7 +381,6 @@ export default async function AssetDetailPage({ params }) {
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
-
         {/* ================= HEADER ================= */}
         <div>
           <Link
@@ -348,6 +391,9 @@ export default async function AssetDetailPage({ params }) {
           </Link>
 
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+            {/* ==================================================
+              ข้อมูล Asset ด้านซ้าย
+          ================================================== */}
             <div>
               <p className="text-sm text-gray-500">Asset Detail</p>
 
@@ -355,72 +401,96 @@ export default async function AssetDetailPage({ params }) {
                 {asset.asset_code}
               </h1>
 
-              <p className="mt-2 text-gray-600">
-                {asset.asset_name}
-              </p>
+              <p className="mt-2 text-gray-600">{asset.asset_name}</p>
             </div>
 
-            <span className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium">
-              {asset.status}
-            </span>
+            {/* ==================================================
+              Status + ปุ่ม Edit ด้านขวา
+          ================================================== */}
+            <div className="flex items-center gap-3">
+              {/* สถานะปัจจุบัน */}
+              <span className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium">
+                {asset.status}
+              </span>
+
+              {/* ================================================
+                ไปหน้า Edit ของ Asset ปัจจุบัน
+
+                ตัวอย่าง:
+                Asset ID = 12
+
+                URL:
+                /assets/12/edit
+            ================================================= */}
+              <Link
+                href={`/assets/${asset.id}/edit`}
+                className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                Edit Asset
+              </Link>
+            </div>
           </div>
         </div>
-
         {/* ================= GENERAL ================= */}
         <section className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-6 text-lg font-semibold">
-            General Information
-          </h2>
+          <h2 className="mb-6 text-lg font-semibold">General Information</h2>
 
-          <InfoGrid rows={[
-            ["รหัสทรัพย์สิน", asset.asset_code],
-            ["ประเภทอุปกรณ์", asset.asset_type],
-            ["ชื่อทรัพย์สิน", asset.asset_name],
-            ["ยี่ห้อ", asset.brand],
-            ["รุ่น", asset.model],
-            ["Serial Number", asset.serial_number],
-            ["Computer Name", asset.computer_name],
-            ["สถานะ", asset.status],
-            ["วันที่รับเข้า", formatDate(asset.received_date)],
-            ["รายละเอียด", asset.description],
-            ["หมายเหตุ", asset.notes],
-            ["วันที่สร้างข้อมูล", formatDate(asset.created_at, true)],
-            ["วันที่แก้ไขล่าสุด", formatDate(asset.updated_at, true)],
-          ]} />
+          <InfoGrid
+            rows={[
+              ["รหัสทรัพย์สิน", asset.asset_code],
+              ["ประเภทอุปกรณ์", asset.asset_type],
+              ["ชื่อทรัพย์สิน", asset.asset_name],
+              ["Asset Owner", ownerName],
+              ["ยี่ห้อ", asset.brand],
+              ["รุ่น", asset.model],
+              ["Serial Number", asset.serial_number],
+              ["Computer Name", asset.computer_name],
+              ["สถานะ", asset.status],
+              ["วันที่รับเข้า", formatDate(asset.received_date)],
+              ["รายละเอียด", asset.description],
+              ["หมายเหตุ", asset.notes],
+              ["วันที่สร้างข้อมูล", formatDate(asset.created_at, true)],
+              ["วันที่แก้ไขล่าสุด", formatDate(asset.updated_at, true)],
+            ]}
+          />
         </section>
 
         {/* ================= ASSIGNMENT ================= */}
         <DetailSection title="Assignment & Location">
-          <InfoGrid rows={[
-            ["Asset Owner", personName(asset.asset_owner_id)],
-            ["ผู้ครอบครองปัจจุบัน", personName(currentAssignment?.assigned_to)],
-            ["แผนก", departmentName(currentDepartmentId)],
-            ["Location", locationName(currentLocationId)],
-            ["วันที่มอบหมาย", formatDate(currentAssignment?.assigned_date)],
-          ]} />
+          <AssignmentForm key={currentAssignment?.id ?? "none"} assetId={String(asset.id)} currentId={currentAssignment ? String(currentAssignment.id) : null} users={activeUsers.rows} locations={availableLocations.rows} />
+          <InfoGrid
+            rows={[
+              ["Asset Owner", ownerName],
+              [
+                "ผู้ครอบครองปัจจุบัน",
+                personName(currentAssignment?.assigned_to),
+              ],
+              ["แผนก", departmentName(currentDepartmentId)],
+              ["Location", locationName(currentLocationId)],
+              ["วันที่มอบหมาย", formatDate(currentAssignment?.assigned_date)],
+            ]}
+          />
 
-          <h3 className="mt-8 mb-3 font-semibold">
-            ประวัติการมอบหมาย
-          </h3>
+          <h3 className="mt-8 mb-3 font-semibold">ประวัติการมอบหมาย</h3>
 
           {assignments === null ? (
             <p className="text-sm text-gray-500">
               ยังไม่มีตาราง asset_assignments
             </p>
           ) : assignments.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              ยังไม่มีประวัติการมอบหมาย
-            </p>
+            <p className="text-sm text-gray-500">ยังไม่มีประวัติการมอบหมาย</p>
           ) : (
             <div className="space-y-3">
               {assignments.map((item) => (
                 <div key={item.id} className="rounded-lg border p-4">
-                  <InfoGrid rows={[
-                    ["ผู้ครอบครอง", personName(item.assigned_to)],
-                    ["Location", locationName(item.location_id)],
-                    ["วันที่มอบหมาย", formatDate(item.assigned_date)],
-                    ["วันที่รับคืน", formatDate(item.returned_date)],
-                  ]} />
+                  <InfoGrid
+                    rows={[
+                      ["ผู้ครอบครอง", personName(item.assigned_to)],
+                      ["Location", locationName(item.location_id)],
+                      ["วันที่มอบหมาย", formatDate(item.assigned_date)],
+                      ["วันที่รับคืน", formatDate(item.returned_date)],
+                    ]}
+                  />
                 </div>
               ))}
             </div>
@@ -429,18 +499,20 @@ export default async function AssetDetailPage({ params }) {
 
         {/* ================= PURCHASE ================= */}
         <DetailSection title="Purchase & Warranty">
-          <InfoGrid rows={[
-            ["วันที่ซื้อ", formatDate(asset.purchase_date)],
-            ["วันที่รับเข้า", formatDate(asset.received_date)],
-            ["ราคาซื้อ", formatMoney(asset.purchase_price, asset.currency)],
-            ["Vendor", vendorName],
-            ["PO Number", asset.po_number],
-            ["Invoice Number", asset.invoice_number],
-            ["วันเริ่มรับประกัน", formatDate(asset.warranty_start)],
-            ["วันสิ้นสุดรับประกัน", formatDate(asset.warranty_end)],
-            ["ประเภทการรับประกัน", asset.warranty_type],
-            ["Cost Center", asset.cost_center],
-          ]} />
+          <InfoGrid
+            rows={[
+              ["วันที่ซื้อ", formatDate(asset.purchase_date)],
+              ["วันที่รับเข้า", formatDate(asset.received_date)],
+              ["ราคาซื้อ", formatMoney(asset.purchase_price, asset.currency)],
+              ["Vendor", vendorName],
+              ["PO Number", asset.po_number],
+              ["Invoice Number", asset.invoice_number],
+              ["วันเริ่มรับประกัน", formatDate(asset.warranty_start)],
+              ["วันสิ้นสุดรับประกัน", formatDate(asset.warranty_end)],
+              ["ประเภทการรับประกัน", asset.warranty_type],
+              ["Cost Center", asset.cost_center],
+            ]}
+          />
         </DetailSection>
 
         {/* ================= TECHNICAL ================= */}
@@ -454,23 +526,28 @@ export default async function AssetDetailPage({ params }) {
               ยังไม่มีข้อมูล Technical สำหรับ Asset นี้
             </p>
           ) : (
-            <InfoGrid rows={[
-              ["Hostname", technical.hostname],
-              ["IP Address", technical.ip_address],
-              ["MAC Address", technical.mac_address],
-              ["Operating System", technical.operating_system],
-              ["CPU", technical.cpu],
-              ["RAM (GB)", technical.ram_gb],
-              ["Storage (GB)", technical.storage_gb],
-              ["BIOS / Firmware", technical.bios_firmware],
-              ["VLAN", technical.vlan],
-              ["Management IP", technical.management_ip],
-              ["Rack", technical.rack],
-              ["Rack U", technical.rack_u],
-              ["Screen Size", technical.extra_specs?.screenSize
-                ?? technical.extra_specs?.screen_size],
-              ["Resolution", technical.extra_specs?.resolution],
-            ]} />
+            <InfoGrid
+              rows={[
+                ["Hostname", technical.hostname],
+                ["IP Address", technical.ip_address],
+                ["MAC Address", technical.mac_address],
+                ["Operating System", technical.operating_system],
+                ["CPU", technical.cpu],
+                ["RAM (GB)", technical.ram_gb],
+                ["Storage (GB)", technical.storage_gb],
+                ["BIOS / Firmware", technical.bios_firmware],
+                ["VLAN", technical.vlan],
+                ["Management IP", technical.management_ip],
+                ["Rack", technical.rack],
+                ["Rack U", technical.rack_u],
+                [
+                  "Screen Size",
+                  technical.extra_specs?.screenSize ??
+                    technical.extra_specs?.screen_size,
+                ],
+                ["Resolution", technical.extra_specs?.resolution],
+              ]}
+            />
           )}
         </DetailSection>
 
@@ -485,17 +562,22 @@ export default async function AssetDetailPage({ params }) {
               ยังไม่มีข้อมูล Security สำหรับ Asset นี้
             </p>
           ) : (
-            <InfoGrid rows={[
-              ["Encryption Enabled", security.encryption_enabled],
-              ["Encryption Type", security.encryption_type],
-              ["Antivirus / EDR", security.antivirus_edr],
-              ["Last Security Check", formatDate(security.last_security_check)],
-              ["Patch Status", security.patch_status],
-              ["Local Admin Policy", security.local_admin_policy],
-              ["Data Classification", security.data_classification],
-              ["Last Asset Check", formatDate(security.last_asset_check)],
-              ["Security Notes", security.security_notes],
-            ]} />
+            <InfoGrid
+              rows={[
+                ["Encryption Enabled", security.encryption_enabled],
+                ["Encryption Type", security.encryption_type],
+                ["Antivirus / EDR", security.antivirus_edr],
+                [
+                  "Last Security Check",
+                  formatDate(security.last_security_check),
+                ],
+                ["Patch Status", security.patch_status],
+                ["Local Admin Policy", security.local_admin_policy],
+                ["Data Classification", security.data_classification],
+                ["Last Asset Check", formatDate(security.last_asset_check)],
+                ["Security Notes", security.security_notes],
+              ]}
+            />
           )}
         </DetailSection>
 
@@ -508,63 +590,56 @@ export default async function AssetDetailPage({ params }) {
               ยังไม่มีตาราง asset_documents
             </p>
           ) : documents.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              ยังไม่มีเอกสาร
-            </p>
+            <p className="text-sm text-gray-500">ยังไม่มีเอกสาร</p>
           ) : (
             <div className="space-y-2">
               {documents.map((doc) => (
                 <div key={doc.id} className="rounded-lg border p-3">
                   <p className="font-medium">{doc.file_name}</p>
                   <p className="mt-1 text-sm text-gray-500">
-                    {display(doc.document_type)} · {formatDate(doc.created_at, true)}
+                    {display(doc.document_type)} ·{" "}
+                    {formatDate(doc.created_at, true)}
                   </p>
                 </div>
               ))}
             </div>
           )}
 
-          <h3 className="mt-8 mb-3 font-semibold">
-            ประวัติการซ่อมบำรุง
-          </h3>
+          <h3 className="mt-8 mb-3 font-semibold">ประวัติการซ่อมบำรุง</h3>
 
           {maintenance === null ? (
             <p className="text-sm text-gray-500">
               ยังไม่มีตาราง asset_maintenance
             </p>
           ) : maintenance.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              ยังไม่มีประวัติการซ่อมบำรุง
-            </p>
+            <p className="text-sm text-gray-500">ยังไม่มีประวัติการซ่อมบำรุง</p>
           ) : (
             <div className="space-y-3">
               {maintenance.map((item) => (
                 <div key={item.id} className="rounded-lg border p-4">
-                  <InfoGrid rows={[
-                    ["ประเภท", item.maintenance_type],
-                    ["รายละเอียด", item.description],
-                    ["สถานะ", item.status],
-                    ["วันที่แจ้ง", formatDate(item.reported_at, true)],
-                    ["วันที่เสร็จ", formatDate(item.completed_at, true)],
-                    ["ค่าใช้จ่าย", formatMoney(item.cost)],
-                  ]} />
+                  <InfoGrid
+                    rows={[
+                      ["ประเภท", item.maintenance_type],
+                      ["รายละเอียด", item.description],
+                      ["สถานะ", item.status],
+                      ["วันที่แจ้ง", formatDate(item.reported_at, true)],
+                      ["วันที่เสร็จ", formatDate(item.completed_at, true)],
+                      ["ค่าใช้จ่าย", formatMoney(item.cost)],
+                    ]}
+                  />
                 </div>
               ))}
             </div>
           )}
 
-          <h3 className="mt-8 mb-3 font-semibold">
-            Audit History
-          </h3>
+          <h3 className="mt-8 mb-3 font-semibold">Audit History</h3>
 
           {auditLogs === null ? (
             <p className="text-sm text-gray-500">
               ยังไม่มีตาราง asset_audit_logs
             </p>
           ) : auditLogs.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              ยังไม่มีประวัติ Audit
-            </p>
+            <p className="text-sm text-gray-500">ยังไม่มีประวัติ Audit</p>
           ) : (
             <div className="space-y-2">
               {auditLogs.map((log) => (
@@ -580,7 +655,6 @@ export default async function AssetDetailPage({ params }) {
             </div>
           )}
         </DetailSection>
-
       </div>
     </main>
   );

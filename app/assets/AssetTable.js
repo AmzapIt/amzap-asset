@@ -58,6 +58,7 @@ export default function AssetTable({ assets }) {
         asset.brand,
         asset.model,
         asset.serial_number,
+        asset.current_holder,
       ].some((value) =>
         String(value ?? "").toLowerCase().includes(keyword)
       );
@@ -75,11 +76,11 @@ export default function AssetTable({ assets }) {
   });
 
   return (
-    <div className="mt-6 rounded-lg bg-white shadow">
+    <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* ==========================================
           SEARCH & FILTER
       ========================================== */}
-      <div className="grid grid-cols-1 gap-4 border-b p-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 border-b border-slate-200 p-5 md:grid-cols-[2fr_1fr_1fr]">
         {/* ช่องค้นหา */}
         <div>
           <label
@@ -96,8 +97,8 @@ export default function AssetTable({ assets }) {
             onChange={(event) =>
               setSearchText(event.target.value)
             }
-            placeholder="Asset Code, Name, Serial..."
-            className="w-full rounded-lg border p-3"
+            placeholder="ค้นหารหัส, ชื่อทรัพย์สิน, Serial, ผู้ครอบครอง..."
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
@@ -116,7 +117,7 @@ export default function AssetTable({ assets }) {
             onChange={(event) =>
               setSelectedType(event.target.value)
             }
-            className="w-full rounded-lg border p-3"
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
             <option value="">All Types</option>
 
@@ -143,7 +144,7 @@ export default function AssetTable({ assets }) {
             onChange={(event) =>
               setSelectedStatus(event.target.value)
             }
-            className="w-full rounded-lg border p-3"
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
             <option value="">All Statuses</option>
 
@@ -157,7 +158,7 @@ export default function AssetTable({ assets }) {
       </div>
 
       {/* จำนวนรายการหลังกรอง */}
-      <div className="border-b px-4 py-3 text-sm text-gray-500">
+      <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
         Showing {filteredAssets.length} of {assets.length} assets
       </div>
 
@@ -165,17 +166,17 @@ export default function AssetTable({ assets }) {
           ASSET TABLE
       ========================================== */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[850px] text-left">
-          <thead className="bg-gray-50">
+        <table className="w-full min-w-[1180px] text-left text-sm">
+          <thead className="bg-slate-50">
             <tr>
-                    <th className="p-4">รหัสทรัพย์สิน</th>
-                    <th className="p-4">ประเภทอุปกรณ์</th>
-                    <th className="p-4">ชื่อทรัพย์สิน</th>
-                    <th className="p-4">ยี่ห้อ / รุ่น</th>
-                    <th className="p-4">ผู้ครอบครอง</th>
-                    <th className="p-4">Location</th>
-                    <th className="p-4">สถานะ</th>
-                    <th className="p-4">วันที่รับเข้า</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">รหัสทรัพย์สิน</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ประเภทอุปกรณ์</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ชื่อทรัพย์สิน</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ยี่ห้อ / รุ่น</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ผู้ครอบครอง</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">Location</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">สถานะ</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">วันที่รับเข้า</th>
             </tr>
           </thead>
 
@@ -184,46 +185,49 @@ export default function AssetTable({ assets }) {
             {filteredAssets.map((asset) => (
                 <tr
                 key={asset.id}
-                className="cursor-pointer border-t hover:bg-gray-50"
+                className="cursor-pointer border-t border-slate-100 transition hover:bg-blue-50/50"
 
                 // คลิกตรงไหนของแถวก็เปิด Detail ของ Asset นั้น
                 onClick={() => router.push(`/assets/${asset.id}`)}
                 >
                 {/* รหัสทรัพย์สิน */}
-                <td className="p-4 font-medium">
-                    {asset.asset_code}
+                <td className="whitespace-nowrap px-5 py-5 font-semibold text-slate-900">
+                    {/* ลิงก์จริงรองรับคีย์บอร์ดและเปิดแท็บใหม่ได้ แม้ทั้งแถวจะคลิกได้ */}
+                    <Link href={`/assets/${asset.id}`} onClick={(event) => event.stopPropagation()} className="rounded hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500">
+                      {asset.asset_code}
+                    </Link>
                 </td>
 
                 {/* ประเภท */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     {asset.asset_type}
                 </td>
 
                 {/* ชื่อทรัพย์สิน */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     {asset.asset_name}
                 </td>
 
                 {/* ยี่ห้อ / รุ่น */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     {asset.brand || "-"}
                     {asset.model ? ` / ${asset.model}` : ""}
                 </td>
 
                 {/* ผู้ครอบครองปัจจุบัน */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     {asset.current_holder || "-"}
                 </td>
 
                 {/* สถานที่ */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     {asset.location || "-"}
                 </td>
 
                 {/* สถานะ */}
-                <td className="p-4">
+                <td className="px-5 py-5 text-slate-700">
                     <span
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${
                         statusColors[asset.status] ||
                         "bg-gray-100 text-gray-700"
                     }`}
@@ -232,8 +236,8 @@ export default function AssetTable({ assets }) {
                     </span>
                 </td>
 
-                {/* วันที่รับเข้า */}
-                <td className="p-4">
+                {/* วันที่รับเข้า: เก็บวันเดือนปีในบรรทัดเดียว */}
+                <td className="whitespace-nowrap px-5 py-5 text-slate-700">
                     {asset.received_date || "-"}
                 </td>
                 </tr>

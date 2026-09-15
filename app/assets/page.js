@@ -43,9 +43,16 @@ export default async function AssetsPage() {
             -- ชื่อประเภท เช่น Monitor / Notebook
             t.name AS asset_type,
 
-            -- ใช้ Asset Owner แบบข้อความเป็นผู้ครอบครองหลัก
+            -- ใช้ชื่อจาก user ที่อ้างอิงด้วย asset_owner_id เป็นหลัก
             -- ถ้ายังไม่มี ให้แสดงผู้รับมอบหมายปัจจุบันแทน
-            COALESCE(NULLIF(a.asset_owner_name, ''), p.full_name) AS current_holder,
+            COALESCE(
+              NULLIF(u.full_name, ''),
+              NULLIF(legacy_owner.full_name, ''),
+              CASE WHEN a.asset_owner_id IS NULL
+                AND btrim(a.asset_owner_name) !~ '^[0-9]+$'
+                THEN NULLIF(btrim(a.asset_owner_name), '') END,
+              p.full_name
+            ) AS current_holder,
 
             -- สถานที่ของรายการมอบหมาย ถ้าไม่มีใช้สถานที่ของ Asset
             l.name AS location
@@ -54,6 +61,16 @@ export default async function AssetsPage() {
 
           JOIN asset_types t
             ON t.id = a.asset_type_id
+
+          -- Owner ทั้ง Active และ Inactive ต้องแสดงชื่อได้ จึงไม่กรอง status
+          LEFT JOIN public."user" u
+            ON u.id = a.asset_owner_id
+
+          -- รองรับข้อมูลเก่าที่หน้า Add เคยเก็บ user.id ใน asset_owner_name
+          -- ใช้เฉพาะเมื่อยังไม่มี asset_owner_id และไม่แก้ไขข้อมูลในฐานข้อมูล
+          LEFT JOIN public."user" legacy_owner
+            ON a.asset_owner_id IS NULL
+           AND legacy_owner.id::text = btrim(a.asset_owner_name)
 
           -- รายการมอบหมายปัจจุบัน
           LEFT JOIN asset_assignments aa
@@ -83,8 +100,8 @@ export default async function AssetsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1600px]">
         {/* ==========================================
             HEADER
         ========================================== */}
@@ -102,7 +119,7 @@ export default async function AssetsPage() {
           {/* ไปหน้า Add Asset ที่เราทำไว้แล้ว */}
           <Link
             href="/assets/add"
-            className="rounded-lg bg-black px-4 py-2 text-white"
+            className="inline-flex items-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
           >
             + Add Asset
           </Link>
