@@ -339,7 +339,7 @@ export default function EditAssetPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <AssetLookups form={form} onChange={handleChange} />
+
           {/* ==================================================
               GENERAL INFORMATION
           ================================================== */}
@@ -511,6 +511,12 @@ export default function EditAssetPage() {
                 />
               </div>
             </div>
+          </section>
+
+          {/* จัดกลุ่ม Master Data เหมือนหน้า Add โดยไม่เปลี่ยนข้อมูลหรือวิธีบันทึก */}
+          <section className="rounded-xl bg-white p-6 shadow">
+            <h2 className="mb-5 text-xl font-semibold">Assignment & Location</h2>
+            <AssetLookups form={form} onChange={handleChange} />
           </section>
 
           {/* ==================================================

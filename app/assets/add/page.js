@@ -682,7 +682,7 @@ export default function AddAssetPage() {
         <p className="mt-2 text-gray-500">ลงทะเบียนทรัพย์สิน IT</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <AssetLookups form={form} onChange={handleChange} />
+
           {/* ==========================================
               GENERAL INFORMATION
               หมวดนี้แสดงตลอด ไม่ต้องกดเปิด
@@ -869,6 +869,10 @@ export default function AddAssetPage() {
               title={group.title}
               description={group.description}
             >
+              {/* รวม dropdown Master Data ไว้ใน Assignment & Location โดยใช้ state และ API เดิม */}
+              {group.title === "Assignment & Location" && (
+                <div className="mb-5"><AssetLookups form={form} onChange={handleChange} /></div>
+              )}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {group.fields
                   // Field ที่มี types จะแสดงเฉพาะประเภทนั้น

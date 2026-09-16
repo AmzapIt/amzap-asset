@@ -268,6 +268,11 @@ export async function PATCH(request, { params }) {
         body.costCenter?.trim() || null,
         body.notes?.trim() || null,
         id,
+        // $20–$25 ต้องครบตาม CASE WHEN ใน SQL: แยกการไม่ส่ง field
+        // (คงค่าเดิม) ออกจากการส่งค่าว่าง (ล้างค่าเป็น NULL)
+        Object.hasOwn(body, "department"), body.department || null,
+        Object.hasOwn(body, "location"), body.location || null,
+        Object.hasOwn(body, "vendor"), body.vendor || null,
       ]
     );
 

@@ -232,95 +232,59 @@ export async function POST(request) {
     // เอา ID ของประเภทมาใช้เป็น Foreign Key
     const assetTypeId = typeResult.rows[0].id;
 
-    // 5. INSERT ข้อมูลลงตาราง assets
-    const insertColumns = assetCode ? "asset_code,\n        " : "";
-    const insertValues = assetCode ? "$1,\n        " : "";
-    const firstValue = assetCode ? "$2" : "$1";
-    const insertParameters = assetCode
-      ? [
-          assetCode,
-          assetTypeId,
-          receivedDate,
-          assetOwner,
-          assetName,
-          text(body.brand),
-          text(body.model),
-          text(body.serialNumber),
-          text(body.computerName),
-          text(body.description),
-          status,
-          purchaseDate,
-          purchasePrice,
-          "THB",
-          text(body.poNumber),
-          text(body.invoiceNumber),
-          warrantyStart,
-          warrantyEnd,
-          text(body.warrantyType),
-          text(body.costCenter),
-          text(body.notes),
-        ]
-      : [
-          assetTypeId,
-          receivedDate,
-          assetOwner,
-          assetName,
-          text(body.brand),
-          text(body.model),
-          text(body.serialNumber),
-          text(body.computerName),
-          text(body.description),
-          status,
-          purchaseDate,
-          purchasePrice,
-          "THB",
-          text(body.poNumber),
-          text(body.invoiceNumber),
-          warrantyStart,
-          warrantyEnd,
-          text(body.warrantyType),
-          text(body.costCenter),
-          text(body.notes),
-        ];
-
+    // สร้างชื่อคอลัมน์และค่าจากรายการเดียวกัน เพื่อไม่ให้จำนวน VALUES
+    // หรือหมายเลข $1, $2 คลาดเคลื่อนเมื่อเพิ่มช่อง Master Data
+    // ชื่อคอลัมน์เป็นค่าคงที่ในโค้ด ส่วนข้อมูลจากฟอร์มส่งผ่าน parameters เท่านั้น
+    const fields = [
+      ["asset_type_id", assetTypeId],
+      ["received_date", receivedDate],
+      ["asset_owner_id", assetOwner],
+      ["asset_name", assetName],
+      ["brand", text(body.brand)],
+      ["model", text(body.model)],
+      ["serial_number", text(body.serialNumber)],
+      ["computer_name", text(body.computerName)],
+      ["description", text(body.description)],
+      ["status", status],
+      ["purchase_date", purchaseDate],
+      ["purchase_price", purchasePrice],
+      ["currency", "THB"],
+      ["po_number", text(body.poNumber)],
+      ["invoice_number", text(body.invoiceNumber)],
+      ["warranty_start", warrantyStart],
+      ["warranty_end", warrantyEnd],
+      ["warranty_type", text(body.warrantyType)],
+      ["cost_center", text(body.costCenter)],
+      ["notes", text(body.notes)],
+      ["owning_department_id", text(body.department)],
+      ["location_id", text(body.location)],
+      ["vendor_id", text(body.vendor)],
+    ];
+    // ถ้าไม่ระบุรหัส ให้ trigger เดิมสร้างรหัสตามประเภทและปีเหมือนเดิม
+    if (assetCode) fields.unshift(["asset_code", assetCode]);
+    const columns = fields.map(([column]) => column).join(", ");
+    const placeholders = fields.map((_, index) => "$" + (index + 1)).join(", ");
+    if (!assetCode) {
+      // รหัสที่กรอกเองไม่ได้เพิ่ม counter ใน trigger เดิม จึงปรับ counter
+      // ให้ไม่น้อยกว่าเลขที่ใช้จริงก่อนสร้างรหัสอัตโนมัติ โดยไม่แก้รหัส Asset เดิม
+      // ON CONFLICT ใช้ GREATEST เพื่อไม่ลด counter ของ request อื่นที่ทำพร้อมกัน
+      await query(`
+        INSERT INTO public.asset_code_counters(asset_type_id, code_year, last_number)
+        SELECT $1, EXTRACT(YEAR FROM CURRENT_DATE)::smallint,
+          COALESCE(MAX(RIGHT(a.asset_code, 3)::integer), 0)
+        FROM public.assets a
+        JOIN public.asset_types t ON t.id = a.asset_type_id
+        WHERE a.asset_type_id = $1
+          AND a.asset_code_year = EXTRACT(YEAR FROM CURRENT_DATE)::smallint
+          AND RIGHT(a.asset_code, 3) ~ '^[0-9]{3}$'
+          AND a.asset_code = t.prefix || '-AMZ' || RIGHT(a.asset_code_year::text, 2) || '-' || RIGHT(a.asset_code, 3)
+        ON CONFLICT(asset_type_id, code_year) DO UPDATE
+        SET last_number = GREATEST(asset_code_counters.last_number, EXCLUDED.last_number)
+      `, [assetTypeId]);
+    }
     const result = await query(
-      `INSERT INTO assets (
-        ${insertColumns} 
-        asset_type_id,
-        received_date,
-        -- เก็บ User ID ที่เลือกจาก dropdown
-        -- ให้หน้า Detail และ Edit อ่านผ่าน asset_owner_id ได้ตรงกัน
-        -- ชื่อพนักงานดึงจาก public."user" ด้วย JOIN ตอนอ่านข้อมูล
-        asset_owner_id,
-        asset_name,
-        brand,
-        model,
-        serial_number,
-        computer_name,
-        description,
-        status,
-        purchase_date,
-        purchase_price,
-        currency,
-        po_number,
-        invoice_number,
-        warranty_start,
-        warranty_end,
-        warranty_type,
-        cost_center,
-        notes
-      )
-      VALUES (
-        ${insertValues}${firstValue}, $${assetCode ? 3 : 2}, $${assetCode ? 4 : 3},
-        $${assetCode ? 5 : 4}, $${assetCode ? 6 : 5}, $${assetCode ? 7 : 6},
-        $${assetCode ? 8 : 7}, $${assetCode ? 9 : 8}, $${assetCode ? 10 : 9},
-        $${assetCode ? 11 : 10}, $${assetCode ? 12 : 11}, $${assetCode ? 13 : 12},
-        $${assetCode ? 14 : 13}, $${assetCode ? 15 : 14}, $${assetCode ? 16 : 15},
-        $${assetCode ? 17 : 16}, $${assetCode ? 18 : 17}, $${assetCode ? 19 : 18},
-        ${assetCode ? 20 : 19}, ${assetCode ? 21 : 20}, ${assetCode ? 22 : 21}, ${assetCode ? 23 : 22}, ${assetCode ? 24 : 23}
-      )
-      RETURNING id, asset_code, asset_name`,
-      insertParameters,
+      "INSERT INTO public.assets (" + columns + ") VALUES (" + placeholders + ") RETURNING id, asset_code, asset_name",
+      fields.map(([, value]) => value),
     );
 
     // 6. PostgreSQL INSERT สำเร็จ
@@ -336,6 +300,12 @@ export async function POST(request) {
     // ถ้า SQL หรือ Database มีปัญหา
     // ให้ดูรายละเอียดจริงใน Terminal
     console.error("Save asset error:", error);
+    if (error.code === "23505" && error.constraint === "assets_asset_code_key") {
+      return Response.json({ error: "รหัส Asset นี้มีอยู่แล้ว กรุณาใช้เลขอื่น หรือเว้นเลขท้ายให้ระบบสร้างรหัส" }, { status: 409 });
+    }
+    if (error.code === "P0001" && error.message === "Asset code sequence exceeded 999") {
+      return Response.json({ error: "เลขรหัส Asset ของประเภทนี้ในปีนี้ครบ 999 แล้ว" }, { status: 409 });
+    }
 
     return Response.json({ error: "บันทึกข้อมูลไม่สำเร็จ" }, { status: 500 });
   }

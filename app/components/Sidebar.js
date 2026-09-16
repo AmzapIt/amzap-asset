@@ -42,7 +42,6 @@ export default function Sidebar() {
       {/* เมนูเริ่มใต้เส้นคั่นของส่วนหัว และซ่อนทั้งหมดเมื่อย่อแถบ */}
       {!isCollapsed && (
         <nav className="mt-6 flex flex-col gap-3">
-          {["departments","locations","vendors"].map(kind => <Link key={kind} href={`/master/${kind}`} className="rounded-md px-3 py-2 capitalize hover:bg-gray-100">{kind}</Link>)}
           <Link
             href="/"
             className="rounded-md px-3 py-2 font-semibold text-gray-800 hover:bg-gray-100 hover:text-blue-600"
@@ -62,6 +61,25 @@ export default function Sidebar() {
           >
             User Management
           </Link>
+
+          {/* รวมหน้าจัดการข้อมูลอ้างอิงไว้ใต้ Master หลัง User Management
+              ใช้ details/summary เพื่อให้เปิด-ปิดเมนูด้วยเมาส์หรือคีย์บอร์ดได้ */}
+          <details>
+            <summary className="cursor-pointer rounded-md px-3 py-2 font-semibold text-gray-800 hover:bg-gray-100 hover:text-blue-600">
+              Master
+            </summary>
+            <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-gray-200 pl-2">
+              {["departments", "locations", "vendors"].map((kind) => (
+                <Link
+                  key={kind}
+                  href={`/master/${kind}`}
+                  className="rounded-md px-3 py-2 capitalize text-gray-800 hover:bg-gray-100 hover:text-blue-600"
+                >
+                  {kind}
+                </Link>
+              ))}
+            </div>
+          </details>
 
 
 
