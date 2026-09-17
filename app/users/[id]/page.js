@@ -42,7 +42,7 @@ export default async function UserDetailPage({ params }) {
         ON d.id = u.department_id
       WHERE u.id = $1
     `,
-    [id]
+    [id],
   );
 
   const user = userResult.rows[0];
@@ -72,41 +72,31 @@ export default async function UserDetailPage({ params }) {
         AND aa.returned_date IS NULL
       ORDER BY a.asset_code
     `,
-    [id]
+    [id],
   );
 
   const assets = assetResult.rows;
 
-  const isActive =
-    user.is_active === true &&
-    Number(user.status) === 1;
+  const isActive = user.is_active === true && Number(user.status) === 1;
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
         {/* Header */}
         <div>
-          <Link
-            href="/users"
-            className="text-sm text-blue-600 hover:underline"
-          >
+          <Link href="/users" className="text-sm text-blue-600 hover:underline">
             ← กลับหน้า Users
           </Link>
-
+      
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-500">
-                User / Employee Detail
-              </p>
+              <p className="text-sm text-gray-500">User / Employee Detail</p>
 
               <h1 className="mt-1 text-3xl font-bold text-gray-800">
                 {user.full_name}
               </h1>
 
-              <p className="mt-2 text-gray-600">
-                {user.position || "-"}
-              </p>
+              <p className="mt-2 text-gray-600">{user.position || "-"}</p>
             </div>
 
             <span
@@ -118,51 +108,42 @@ export default async function UserDetailPage({ params }) {
             >
               {isActive ? "Active" : "Inactive"}
             </span>
+            <Link
+              href={`/users/${id}/edit`}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-medium text-slate-700 hover:bg-white"
+            >
+              Edit Employee
+            </Link>
           </div>
         </div>
 
         {/* Employee Information */}
-        <section className="rounded-xl bg-white p-6 shadow">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="mb-6 text-lg font-semibold text-gray-800">
             Employee Information
           </h2>
 
           <div className="grid gap-5 md:grid-cols-2">
-
             <div>
-              <p className="text-sm text-gray-500">
-                Employee Code
-              </p>
+              <p className="text-sm text-gray-500">Employee Code</p>
 
-              <p className="mt-1 font-medium">
-                {display(user.employee_code)}
-              </p>
+              <p className="mt-1 font-medium">{display(user.employee_code)}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
-                Full Name
-              </p>
+              <p className="text-sm text-gray-500">Full Name</p>
 
-              <p className="mt-1 font-medium">
-                {display(user.full_name)}
-              </p>
+              <p className="mt-1 font-medium">{display(user.full_name)}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
-                Position
-              </p>
+              <p className="text-sm text-gray-500">Position</p>
 
-              <p className="mt-1 font-medium">
-                {display(user.position)}
-              </p>
+              <p className="mt-1 font-medium">{display(user.position)}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
-                Department
-              </p>
+              <p className="text-sm text-gray-500">Department</p>
 
               <p className="mt-1 font-medium">
                 {display(user.department_name)}
@@ -170,32 +151,24 @@ export default async function UserDetailPage({ params }) {
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
-                Email
-              </p>
+              <p className="text-sm text-gray-500">Email</p>
 
-              <p className="mt-1 font-medium">
-                {display(user.email)}
-              </p>
+              <p className="mt-1 font-medium">{display(user.email)}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
-                Status
-              </p>
+              <p className="text-sm text-gray-500">Status</p>
 
               <p className="mt-1 font-medium">
                 {isActive ? "Active" : "Inactive"}
               </p>
             </div>
-
           </div>
         </section>
 
         {/* Current Assets */}
-        <section className="rounded-xl bg-white p-6 shadow">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
                 Current Assets
@@ -206,61 +179,37 @@ export default async function UserDetailPage({ params }) {
               </p>
             </div>
 
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
               {assets.length} รายการ
             </span>
-
           </div>
 
           {assets.length === 0 ? (
-
             <div className="rounded-lg border border-dashed p-8 text-center text-gray-500">
               ยังไม่มี Asset ที่มอบหมายให้พนักงานคนนี้
             </div>
-
           ) : (
-
             <div className="overflow-x-auto">
-
               <table className="min-w-full text-sm">
-
-                <thead className="bg-gray-50 text-left">
+                <thead className="bg-slate-50 text-left">
                   <tr>
-                    <th className="px-4 py-3">
-                      Asset Code
-                    </th>
+                    <th className="px-4 py-3">Asset Code</th>
 
-                    <th className="px-4 py-3">
-                      Asset Name
-                    </th>
+                    <th className="px-4 py-3">Asset Name</th>
 
-                    <th className="px-4 py-3">
-                      Brand / Model
-                    </th>
+                    <th className="px-4 py-3">Brand / Model</th>
 
-                    <th className="px-4 py-3">
-                      Serial Number
-                    </th>
+                    <th className="px-4 py-3">Serial Number</th>
 
-                    <th className="px-4 py-3">
-                      Status
-                    </th>
+                    <th className="px-4 py-3">Status</th>
 
-                    <th className="px-4 py-3">
-                      Assigned Date
-                    </th>
+                    <th className="px-4 py-3">Assigned Date</th>
                   </tr>
                 </thead>
 
                 <tbody>
-
                   {assets.map((asset) => (
-
-                    <tr
-                      key={asset.id}
-                      className="border-t hover:bg-gray-50"
-                    >
-
+                    <tr key={asset.id} className="border-t border-slate-100 hover:bg-blue-50/40">
                       <td className="px-4 py-3">
                         <Link
                           href={`/assets/${asset.id}`}
@@ -270,9 +219,7 @@ export default async function UserDetailPage({ params }) {
                         </Link>
                       </td>
 
-                      <td className="px-4 py-3">
-                        {asset.asset_name || "-"}
-                      </td>
+                      <td className="px-4 py-3">{asset.asset_name || "-"}</td>
 
                       <td className="px-4 py-3">
                         {[asset.brand, asset.model]
@@ -284,36 +231,27 @@ export default async function UserDetailPage({ params }) {
                         {asset.serial_number || "-"}
                       </td>
 
-                      <td className="px-4 py-3">
-                        {asset.status || "-"}
-                      </td>
+                      <td className="px-4 py-3">{asset.status || "-"}</td>
 
                       <td className="px-4 py-3">
                         {asset.assigned_date
-                          ? new Date(
-                              asset.assigned_date
-                            ).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
+                          ? new Date(asset.assigned_date).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              },
+                            )
                           : "-"}
                       </td>
-
                     </tr>
-
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
-
           )}
-
         </section>
-
       </div>
     </main>
   );

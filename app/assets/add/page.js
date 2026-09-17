@@ -9,21 +9,8 @@ import { useRouter } from "next/navigation";
 // 1. MASTER DATA สำหรับแสดงใน Form
 // ==================================================
 
-// ตอนนี้ใช้รายการประเภทแบบกำหนดไว้ใน Code ก่อน
 // ชื่อประเภทต้องตรงกับตาราง asset_types ใน PostgreSQL
 // Prefix ใช้แสดงตัวอย่างเท่านั้น รหัสจริงให้ Database สร้าง
-const assetTypes = [
-  { name: "Notebook", prefix: "NB" },
-  { name: "Desktop", prefix: "DES" },
-  { name: "Monitor", prefix: "MON" },
-  { name: "Printer", prefix: "PRN" },
-  { name: "Switch", prefix: "SW" },
-  { name: "Access Point", prefix: "AP" },
-  { name: "Firewall", prefix: "FW" },
-  { name: "Server", prefix: "SVR" },
-  { name: "NAS", prefix: "NAS" },
-  { name: "UPS", prefix: "UPS" },
-];
 
 // สถานะต้องตรงกับ CHECK constraint ของตาราง assets
 const statuses = [
@@ -44,7 +31,7 @@ const statuses = [
 // ไม่ต้องสร้าง useState แยก name, type, status ฯลฯ
 const initialForm = {
   // General Information
-  type: "Notebook",
+  type: "",
   // Asset Code ตัวเต็ม
   // เช่น NB-AMZ26-001
   // ค่านี้จะถูกประกอบตอนกด Save
@@ -237,7 +224,7 @@ function formatDate(date) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900";
+  "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
 // ==================================================
 // 5. Component สำหรับสร้าง Input
@@ -246,7 +233,7 @@ const inputClass =
 // รับข้อมูล Field แล้วเลือกว่าจะสร้าง input, select หรือ textarea
 function FormField({ field, form, onChange }) {
   // อ่านค่าจาก State เช่น form.brand หรือ form.purchaseDate
-  if (["department","location","vendor"].includes(field.name)) return null;
+  if (["department", "location", "vendor"].includes(field.name)) return null;
   const value = form[field.name] ?? "";
 
   return (
@@ -371,7 +358,9 @@ function CollapsibleSection({ title, description, children }) {
 // ส่วน Assignment, Technical, Security, Vendor และไฟล์
 // ยังไม่ได้เชื่อมครบ จึงต้องป้องกันการบันทึกข้อมูลไม่ครบ
 const supportedFields = [
-  "department", "location", "vendor",
+  "department",
+  "location",
+  "vendor",
   "type",
   "assetCode",
   "receivedDate",
@@ -398,6 +387,12 @@ const supportedFields = [
 // 8. หน้า Add Asset
 // ==================================================
 export default function AddAssetPage() {
+  // ==================================================
+  // Asset Types จาก Master Data
+  // ==================================================
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(true);
+  const [assetTypesError, setAssetTypesError] = useState("");
   const router = useRouter();
 
   // State หลักของ Form
@@ -452,54 +447,111 @@ export default function AddAssetPage() {
   // FROM public."user"
   // WHERE status = 1
   // ==================================================
+  // ==================================================
+  // โหลด Asset Types ที่ Active จาก Master Data
+  //
+  // ข้อมูลมาจาก:
+  // GET /api/master/asset_types
+  //
+  // หน้า Add Asset จะแสดงเฉพาะ:
+  // is_active = true
+  // ==================================================
   useEffect(() => {
-    async function loadActiveUsers() {
+    const controller = new AbortController();
+
+    async function loadAssetTypes() {
       try {
-        // เริ่ม Loading
-        setLoadingUsers(true);
+        setLoadingAssetTypes(true);
+        setAssetTypesError("");
 
-        // ล้าง Error เก่า
-        setUsersError("");
-
-        // ==================================================
-        // เรียก API รายชื่อพนักงาน
-        // ==================================================
-        const response = await fetch("/api/users/active");
+        const response = await fetch("/api/master/asset_types", {
+          signal: controller.signal,
+        });
 
         const data = await response.json();
 
-        // ถ้า API Error เช่น 500
+        if (!response.ok) {
+          throw new Error(data.error || "ไม่สามารถโหลด Asset Types ได้");
+        }
+
+        // หน้า Add Asset ใช้เฉพาะ Asset Type ที่ Active
+        const activeTypes = (data.rows || []).filter((item) => item.is_active);
+
+        setAssetTypes(activeTypes);
+
+        // ถ้ายังไม่ได้เลือก Asset Type
+        // และมีข้อมูลอย่างน้อย 1 รายการ
+        // ให้เลือกตัวแรกเป็นค่าเริ่มต้น
+        setForm((previous) => {
+          if (previous.type || activeTypes.length === 0) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            type: activeTypes[0].name,
+          };
+        });
+      } catch (error) {
+        // AbortError เกิดจากการออกจากหน้าก่อน fetch เสร็จ
+        // ไม่จำเป็นต้องแสดง Error
+        if (error.name !== "AbortError") {
+          console.error("Load Asset Types error:", error);
+
+          setAssetTypesError(error.message || "ไม่สามารถโหลด Asset Types ได้");
+        }
+      } finally {
+        setLoadingAssetTypes(false);
+      }
+    }
+
+    loadAssetTypes();
+
+    return () => controller.abort();
+  }, []);
+
+  // ==================================================
+  // โหลดรายชื่อพนักงาน Active
+  //
+  // ข้อมูลมาจาก:
+  // GET /api/users/active
+  //
+  // ใช้สำหรับ Asset Owner
+  // ==================================================
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadActiveUsers() {
+      try {
+        setLoadingUsers(true);
+        setUsersError("");
+
+        const response = await fetch("/api/users/active", {
+          signal: controller.signal,
+        });
+
+        const data = await response.json();
+
         if (!response.ok || !data.success) {
           throw new Error(data.error || "โหลดรายชื่อพนักงานไม่สำเร็จ");
         }
 
-        // ==================================================
-        // เก็บรายชื่อพนักงานลง State
-        //
-        // activeUsers จะมีหน้าตาประมาณ:
-        //
-        // [
-        //   {
-        //     id: 1,
-        //     full_name: "สมชาย ใจดี",
-        //     status: 1
-        //   }
-        // ]
-        // ==================================================
+        // users ที่ API ส่งกลับมาเป็น Active Users
         setActiveUsers(data.users || []);
       } catch (error) {
-        console.error("Load Asset Owner users error:", error);
+        if (error.name !== "AbortError") {
+          console.error("Load Asset Owner users error:", error);
 
-        // แสดง Error ใต้ Dropdown
-        setUsersError(error.message || "โหลดรายชื่อพนักงานไม่สำเร็จ");
+          setUsersError(error.message || "โหลดรายชื่อพนักงานไม่สำเร็จ");
+        }
       } finally {
-        // โหลดเสร็จแล้ว
         setLoadingUsers(false);
       }
     }
 
-    // เรียกตอนเปิดหน้า
     loadActiveUsers();
+
+    return () => controller.abort();
   }, []);
 
   // หา Prefix ของประเภทที่เลือก
@@ -675,19 +727,18 @@ export default function AddAssetPage() {
   // 11. ส่วนแสดงผลหน้าเว็บ
   // ==================================================
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1200px]">
         <h1 className="text-3xl font-bold text-gray-800">Add Asset</h1>
 
         <p className="mt-2 text-gray-500">ลงทะเบียนทรัพย์สิน IT</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-
           {/* ==========================================
               GENERAL INFORMATION
               หมวดนี้แสดงตลอด ไม่ต้องกดเปิด
           ========================================== */}
-          <section className="rounded-lg bg-white p-6 shadow">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-gray-800">
               General Information
             </h2>
@@ -706,13 +757,28 @@ export default function AddAssetPage() {
                   value={form.type}
                   onChange={handleChange}
                   className={inputClass}
+                  disabled={loadingAssetTypes}
+                  required
                 >
-                  {assetTypes.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
+                  <option value="">
+                    {loadingAssetTypes
+                      ? "กำลังโหลด Asset Types..."
+                      : "-- เลือก Asset Type --"}
+                  </option>
+
+                  {[...assetTypes]
+                    .sort((a, b) => Number(a.id) - Number(b.id))
+                    .map((item) => (
+                      <option key={item.id} value={item.name}>
+                        {item.name}
+                      </option>
+                    ))}
                 </select>
+
+                {/* แสดง Error กรณีโหลด Asset Types ไม่สำเร็จ */}
+                {assetTypesError && (
+                  <p className="mt-1 text-sm text-red-600">{assetTypesError}</p>
+                )}
               </div>
 
               {/* ==================================================
@@ -871,7 +937,9 @@ export default function AddAssetPage() {
             >
               {/* รวม dropdown Master Data ไว้ใน Assignment & Location โดยใช้ state และ API เดิม */}
               {group.title === "Assignment & Location" && (
-                <div className="mb-5"><AssetLookups form={form} onChange={handleChange} /></div>
+                <div className="mb-5">
+                  <AssetLookups form={form} onChange={handleChange} />
+                </div>
               )}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {group.fields
@@ -1016,7 +1084,7 @@ export default function AddAssetPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <Link
                 href="/assets"
-                className="rounded-lg border border-gray-300 px-5 py-3 text-gray-700"
+                className="rounded-lg border border-slate-200 px-5 py-3 font-medium text-slate-700 hover:bg-slate-50"
               >
                 Back
               </Link>
@@ -1024,7 +1092,7 @@ export default function AddAssetPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-black px-6 py-3 text-white disabled:opacity-50"
+                className="rounded-lg bg-slate-900 px-6 py-3 font-medium text-white hover:bg-blue-900 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Asset"}
               </button>

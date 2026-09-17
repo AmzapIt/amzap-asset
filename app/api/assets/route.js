@@ -1,5 +1,6 @@
 import { validateAssetLookups } from "@/lib/master-data";
 import { query } from "@/lib/db";
+import { requireWrite } from "@/lib/access";
 
 // บอก Next.js ให้ Route นี้ทำงานบน Node.js
 // เพราะเราใช้ pg เชื่อม PostgreSQL
@@ -65,6 +66,15 @@ export async function GET() {
 // รับข้อมูลจาก Add Asset แล้วบันทึกลง PostgreSQL
 // ==================================================
 export async function POST(request) {
+   // ==================================================
+  // Permission
+  // Admin / IT Staff เท่านั้นที่สร้าง Asset ได้
+  // ==================================================
+  const denied = await requireWrite(request);
+
+  if (denied) {
+    return denied;
+  }
   let body;
 
   // 1. อ่าน JSON ที่ส่งมาจาก Frontend

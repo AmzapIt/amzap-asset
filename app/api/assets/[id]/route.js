@@ -1,5 +1,6 @@
 import { validateAssetLookups } from "@/lib/master-data";
 import { query } from "@/lib/db";
+import { requireWrite } from "@/lib/access";
 
 export const runtime = "nodejs";
 
@@ -124,6 +125,15 @@ export async function GET(request, { params }) {
 // ป้องกันข้อมูล Identity เหล่านี้อยู่
 // ==================================================
 export async function PATCH(request, { params }) {
+  // ==================================================
+  // Permission
+  // Admin / IT Staff เท่านั้นที่แก้ Asset ได้
+  // ==================================================
+  const denied = await requireWrite(request);
+
+  if (denied) {
+    return denied;
+  }
   try {
     // Next.js 16 รับ params เป็น Promise
     const { id } = await params;

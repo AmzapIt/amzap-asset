@@ -21,7 +21,7 @@ const statuses = [
 
 // Class กลางสำหรับ Input
 const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-blue-500";
+  "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
 // ==================================================
 // หน้า Edit Asset
@@ -309,8 +309,8 @@ export default function EditAssetPage() {
   // ==================================================
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-8">
-        <div className="mx-auto max-w-5xl">กำลังโหลดข้อมูล Asset...</div>
+      <main className="min-h-screen bg-slate-50 p-8">
+        <div className="mx-auto max-w-[1200px]">กำลังโหลดข้อมูล Asset...</div>
       </main>
     );
   }
@@ -319,8 +319,8 @@ export default function EditAssetPage() {
   // UI
   // ==================================================
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1200px]">
         {/* กลับหน้า Detail */}
         <Link
           href={`/assets/${id}`}
@@ -343,7 +343,7 @@ export default function EditAssetPage() {
           {/* ==================================================
               GENERAL INFORMATION
           ================================================== */}
-          <section className="rounded-xl bg-white p-6 shadow">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold">General Information</h2>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -514,7 +514,7 @@ export default function EditAssetPage() {
           </section>
 
           {/* จัดกลุ่ม Master Data เหมือนหน้า Add โดยไม่เปลี่ยนข้อมูลหรือวิธีบันทึก */}
-          <section className="rounded-xl bg-white p-6 shadow">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="mb-5 text-xl font-semibold">Assignment & Location</h2>
             <AssetLookups form={form} onChange={handleChange} />
           </section>
@@ -522,7 +522,7 @@ export default function EditAssetPage() {
           {/* ==================================================
               PURCHASE & WARRANTY
           ================================================== */}
-          <section className="rounded-xl bg-white p-6 shadow">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold">Purchase & Warranty</h2>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -638,7 +638,7 @@ export default function EditAssetPage() {
           {/* ==================================================
               SAVE / CANCEL
           ================================================== */}
-          <div className="rounded-xl bg-white p-6 shadow">
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             {/* Error */}
             {message && (
               <p
@@ -653,7 +653,7 @@ export default function EditAssetPage() {
               {/* Cancel */}
               <Link
                 href={`/assets/${id}`}
-                className="rounded-lg border border-gray-300 px-5 py-3"
+                className="rounded-lg border border-slate-200 px-5 py-3 font-medium text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </Link>
@@ -662,7 +662,7 @@ export default function EditAssetPage() {
               <button
                 type="submit"
                 disabled={saving || !ready}
-                className="rounded-lg bg-black px-6 py-3 text-white disabled:opacity-50"
+                className="rounded-lg bg-slate-900 px-6 py-3 font-medium text-white hover:bg-blue-900 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>

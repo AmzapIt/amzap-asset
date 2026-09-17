@@ -21,9 +21,9 @@ export default function ExportPanel({assets,users}){
   // เปลี่ยนคำค้นหาหรือสถานะจะล้าง selected เพื่อไม่ส่งออกรายการที่ซ่อนจากตาราง
   // ปุ่มเลือกทั้งหมดใช้ rows ที่กรองแล้ว; ใบรับมอบต้องเลือกพนักงานและ Asset 1–7 รายการ
   // ข้อจำกัดที่ปุ่มเป็นเพียงการช่วยผู้ใช้ API จะตรวจซ้ำทุกครั้งก่อนสร้างเอกสาร
-  return <div className="space-y-6"><section className="rounded-xl border bg-white p-5 space-y-4"><h2 className="font-semibold">1. เลือกทรัพย์สิน ({selected.length} รายการ)</h2><input aria-label="ค้นหาทรัพย์สิน" className="w-full rounded border p-3" value={search} onChange={e=>{setSearch(e.target.value);setSelected([]);}} placeholder="ค้นหารหัส ชื่อ Serial หรือผู้ครอบครอง"/>{/* ล้างรายการที่เลือกเมื่อเปลี่ยนตัวกรอง ป้องกันส่งออก Asset ที่ถูกซ่อน */}
+  return <div className="space-y-6"><section className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><h2 className="font-semibold">1. เลือกทรัพย์สิน ({selected.length} รายการ)</h2><input aria-label="ค้นหาทรัพย์สิน" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100" value={search} onChange={e=>{setSearch(e.target.value);setSelected([]);}} placeholder="ค้นหารหัส ชื่อ Serial หรือผู้ครอบครอง"/>{/* ล้างรายการที่เลือกเมื่อเปลี่ยนตัวกรอง ป้องกันส่งออก Asset ที่ถูกซ่อน */}
   <label className="block text-sm font-medium">สถานะ
-    <select className="mt-1 block w-full rounded border bg-white p-3 md:max-w-xs" value={status} onChange={e=>{setStatus(e.target.value);setSelected([]);}}>
+    <select className="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-50 p-3 outline-none focus:border-blue-500 md:max-w-xs" value={status} onChange={e=>{setStatus(e.target.value);setSelected([]);}}>
       <option value="">ทุกสถานะ</option>
       {statuses.map(value=><option key={value} value={value}>{value}</option>)}
     </select>

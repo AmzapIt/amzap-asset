@@ -123,9 +123,7 @@ export default function UserTable({ users }) {
   // ==================================================
   return (
     <div className="space-y-4">
-
-      {/* ================= SEARCH / FILTER ================= */}
-      <div className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow md:flex-row">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm md:flex-row">
 
         {/* Search */}
         <input
@@ -133,7 +131,7 @@ export default function UserTable({ users }) {
           placeholder="ค้นหาชื่อ, รหัสพนักงาน, ตำแหน่ง, แผนก, Email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
         />
 
         {/* Filter Status */}
@@ -142,7 +140,7 @@ export default function UserTable({ users }) {
           onChange={(e) =>
             setStatusFilter(e.target.value)
           }
-          className="rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500 md:w-48"
+          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 md:w-48"
         >
           <option value="all">
             ทุกสถานะ
@@ -160,43 +158,43 @@ export default function UserTable({ users }) {
       </div>
 
       {/* ================= RESULT COUNT ================= */}
-      <div className="text-sm text-gray-500">
-        พบ {filteredUsers.length} รายการ
+      <div className="flex items-center justify-between px-1 text-sm text-slate-500">
+        <span>พบ {filteredUsers.length} รายการ</span>
+        <span>ทั้งหมด {userList.length} คน</span>
       </div>
 
-      {/* ================= TABLE ================= */}
-      <div className="overflow-hidden rounded-xl bg-white shadow">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
 
         <div className="overflow-x-auto">
 
           <table className="min-w-full text-sm">
 
             {/* Header */}
-            <thead className="bg-gray-50 text-left">
+            <thead className="bg-slate-50 text-left">
 
               <tr>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Employee Code
                 </th>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Full Name
                 </th>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Position
                 </th>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Department
                 </th>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Email
                 </th>
 
-                <th className="px-4 py-3 font-semibold text-gray-600">
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Status
                 </th>
 
@@ -234,12 +232,14 @@ export default function UserTable({ users }) {
                   return (
                     <tr
                       key={user.id}
-                      className="border-t hover:bg-gray-50"
+                      className="border-t border-slate-100 transition hover:bg-blue-50/40"
                     >
 
                       {/* Employee Code */}
                       <td className="px-4 py-3">
-                        {user.employee_code || "-"}
+                        <span className="font-mono text-xs font-semibold text-slate-500">
+                          {user.employee_code || "-"}
+                        </span>
                       </td>
 
                       {/* Full Name */}
@@ -247,7 +247,7 @@ export default function UserTable({ users }) {
 
                         <Link
                           href={`/users/${user.id}`}
-                          className="text-blue-600 hover:underline"
+                          className="text-blue-700 hover:text-blue-900 hover:underline"
                         >
                           {user.full_name}
                         </Link>
@@ -288,7 +288,7 @@ export default function UserTable({ users }) {
                             )
                           }
 
-                          className={`rounded-lg border px-3 py-2 text-sm font-medium outline-none ${
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium outline-none transition ${
                             isActive
                               ? "border-green-200 bg-green-50 text-green-700"
                               : "border-red-200 bg-red-50 text-red-700"

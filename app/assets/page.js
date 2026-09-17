@@ -36,30 +36,39 @@ export default async function AssetsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 xl:px-8">
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
         {/* ==========================================
             HEADER
         ========================================== */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
+              Inventory & equipment
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-white">
               Assets
             </h1>
 
-            <p className="mt-2 text-gray-500">
+            <p className="mt-2 text-blue-100">
               จัดการข้อมูลทรัพย์สิน IT
             </p>
           </div>
 
-          <Link href="/reports" className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold">Export / ใบรับมอบ</Link>
-          {/* ไปหน้า Add Asset ที่เราทำไว้แล้ว */}
-          <Link
-            href="/assets/add"
-            className="inline-flex items-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-          >
-            + Add Asset
-          </Link>
-        </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/reports"
+              className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Export / ใบรับมอบ
+            </Link>
+            <Link
+              href="/assets/add"
+              className="inline-flex items-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
+            >
+              + Add Asset
+            </Link>
+          </div>
+        </header>
 
         {/* ==========================================
             ASSET LIST

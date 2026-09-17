@@ -78,7 +78,7 @@ function InfoGrid({ rows }) {
 // Section แบบกดเปิด / ปิดได้
 function DetailSection({ title, children }) {
   return (
-    <details className="rounded-xl bg-white shadow">
+    <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
       <summary className="cursor-pointer px-6 py-5 font-semibold text-gray-800">
         {title}
       </summary>
@@ -290,8 +290,8 @@ export default async function AssetDetailPage({ params }) {
     console.error("Load asset detail error:", error);
 
     return (
-      <main className="min-h-screen bg-gray-100 p-6">
-        <div className="mx-auto max-w-6xl">
+      <main className="min-h-screen bg-slate-50 p-6">
+        <div className="mx-auto max-w-[1600px]">
           <Link href="/assets" className="text-blue-600">
             ← กลับหน้า Assets
           </Link>
@@ -379,8 +379,8 @@ export default async function AssetDetailPage({ params }) {
     currentAssignment?.department_id ?? asset.owning_department_id;
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
         {/* ================= HEADER ================= */}
         <div>
           <Link
@@ -409,7 +409,7 @@ export default async function AssetDetailPage({ params }) {
           ================================================== */}
             <div className="flex items-center gap-3">
               {/* สถานะปัจจุบัน */}
-              <span className="rounded-full bg-gray-200 px-4 py-2 text-sm font-medium">
+              <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
                 {asset.status}
               </span>
 
@@ -424,7 +424,7 @@ export default async function AssetDetailPage({ params }) {
             ================================================= */}
               <Link
                 href={`/assets/${asset.id}/edit`}
-                className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
               >
                 Edit Asset
               </Link>
@@ -432,7 +432,7 @@ export default async function AssetDetailPage({ params }) {
           </div>
         </div>
         {/* ================= GENERAL ================= */}
-        <section className="rounded-xl bg-white p-6 shadow">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
           <h2 className="mb-6 text-lg font-semibold">General Information</h2>
 
           <InfoGrid

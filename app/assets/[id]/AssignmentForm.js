@@ -29,7 +29,7 @@ export default function AssignmentForm({ assetId, currentId, users, locations })
     </>}
     <label className="block">วันที่ <input required type="date" name="date" className="border p-2" /></label>
     {currentId && <label className="block">หมายเหตุการรับคืน <textarea name="returnNotes" maxLength={10000} className="block w-full border p-2" /></label>}
-    <button disabled={busy} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">{busy ? "กำลังบันทึก…" : "บันทึก"}</button>
+    <button disabled={busy} className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-blue-900 disabled:opacity-50">{busy ? "กำลังบันทึก…" : "บันทึก"}</button>
     <p role="status">{message}</p>
   </form>;
 }

@@ -1,9 +1,8 @@
 import { query } from "@/lib/db";
 import UserTable from "./UserTable";
-// ใช้ Node.js เพราะหน้านี้ query PostgreSQL โดยตรง
-export const runtime = "nodejs";
+import Link from "next/link";
 
-// ให้ดึงข้อมูลล่าสุดทุกครั้ง
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
@@ -26,79 +25,53 @@ export default async function UsersPage() {
   `);
 
   const users = result.rows;
+  const activeUsers = users.filter(
+    (user) => user.is_active === true && Number(user.status) === 1,
+  ).length;
+  const inactiveUsers = users.length - activeUsers;
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
+              People & access
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-white">
+              Users / Employees
+            </h1>
+            <p className="mt-2 text-blue-100">
+              จัดการรายชื่อพนักงานและสิทธิ์การใช้งานในระบบ
+            </p>
+          </div>
+          <Link
+            href="/users/add"
+            className="rounded-lg bg-white px-4 py-2.5 font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
+          >
+            + Add Employee
+          </Link>
+        </header>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Users / Employees
-          </h1>
-
-          <p className="mt-1 text-gray-500">
-            รายชื่อพนักงานทั้งหมดในระบบ
-          </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            ["พนักงานทั้งหมด", users.length, "text-slate-900"],
+            ["Active", activeUsers, "text-emerald-600"],
+            ["Inactive", inactiveUsers, "text-rose-600"],
+          ].map(([label, value, color]) => (
+            <section
+              key={label}
+              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
+            >
+              <p className="text-sm text-slate-500">{label}</p>
+              <p className={`mt-3 text-3xl font-bold ${color}`}>
+                {value.toLocaleString("th-TH")}
+              </p>
+            </section>
+          ))}
         </div>
-
-        {/* Summary */}
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
-
-          <div className="rounded-xl bg-white p-5 shadow">
-            <p className="text-sm text-gray-500">
-              พนักงานทั้งหมด
-            </p>
-
-            <p className="mt-2 text-2xl font-bold">
-              {users.length}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-white p-5 shadow">
-            <p className="text-sm text-gray-500">
-              Active
-            </p>
-
-            <p className="mt-2 text-2xl font-bold">
-              {
-                users.filter(
-                  (user) =>
-                    user.is_active === true &&
-                    Number(user.status) === 1
-                ).length
-              }
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-white p-5 shadow">
-            <p className="text-sm text-gray-500">
-              Inactive
-            </p>
-
-            <p className="mt-2 text-2xl font-bold">
-              {
-                users.filter(
-                  (user) =>
-                    user.is_active === false ||
-                    Number(user.status) === 0
-                ).length
-              }
-            </p>
-          </div>
-
-        </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl bg-white shadow">
-          <div className="overflow-x-auto">
 
         <UserTable users={users} />
-
-
-          </div>
-        </div>
-
       </div>
     </main>
   );

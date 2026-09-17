@@ -27,6 +27,4 @@ export async function GET() {
     );
   }
 }
-export async function POST(request) {
-  // รับข้อมูลแล้ว INSERT
-}
+
