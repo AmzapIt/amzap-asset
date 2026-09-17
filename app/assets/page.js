@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { query } from "@/lib/db";
+import { getReportAssets } from "@/lib/asset-report";
 import AssetTable from "./AssetTable";
 
 // ==================================================
@@ -20,76 +20,11 @@ export default async function AssetsPage() {
   let loadError = false;
 
   try {
-    // ==================================================
-    // 3. Query ข้อมูลจริง
-    // JOIN asset_types เพื่อเอาชื่อประเภทมาแสดง
-    // ==================================================
-    const result = await query(`
-            SELECT
-            a.id,
-            a.asset_code,
-            a.asset_name,
-            a.brand,
-            a.model,
-            a.serial_number,
-            a.status,
-
-            -- วันที่รับเข้า ไม่ใช่วันที่ซื้อ
-            TO_CHAR(
-              a.received_date,
-              'DD/MM/YYYY'
-            ) AS received_date,
-
-            -- ชื่อประเภท เช่น Monitor / Notebook
-            t.name AS asset_type,
-
-            -- ใช้ชื่อจาก user ที่อ้างอิงด้วย asset_owner_id เป็นหลัก
-            -- ถ้ายังไม่มี ให้แสดงผู้รับมอบหมายปัจจุบันแทน
-            COALESCE(
-              NULLIF(u.full_name, ''),
-              NULLIF(legacy_owner.full_name, ''),
-              CASE WHEN a.asset_owner_id IS NULL
-                AND btrim(a.asset_owner_name) !~ '^[0-9]+$'
-                THEN NULLIF(btrim(a.asset_owner_name), '') END,
-              p.full_name
-            ) AS current_holder,
-
-            -- สถานที่ของรายการมอบหมาย ถ้าไม่มีใช้สถานที่ของ Asset
-            l.name AS location
-
-          FROM assets a
-
-          JOIN asset_types t
-            ON t.id = a.asset_type_id
-
-          -- Owner ทั้ง Active และ Inactive ต้องแสดงชื่อได้ จึงไม่กรอง status
-          LEFT JOIN public."user" u
-            ON u.id = a.asset_owner_id
-
-          -- รองรับข้อมูลเก่าที่หน้า Add เคยเก็บ user.id ใน asset_owner_name
-          -- ใช้เฉพาะเมื่อยังไม่มี asset_owner_id และไม่แก้ไขข้อมูลในฐานข้อมูล
-          LEFT JOIN public."user" legacy_owner
-            ON a.asset_owner_id IS NULL
-           AND legacy_owner.id::text = btrim(a.asset_owner_name)
-
-          -- รายการมอบหมายปัจจุบัน
-          LEFT JOIN asset_assignments aa
-            ON aa.asset_id = a.id
-          AND aa.returned_date IS NULL
-
-          -- ชื่อผู้ครอบครอง
-          LEFT JOIN people p
-            ON p.id = aa.assigned_to
-
-          -- สถานที่ปัจจุบัน
-          LEFT JOIN locations l
-            ON l.id = COALESCE(aa.location_id, a.location_id)
-
-          ORDER BY a.id DESC
-    `);
-
-    // rows คือ Array ของข้อมูลที่ PostgreSQL ส่งกลับมา
-    assets = result.rows;
+    // ใช้ข้อมูลชุดเดียวกับ Export และแปลงวันที่เฉพาะเพื่อแสดงในตารางเดิม
+    assets = (await getReportAssets()).map(asset => ({
+      ...asset,
+      received_date: asset.received_date ? asset.received_date.split("-").reverse().join("/") : null,
+    }));
 
   } catch (error) {
     // แสดง Error จริงใน Terminal ฝั่ง Server
@@ -116,6 +51,7 @@ export default async function AssetsPage() {
             </p>
           </div>
 
+          <Link href="/reports" className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold">Export / ใบรับมอบ</Link>
           {/* ไปหน้า Add Asset ที่เราทำไว้แล้ว */}
           <Link
             href="/assets/add"

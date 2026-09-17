@@ -84,6 +84,7 @@ export default function Sidebar() {
 
 
 
+          <Link href="/reports" className="rounded-md px-3 py-2 font-semibold text-gray-800 hover:bg-gray-100">Export / ใบรับมอบ</Link>
         </nav>
       )}
     </aside>
