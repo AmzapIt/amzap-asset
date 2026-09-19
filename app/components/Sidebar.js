@@ -132,6 +132,7 @@ export default function Sidebar({ user }) {
                     {item.label}
                   </Link>
                 ))}
+                
               </div>
             </details>
 

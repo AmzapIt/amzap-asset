@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,15 +32,36 @@ export default function AssetTable({ assets }) {
   // เก็บสถานะที่เลือก เช่น In Use
   const [selectedStatus, setSelectedStatus] = useState("");
 
-    // ใช้เปลี่ยนหน้าเมื่อผู้ใช้คลิกแถว
+  // ==================================================
+  // เก็บข้อมูลการเรียง
+  //
+  // ค่าเริ่มต้น:
+  // asset_code จากน้อยไปมาก
+  // ==================================================
+  const [sortConfig, setSortConfig] = useState({
+    key: "asset_code",
+    direction: "asc",
+  });
+
+  // ใช้เปลี่ยนหน้าเมื่อผู้ใช้คลิกแถว
   const router = useRouter();
+
   // ==================================================
   // 3. สร้างรายการประเภทจากข้อมูลจริง
   // Set ใช้ตัดชื่อประเภทที่ซ้ำกันออก
   // ==================================================
   const assetTypes = [
-    ...new Set(assets.map((asset) => asset.asset_type)),
-  ].sort();
+    ...new Set(
+      assets
+        .map((asset) => asset.asset_type)
+        .filter(Boolean)
+    ),
+  ].sort((a, b) =>
+    String(a).localeCompare(String(b), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
+  );
 
   // ==================================================
   // 4. กรองข้อมูลด้วย JavaScript
@@ -54,26 +76,222 @@ export default function AssetTable({ assets }) {
       !keyword ||
       [
         asset.asset_code,
+        asset.asset_type,
         asset.asset_name,
         asset.brand,
         asset.model,
         asset.serial_number,
         asset.current_holder,
+        asset.location,
+        asset.status,
       ].some((value) =>
-        String(value ?? "").toLowerCase().includes(keyword)
+        String(value ?? "")
+          .toLowerCase()
+          .includes(keyword)
       );
 
     // ถ้ายังไม่เลือกประเภท ให้ผ่านทั้งหมด
     const matchesType =
-      !selectedType || asset.asset_type === selectedType;
+      !selectedType ||
+      asset.asset_type === selectedType;
 
     // ถ้ายังไม่เลือกสถานะ ให้ผ่านทั้งหมด
     const matchesStatus =
-      !selectedStatus || asset.status === selectedStatus;
+      !selectedStatus ||
+      asset.status === selectedStatus;
 
     // ต้องตรงกับเงื่อนไขทั้งหมด
-    return matchesSearch && matchesType && matchesStatus;
+    return (
+      matchesSearch &&
+      matchesType &&
+      matchesStatus
+    );
   });
+
+  // ==================================================
+  // 5. ฟังก์ชันแปลงวันที่
+  //
+  // หน้า Assets รับวันที่มาเป็น:
+  // dd/mm/yyyy
+  //
+  // เช่น:
+  // 18/09/2026
+  //
+  // ตอน Sort ต้องแปลงเป็น:
+  // 2026-09-18
+  // ==================================================
+  function toSortableDate(value) {
+    if (!value) {
+      return "";
+    }
+
+    const parts = String(value).split("/");
+
+    if (parts.length !== 3) {
+      return String(value);
+    }
+
+    const [day, month, year] = parts;
+
+    return `${year}-${month}-${day}`;
+  }
+
+  // ==================================================
+  // 6. เรียงข้อมูลหลัง Search / Filter
+  // ==================================================
+  const sortedAssets = [...filteredAssets].sort(
+    (a, b) => {
+      const key = sortConfig.key;
+
+      let valueA;
+      let valueB;
+
+      // ==================================================
+      // Brand / Model
+      //
+      // ใช้ค่ารวมเหมือนที่หน้า Table แสดงจริง
+      // ==================================================
+      if (key === "brand_model") {
+        valueA = [a.brand, a.model]
+          .filter(Boolean)
+          .join(" ");
+
+        valueB = [b.brand, b.model]
+          .filter(Boolean)
+          .join(" ");
+      }
+
+      // ==================================================
+      // วันที่รับเข้า
+      // ==================================================
+      else if (key === "received_date") {
+        valueA = toSortableDate(
+          a.received_date
+        );
+
+        valueB = toSortableDate(
+          b.received_date
+        );
+      }
+
+      // ==================================================
+      // Field ปกติ
+      // ==================================================
+      else {
+        valueA = a[key];
+        valueB = b[key];
+      }
+
+      // null / undefined ให้เป็นข้อความว่าง
+      valueA = valueA ?? "";
+      valueB = valueB ?? "";
+
+      // ==================================================
+      // localeCompare + numeric
+      //
+      // ทำให้:
+      // 001
+      // 002
+      // 010
+      //
+      // เรียงถูกต้อง
+      // ==================================================
+      const result = String(valueA).localeCompare(
+        String(valueB),
+        undefined,
+        {
+          numeric: true,
+          sensitivity: "base",
+        }
+      );
+
+      return sortConfig.direction === "asc"
+        ? result
+        : -result;
+    }
+  );
+
+  // ==================================================
+  // 7. เมื่อกดหัวตาราง
+  //
+  // กดครั้งแรก:
+  // ASC
+  //
+  // กดซ้ำ:
+  // DESC
+  // ==================================================
+  function handleSort(key) {
+    setSortConfig((previous) => {
+      // ถ้ากด Column เดิม
+      if (previous.key === key) {
+        return {
+          key,
+          direction:
+            previous.direction === "asc"
+              ? "desc"
+              : "asc",
+        };
+      }
+
+      // ถ้าเปลี่ยนไป Column ใหม่
+      // เริ่มจาก ASC
+      return {
+        key,
+        direction: "asc",
+      };
+    });
+  }
+
+  // ==================================================
+  // 8. แสดงสัญลักษณ์การเรียง
+  //
+  // ↕ = ยังไม่ได้เลือก
+  // ↑ = ASC
+  // ↓ = DESC
+  // ==================================================
+  function sortIcon(key) {
+    if (sortConfig.key !== key) {
+      return "↕";
+    }
+
+    return sortConfig.direction === "asc"
+      ? "↑"
+      : "↓";
+  }
+
+  // ==================================================
+  // 9. Component หัวตารางแบบกด Sort ได้
+  // ==================================================
+  function SortableHeader({
+    label,
+    sortKey,
+    className = "",
+  }) {
+    return (
+      <th
+        scope="col"
+        className={`whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500 ${className}`}
+      >
+        <button
+          type="button"
+          onClick={() => handleSort(sortKey)}
+          className="inline-flex items-center gap-1.5 rounded transition hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500"
+        >
+          <span>{label}</span>
+
+          <span
+            className={
+              sortConfig.key === sortKey
+                ? "text-blue-600"
+                : "text-slate-400"
+            }
+          >
+            {sortIcon(sortKey)}
+          </span>
+        </button>
+      </th>
+    );
+  }
 
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -95,7 +313,9 @@ export default function AssetTable({ assets }) {
             type="text"
             value={searchText}
             onChange={(event) =>
-              setSearchText(event.target.value)
+              setSearchText(
+                event.target.value
+              )
             }
             placeholder="ค้นหารหัส, ชื่อทรัพย์สิน, Serial, ผู้ครอบครอง..."
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -115,14 +335,21 @@ export default function AssetTable({ assets }) {
             id="typeFilter"
             value={selectedType}
             onChange={(event) =>
-              setSelectedType(event.target.value)
+              setSelectedType(
+                event.target.value
+              )
             }
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
-            <option value="">All Types</option>
+            <option value="">
+              All Types
+            </option>
 
             {assetTypes.map((type) => (
-              <option key={type} value={type}>
+              <option
+                key={type}
+                value={type}
+              >
                 {type}
               </option>
             ))}
@@ -142,14 +369,23 @@ export default function AssetTable({ assets }) {
             id="statusFilter"
             value={selectedStatus}
             onChange={(event) =>
-              setSelectedStatus(event.target.value)
+              setSelectedStatus(
+                event.target.value
+              )
             }
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
-            <option value="">All Statuses</option>
+            <option value="">
+              All Statuses
+            </option>
 
-            {Object.keys(statusColors).map((status) => (
-              <option key={status} value={status}>
+            {Object.keys(
+              statusColors
+            ).map((status) => (
+              <option
+                key={status}
+                value={status}
+              >
                 {status}
               </option>
             ))}
@@ -157,9 +393,22 @@ export default function AssetTable({ assets }) {
         </div>
       </div>
 
-      {/* จำนวนรายการหลังกรอง */}
-      <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
-        Showing {filteredAssets.length} of {assets.length} assets
+      {/* ==========================================
+          จำนวนรายการหลังกรอง
+      ========================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
+        <span>
+          Showing {sortedAssets.length} of{" "}
+          {assets.length} assets
+        </span>
+
+        {/* แสดงว่าตอนนี้กำลังเรียงอะไร */}
+        <span className="text-xs text-slate-400">
+          Sort: {sortConfig.key}{" "}
+          {sortConfig.direction === "asc"
+            ? "↑"
+            : "↓"}
+        </span>
       </div>
 
       {/* ==========================================
@@ -169,85 +418,141 @@ export default function AssetTable({ assets }) {
         <table className="w-full min-w-[1180px] text-left text-sm">
           <thead className="bg-slate-50">
             <tr>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">รหัสทรัพย์สิน</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ประเภทอุปกรณ์</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ชื่อทรัพย์สิน</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ยี่ห้อ / รุ่น</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">ผู้ครอบครอง</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">Location</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">สถานะ</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500">วันที่รับเข้า</th>
+              <SortableHeader
+                label="รหัสทรัพย์สิน"
+                sortKey="asset_code"
+              />
+
+              <SortableHeader
+                label="ประเภทอุปกรณ์"
+                sortKey="asset_type"
+              />
+
+              <SortableHeader
+                label="ชื่อทรัพย์สิน"
+                sortKey="asset_name"
+              />
+
+              <SortableHeader
+                label="ยี่ห้อ / รุ่น"
+                sortKey="brand_model"
+              />
+
+              <SortableHeader
+                label="ผู้ครอบครอง"
+                sortKey="current_holder"
+              />
+
+              <SortableHeader
+                label="Location"
+                sortKey="location"
+              />
+
+              <SortableHeader
+                label="สถานะ"
+                sortKey="status"
+              />
+
+              <SortableHeader
+                label="วันที่รับเข้า"
+                sortKey="received_date"
+              />
             </tr>
           </thead>
 
           <tbody>
-            {/* สร้างแถวจากข้อมูลที่ผ่าน Search / Filter แล้ว */}
-            {filteredAssets.map((asset) => (
-                <tr
+            {/* ==========================================
+                สร้างแถวจากข้อมูลที่ผ่าน:
+                Search
+                Filter
+                Sort
+            ========================================== */}
+            {sortedAssets.map((asset) => (
+              <tr
                 key={asset.id}
                 className="cursor-pointer border-t border-slate-100 transition hover:bg-blue-50/50"
 
                 // คลิกตรงไหนของแถวก็เปิด Detail ของ Asset นั้น
-                onClick={() => router.push(`/assets/${asset.id}`)}
-                >
+                onClick={() =>
+                  router.push(
+                    `/assets/${asset.id}`
+                  )
+                }
+              >
                 {/* รหัสทรัพย์สิน */}
                 <td className="whitespace-nowrap px-5 py-5 font-semibold text-slate-900">
-                    {/* ลิงก์จริงรองรับคีย์บอร์ดและเปิดแท็บใหม่ได้ แม้ทั้งแถวจะคลิกได้ */}
-                    <Link href={`/assets/${asset.id}`} onClick={(event) => event.stopPropagation()} className="rounded hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500">
-                      {asset.asset_code}
-                    </Link>
+                  {/* ลิงก์จริงรองรับคีย์บอร์ดและเปิดแท็บใหม่ได้
+                      แม้ทั้งแถวจะคลิกได้ */}
+                  <Link
+                    href={`/assets/${asset.id}`}
+                    onClick={(event) =>
+                      event.stopPropagation()
+                    }
+                    className="rounded hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500"
+                  >
+                    {asset.asset_code}
+                  </Link>
                 </td>
 
                 {/* ประเภท */}
                 <td className="px-5 py-5 text-slate-700">
-                    {asset.asset_type}
+                  {asset.asset_type || "-"}
                 </td>
 
                 {/* ชื่อทรัพย์สิน */}
                 <td className="px-5 py-5 text-slate-700">
-                    {asset.asset_name}
+                  {asset.asset_name || "-"}
                 </td>
 
                 {/* ยี่ห้อ / รุ่น */}
                 <td className="px-5 py-5 text-slate-700">
-                    {asset.brand || "-"}
-                    {asset.model ? ` / ${asset.model}` : ""}
+                  {asset.brand || "-"}
+
+                  {asset.model
+                    ? ` / ${asset.model}`
+                    : ""}
                 </td>
 
                 {/* ผู้ครอบครองปัจจุบัน */}
                 <td className="px-5 py-5 text-slate-700">
-                    {asset.current_holder || "-"}
+                  {asset.current_holder ||
+                    "-"}
                 </td>
 
                 {/* สถานที่ */}
                 <td className="px-5 py-5 text-slate-700">
-                    {asset.location || "-"}
+                  {asset.location || "-"}
                 </td>
 
                 {/* สถานะ */}
                 <td className="px-5 py-5 text-slate-700">
-                    <span
+                  <span
                     className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${
-                        statusColors[asset.status] ||
-                        "bg-gray-100 text-gray-700"
+                      statusColors[
+                        asset.status
+                      ] ||
+                      "bg-gray-100 text-gray-700"
                     }`}
-                    >
-                    {asset.status}
-                    </span>
+                  >
+                    {asset.status || "-"}
+                  </span>
                 </td>
 
-                {/* วันที่รับเข้า: เก็บวันเดือนปีในบรรทัดเดียว */}
+                {/* วันที่รับเข้า */}
                 <td className="whitespace-nowrap px-5 py-5 text-slate-700">
-                    {asset.received_date || "-"}
+                  {asset.received_date ||
+                    "-"}
                 </td>
-                </tr>
+              </tr>
             ))}
-        </tbody>
+          </tbody>
         </table>
       </div>
 
-      {/* ถ้าค้นหาแล้วไม่พบข้อมูล */}
-      {filteredAssets.length === 0 && (
+      {/* ==========================================
+          ไม่พบข้อมูล
+      ========================================== */}
+      {sortedAssets.length === 0 && (
         <p className="p-6 text-center text-gray-500">
           ไม่พบข้อมูลทรัพย์สิน
         </p>
