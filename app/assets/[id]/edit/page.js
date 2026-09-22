@@ -203,7 +203,7 @@ export default function EditAssetPage() {
               id: String(asset.asset_owner_id),
               full_name:
                 asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`,
-              status: asset.asset_owner_status,
+              is_active: asset.asset_owner_is_active,
             });
           } else {
             setCurrentOwner(null);
@@ -471,7 +471,7 @@ export default function EditAssetPage() {
 
               {/* Asset Owner */}
               <div>
-                <label htmlFor="assetOwner" className="mb-2 block font-medium">Asset Owner</label>
+                <label htmlFor="assetOwner" className="mb-2 block font-medium">Asset Owner / ผู้รับผิดชอบ</label>
 
                 <select
                   id="assetOwner"
@@ -496,6 +496,9 @@ export default function EditAssetPage() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Asset Owner ไม่ใช่ผู้ครอบครองปัจจุบัน การมอบหมายหรือคืนให้ทำในหน้า Asset Detail
+                </p>
               </div>
 
               {/* Description */}
@@ -515,7 +518,15 @@ export default function EditAssetPage() {
 
           {/* จัดกลุ่ม Master Data เหมือนหน้า Add โดยไม่เปลี่ยนข้อมูลหรือวิธีบันทึก */}
           <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Assignment & Location</h2>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Department / Location / Vendor</h2>
+              <Link
+                href={`/assets/${id}`}
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                จัดการผู้ครอบครองที่หน้า Asset Detail
+              </Link>
+            </div>
             <AssetLookups form={form} onChange={handleChange} />
           </section>
 

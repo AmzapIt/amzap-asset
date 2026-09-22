@@ -28,9 +28,7 @@ export default function UserTable({ users }) {
     const keyword = search.trim().toLowerCase();
 
     return userList.filter((user) => {
-      const isActive =
-        user.is_active === true &&
-        Number(user.status) === 1;
+      const isActive = user.is_active === true;
 
       // ------------------------------
       // Search
@@ -58,7 +56,7 @@ export default function UserTable({ users }) {
   // ==================================================
   // เปลี่ยนสถานะ User
   // ==================================================
-  async function handleStatusChange(userId, newStatus) {
+  async function handleStatusChange(userId, newActivity) {
     try {
       // ป้องกันกดซ้ำระหว่างกำลัง Update
       setUpdatingId(userId);
@@ -73,7 +71,7 @@ export default function UserTable({ users }) {
           },
 
           body: JSON.stringify({
-            status: Number(newStatus),
+            is_active: newActivity === "true",
           }),
         }
       );
@@ -83,7 +81,7 @@ export default function UserTable({ users }) {
       // ถ้า API ตอบ Error
       if (!response.ok) {
         throw new Error(
-          data.message || "ไม่สามารถเปลี่ยนสถานะได้"
+          data.error || "ไม่สามารถเปลี่ยนสถานะได้"
         );
       }
 
@@ -96,7 +94,6 @@ export default function UserTable({ users }) {
           user.id === userId
             ? {
                 ...user,
-                status: data.user.status,
                 is_active: data.user.is_active,
               }
             : user
@@ -225,9 +222,7 @@ export default function UserTable({ users }) {
                   // ==================================================
                   // เช็กสถานะ User
                   // ==================================================
-                  const isActive =
-                    user.is_active === true &&
-                    Number(user.status) === 1;
+                  const isActive = user.is_active === true;
 
                   return (
                     <tr
@@ -274,7 +269,7 @@ export default function UserTable({ users }) {
 
                         <select
                           value={
-                            isActive ? "1" : "0"
+                            isActive ? "true" : "false"
                           }
 
                           disabled={
@@ -299,11 +294,11 @@ export default function UserTable({ users }) {
                           }`}
                         >
 
-                          <option value="1">
+                          <option value="true">
                             Active
                           </option>
 
-                          <option value="0">
+                          <option value="false">
                             Inactive
                           </option>
 

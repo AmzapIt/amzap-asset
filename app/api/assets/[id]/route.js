@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
           a.warranty_end::text AS warranty_end,
           t.name AS asset_type,
           u.full_name AS asset_owner_name,
-          u.status AS asset_owner_status
+          u.is_active AS asset_owner_is_active
         FROM public.assets a
         LEFT JOIN public.asset_types t
           ON t.id = a.asset_type_id
@@ -170,17 +170,17 @@ export async function PATCH(request, { params }) {
     // NULL
     // ==================================================
     const assetOwnerId =
-      body.assetOwner === "" ||
-      body.assetOwner == null
+      body.assetOwner === "" || body.assetOwner == null
         ? null
-        : Number(body.assetOwner);
+        : String(body.assetOwner).trim();
 
     // ==================================================
     // ตรวจ Asset Owner
     // ==================================================
     if (
       assetOwnerId !== null &&
-      (!Number.isInteger(assetOwnerId) || assetOwnerId <= 0)
+      (!/^[1-9]\d{0,18}$/.test(assetOwnerId) ||
+        BigInt(assetOwnerId) > 9223372036854775807n)
     ) {
       return Response.json(
         {
@@ -191,6 +191,37 @@ export async function PATCH(request, { params }) {
           status: 400,
         }
       );
+    }
+
+    if (assetOwnerId !== null) {
+      const ownerResult = await query(
+        `
+          SELECT u.id
+          FROM public."user" u
+          WHERE u.id = $1
+            AND (
+              u.is_active = true
+              OR EXISTS (
+                SELECT 1
+                FROM public.assets existing_asset
+                WHERE existing_asset.id = $2
+                  AND existing_asset.asset_owner_id = u.id
+              )
+            )
+          LIMIT 1
+        `,
+        [assetOwnerId, id],
+      );
+
+      if (ownerResult.rows.length === 0) {
+        return Response.json(
+          {
+            success: false,
+            error: "Asset Owner must be an active employee",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // ==================================================

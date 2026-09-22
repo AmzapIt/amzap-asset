@@ -16,7 +16,6 @@ export default async function UsersPage() {
       u.is_active,
       u.created_at,
       u."position",
-      u.status,
       d.name AS department_name
     FROM public."user" u
     LEFT JOIN public.departments d
@@ -25,9 +24,7 @@ export default async function UsersPage() {
   `);
 
   const users = result.rows;
-  const activeUsers = users.filter(
-    (user) => user.is_active === true && Number(user.status) === 1,
-  ).length;
+  const activeUsers = users.filter((user) => user.is_active === true).length;
   const inactiveUsers = users.length - activeUsers;
 
   return (

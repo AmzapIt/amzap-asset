@@ -11,15 +11,15 @@ export const runtime = "nodejs";
 // ==================================================
 export async function GET() {
   try {
-    // ดึงเฉพาะพนักงานที่ status = 1
+    // ดึงเฉพาะพนักงานที่ Active
     // โดยให้เรียงชื่อตาม full_name
     const result = await query(`
       SELECT
         id,
         full_name,
-        status
+        is_active
       FROM public."user"
-      WHERE status = 1
+      WHERE is_active = true
       ORDER BY full_name ASC
     `);
 

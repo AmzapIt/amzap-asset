@@ -8,9 +8,6 @@ export const runtime = "nodejs";
 //
 // ใช้เปลี่ยนสถานะพนักงาน
 //
-// status = 1 → Active
-// status = 0 → Inactive
-//
 // เฉพาะ Admin
 // =========================================================
 export async function PATCH(request, { params }) {
@@ -42,22 +39,20 @@ export async function PATCH(request, { params }) {
     // =====================================================
     // อ่านค่าที่ Frontend ส่งมา
     //
-    // รองรับ:
-    // { status: 1 }
-    // { status: 0 }
+    // รองรับ { is_active: true } หรือ { is_active: false }
     // =====================================================
     const body = await request.json();
 
-    const status = Number(body.status);
+    const isActive = body.is_active;
 
     // =====================================================
-    // status ต้องเป็น 0 หรือ 1 เท่านั้น
+    // is_active ต้องเป็น boolean เท่านั้น
     // =====================================================
-    if (![0, 1].includes(status)) {
+    if (typeof isActive !== "boolean") {
       return Response.json(
         {
           success: false,
-          error: "Status ต้องเป็น 0 หรือ 1",
+          error: "is_active ต้องเป็น boolean",
         },
         {
           status: 400,
@@ -66,23 +61,13 @@ export async function PATCH(request, { params }) {
     }
 
     // =====================================================
-    // ให้ is_active กับ status ตรงกัน
-    //
-    // status 1 = Active
-    // status 0 = Inactive
-    // =====================================================
-    const isActive = status === 1;
-
-    // =====================================================
     // Update PostgreSQL
     // =====================================================
     const result = await query(
       `
         UPDATE public."user"
-        SET
-          status = $1,
-          is_active = $2
-        WHERE id = $3
+        SET is_active = $1
+        WHERE id = $2
         RETURNING
           id,
           employee_code,
@@ -90,12 +75,10 @@ export async function PATCH(request, { params }) {
           email,
           department_id,
           position,
-          status,
           is_active,
           created_at
       `,
       [
-        status,
         isActive,
         id,
       ],

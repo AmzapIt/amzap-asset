@@ -13,7 +13,7 @@ const initialForm = {
   email: "",
   position: "",
   department_id: "",
-  status: "1",
+  is_active: "true",
 };
 
 export default function AddUserPage() {
@@ -277,16 +277,16 @@ export default function AddUserPage() {
               </label>
 
               <select
-                name="status"
-                value={form.status}
+                name="is_active"
+                value={form.is_active}
                 onChange={handleChange}
                 className={inputClass}
               >
-                <option value="1">
+                <option value="true">
                   Active
                 </option>
 
-                <option value="0">
+                <option value="false">
                   Inactive
                 </option>
               </select>

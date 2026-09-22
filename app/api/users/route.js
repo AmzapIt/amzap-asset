@@ -20,7 +20,6 @@ export async function GET() {
         d.name AS department_name,
         u.position,
         u.is_active,
-        u.status,
         u.created_at
       FROM public."user" u
       LEFT JOIN public.departments d
@@ -92,7 +91,8 @@ export async function POST(request) {
         ? null
         : String(body.department_id);
 
-    const status = Number(body.status);
+    const validActivityValues = [true, false, "true", "false"];
+    const isActive = body.is_active === true || body.is_active === "true";
 
     // =====================================================
     // Validation
@@ -122,7 +122,7 @@ export async function POST(request) {
       );
     }
 
-    if (![0, 1].includes(status)) {
+    if (!validActivityValues.includes(body.is_active)) {
       return Response.json(
         {
           error: "สถานะพนักงานไม่ถูกต้อง",
@@ -174,14 +174,6 @@ export async function POST(request) {
       }
     }
 
-    // =====================================================
-    // status และ is_active ต้องไปทางเดียวกัน
-    //
-    // status = 1 → is_active = true
-    // status = 0 → is_active = false
-    // =====================================================
-    const isActive = status === 1;
-
     const result = await query(
       `
         INSERT INTO public."user" (
@@ -190,8 +182,7 @@ export async function POST(request) {
           email,
           department_id,
           position,
-          is_active,
-          status
+          is_active
         )
         VALUES (
           $1,
@@ -199,8 +190,7 @@ export async function POST(request) {
           $3,
           $4,
           $5,
-          $6,
-          $7
+          $6
         )
         RETURNING
           id,
@@ -210,7 +200,6 @@ export async function POST(request) {
           department_id,
           position,
           is_active,
-          status,
           created_at
       `,
       [
@@ -220,7 +209,6 @@ export async function POST(request) {
         departmentId,
         position || null,
         isActive,
-        status,
       ]
     );
 

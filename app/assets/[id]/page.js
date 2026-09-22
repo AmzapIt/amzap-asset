@@ -1,6 +1,7 @@
 import AssignmentForm from "./AssignmentForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { query } from "@/lib/db";
 
 // ใช้ Node.js เพราะหน้านี้เชื่อม PostgreSQL ผ่าน pg
@@ -157,9 +158,9 @@ async function getAssetDetail(id) {
       -- ==================================================
       u.full_name AS asset_owner_name,
 
-      -- เก็บ status ของ Owner เดิมไว้ด้วย
+      -- เก็บสถานะ Active ของ Owner เดิมไว้ด้วย
       -- เพื่อรู้ว่า Owner คนเดิม Active หรือ Inactive
-      u.status AS asset_owner_status
+      u.is_active AS asset_owner_is_active
 
     FROM public.assets a
 
@@ -196,7 +197,7 @@ async function getAssetDetail(id) {
   ] = await Promise.all([
     readOptional(
       "asset_assignments",
-      "SELECT * FROM public.asset_assignments WHERE asset_id = $1 ORDER BY id DESC",
+      "SELECT *, assigned_date::text AS assigned_date, returned_date::text AS returned_date FROM public.asset_assignments WHERE asset_id = $1 ORDER BY id DESC",
       [id],
     ),
     readOptional(
@@ -276,6 +277,8 @@ async function getAssetDetail(id) {
 export default async function AssetDetailPage({ params }) {
   // Next.js 16 รับ params แบบ Promise
   const { id } = await params;
+  const session = await auth();
+  const canWrite = ["Admin", "IT Staff"].includes(session?.user?.role);
 
   // รับเฉพาะ ID ตัวเลขบวก ไม่เอาค่าอื่นไป Query
   if (!/^[1-9]\d*$/.test(id)) {
@@ -325,9 +328,10 @@ export default async function AssetDetailPage({ params }) {
     vendorMap,
   } = data;
 
-  const [activeUsers, availableLocations] = await Promise.all([
-    query('SELECT u.id,u.employee_code,u.full_name,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.status=1 ORDER BY u.full_name'),
-    query('SELECT id,name FROM public.locations ORDER BY name'),
+  const [activeUsers, availableLocations, databaseDate] = await Promise.all([
+    query('SELECT u.id,u.employee_code,u.full_name,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.is_active=true ORDER BY u.full_name,u.id'),
+    query('SELECT id,name,building,floor,room FROM public.locations WHERE is_active=true ORDER BY name,id'),
+    query("SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text AS today"),
   ]);
 
   // Helper แปลง ID เป็นชื่อจริง
@@ -363,7 +367,21 @@ export default async function AssetDetailPage({ params }) {
   const ownerName = asset.asset_owner_id == null
     ? "ไม่มี Asset Owner"
     : (asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`) +
-      (String(asset.asset_owner_status) === "0" ? " (Inactive)" : "");
+      (asset.asset_owner_is_active === false ? " (Inactive)" : "");
+
+  // ข้อมูลเดิมยังไม่มี Assignment จึงใช้ Owner เป็นผู้ครอบครองชั่วคราวเท่านั้น
+  // หลัง Asset มีประวัติ Assignment แล้ว การคืนจะทำให้ผู้ครอบครองเป็นค่าว่าง
+  const hasAssignmentHistory = (assignments?.length ?? 0) > 0;
+  const currentHolderName = currentAssignment
+    ? personName(currentAssignment.assigned_to)
+    : !hasAssignmentHistory && asset.asset_owner_id != null
+      ? ownerName
+      : null;
+  const holderSource = currentAssignment
+    ? "Assignment"
+    : !hasAssignmentHistory && asset.asset_owner_id != null
+      ? "Asset Owner (ข้อมูลเดิม)"
+      : null;
 
   const vendorName =
     asset.vendor_id == null
@@ -422,12 +440,14 @@ export default async function AssetDetailPage({ params }) {
                 URL:
                 /assets/12/edit
             ================================================= */}
-              <Link
-                href={`/assets/${asset.id}/edit`}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
-              >
-                Edit Asset
-              </Link>
+              {canWrite && (
+                <Link
+                  href={`/assets/${asset.id}/edit`}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
+                >
+                  Edit Asset
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -457,14 +477,32 @@ export default async function AssetDetailPage({ params }) {
 
         {/* ================= ASSIGNMENT ================= */}
         <DetailSection title="Assignment & Location">
-          <AssignmentForm key={currentAssignment?.id ?? "none"} assetId={String(asset.id)} currentId={currentAssignment ? String(currentAssignment.id) : null} users={activeUsers.rows} locations={availableLocations.rows} />
+          <AssignmentForm
+            key={currentAssignment?.id ?? "none"}
+            assetId={String(asset.id)}
+            assetStatus={asset.status}
+            currentId={
+              currentAssignment ? String(currentAssignment.id) : null
+            }
+            currentAssigneeId={currentAssignment?.assigned_to ?? null}
+            currentAssignedDate={
+              currentAssignment?.assigned_date
+                ? String(currentAssignment.assigned_date).slice(0, 10)
+                : undefined
+            }
+            users={activeUsers.rows}
+            locations={availableLocations.rows}
+            today={databaseDate.rows[0].today}
+            canWrite={canWrite}
+          />
           <InfoGrid
             rows={[
               ["Asset Owner", ownerName],
               [
                 "ผู้ครอบครองปัจจุบัน",
-                personName(currentAssignment?.assigned_to),
+                currentHolderName,
               ],
+              ["แหล่งข้อมูลผู้ครอบครอง", holderSource],
               ["แผนก", departmentName(currentDepartmentId)],
               ["Location", locationName(currentLocationId)],
               ["วันที่มอบหมาย", formatDate(currentAssignment?.assigned_date)],
@@ -487,8 +525,11 @@ export default async function AssetDetailPage({ params }) {
                     rows={[
                       ["ผู้ครอบครอง", personName(item.assigned_to)],
                       ["Location", locationName(item.location_id)],
+                      ["แผนก ณ วันที่มอบหมาย", departmentName(item.department_id)],
                       ["วันที่มอบหมาย", formatDate(item.assigned_date)],
                       ["วันที่รับคืน", formatDate(item.returned_date)],
+                      ["หมายเหตุการมอบหมาย", item.assignment_notes],
+                      ["หมายเหตุการรับคืน", item.return_notes],
                     ]}
                   />
                 </div>

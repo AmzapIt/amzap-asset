@@ -125,7 +125,11 @@ export async function POST(request) {
 
   // เมื่อเลือก Owner ต้องเป็น ID จำนวนเต็มบวกเท่านั้น
   // หากเป็น NULL ให้ผ่านได้ เพราะ Asset สามารถไม่มี Owner
-  if (assetOwner !== null && !/^[1-9]\d*$/.test(assetOwner)) {
+  if (
+    assetOwner !== null &&
+    (!/^[1-9]\d{0,18}$/.test(assetOwner) ||
+      BigInt(assetOwner) > 9223372036854775807n)
+  ) {
     return Response.json(
       {
         success: false,
@@ -198,7 +202,7 @@ export async function POST(request) {
     // ตรวจ Owner กับข้อมูลจริงก่อนสร้าง Asset
     //
     // รายชื่อในหน้า Add อาจถูกโหลดไว้นานแล้ว
-    // จึงตรวจซ้ำว่าพนักงานยังอยู่และมี status = 1
+    // จึงตรวจซ้ำว่าพนักงานยังอยู่และ Active
     // ใช้ $1 แยกค่าจาก SQL ไม่ต่อข้อความจากผู้ใช้ลงในคำสั่ง
     // ==================================================
     if (assetOwner !== null) {
@@ -206,7 +210,7 @@ export async function POST(request) {
         `SELECT id
      FROM public."user"
      WHERE id = $1
-       AND status = 1
+       AND is_active = true
      LIMIT 1`,
         [assetOwner],
       );

@@ -18,6 +18,43 @@ const statusColors = {
   Lost: "bg-red-100 text-red-800",
 };
 
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  className = "",
+}) {
+  const icon =
+    sortConfig.key !== sortKey
+      ? "↕"
+      : sortConfig.direction === "asc"
+        ? "↑"
+        : "↓";
+
+  return (
+    <th
+      scope="col"
+      className={`whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500 ${className}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1.5 rounded transition hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500"
+      >
+        <span>{label}</span>
+        <span
+          className={
+            sortConfig.key === sortKey ? "text-blue-600" : "text-slate-400"
+          }
+        >
+          {icon}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 // ==================================================
 // 2. Component รับข้อมูลจากหน้า Assets
 // assets คือ Array ที่ PostgreSQL ส่งมา
@@ -242,56 +279,7 @@ export default function AssetTable({ assets }) {
     });
   }
 
-  // ==================================================
-  // 8. แสดงสัญลักษณ์การเรียง
-  //
-  // ↕ = ยังไม่ได้เลือก
-  // ↑ = ASC
-  // ↓ = DESC
-  // ==================================================
-  function sortIcon(key) {
-    if (sortConfig.key !== key) {
-      return "↕";
-    }
-
-    return sortConfig.direction === "asc"
-      ? "↑"
-      : "↓";
-  }
-
-  // ==================================================
-  // 9. Component หัวตารางแบบกด Sort ได้
-  // ==================================================
-  function SortableHeader({
-    label,
-    sortKey,
-    className = "",
-  }) {
-    return (
-      <th
-        scope="col"
-        className={`whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500 ${className}`}
-      >
-        <button
-          type="button"
-          onClick={() => handleSort(sortKey)}
-          className="inline-flex items-center gap-1.5 rounded transition hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500"
-        >
-          <span>{label}</span>
-
-          <span
-            className={
-              sortConfig.key === sortKey
-                ? "text-blue-600"
-                : "text-slate-400"
-            }
-          >
-            {sortIcon(sortKey)}
-          </span>
-        </button>
-      </th>
-    );
-  }
+  const sortableHeaderProps = { sortConfig, onSort: handleSort };
 
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -419,41 +407,49 @@ export default function AssetTable({ assets }) {
           <thead className="bg-slate-50">
             <tr>
               <SortableHeader
+                {...sortableHeaderProps}
                 label="รหัสทรัพย์สิน"
                 sortKey="asset_code"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="ประเภทอุปกรณ์"
                 sortKey="asset_type"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="ชื่อทรัพย์สิน"
                 sortKey="asset_name"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="ยี่ห้อ / รุ่น"
                 sortKey="brand_model"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="ผู้ครอบครอง"
                 sortKey="current_holder"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="Location"
                 sortKey="location"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="สถานะ"
                 sortKey="status"
               />
 
               <SortableHeader
+                {...sortableHeaderProps}
                 label="วันที่รับเข้า"
                 sortKey="received_date"
               />

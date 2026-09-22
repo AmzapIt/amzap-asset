@@ -42,7 +42,6 @@ export async function GET(request, { params }) {
           d.is_active AS department_is_active,
           u.position,
           u.is_active,
-          u.status,
           u.created_at
         FROM public."user" u
         LEFT JOIN public.departments d
@@ -141,7 +140,8 @@ export async function PATCH(request, { params }) {
         ? null
         : String(body.department_id);
 
-    const status = Number(body.status);
+    const validActivityValues = [true, false, "true", "false"];
+    const isActive = body.is_active === true || body.is_active === "true";
 
     // =====================================================
     // Validation
@@ -173,7 +173,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (![0, 1].includes(status)) {
+    if (!validActivityValues.includes(body.is_active)) {
       return Response.json(
         {
           success: false,
@@ -224,9 +224,6 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    // status กับ is_active ให้ตรงกัน
-    const isActive = status === 1;
-
     const result = await query(
       `
         UPDATE public."user"
@@ -236,9 +233,8 @@ export async function PATCH(request, { params }) {
           email = $3,
           department_id = $4,
           position = $5,
-          is_active = $6,
-          status = $7
-        WHERE id = $8
+          is_active = $6
+        WHERE id = $7
         RETURNING
           id,
           employee_code,
@@ -247,7 +243,6 @@ export async function PATCH(request, { params }) {
           department_id,
           position,
           is_active,
-          status,
           created_at
       `,
       [
@@ -257,7 +252,6 @@ export async function PATCH(request, { params }) {
         departmentId,
         position || null,
         isActive,
-        status,
         id,
       ],
     );
@@ -301,6 +295,118 @@ export async function PATCH(request, { params }) {
       {
         status: 500,
       },
+    );
+  }
+}
+
+// =========================================================
+// DELETE /api/users/[id]
+// ลบพนักงานถาวรได้เฉพาะเมื่อไม่มีข้อมูลอื่นอ้างอิง
+// =========================================================
+export async function DELETE(request, { params }) {
+  const denied = await requireWrite(request, "Admin");
+
+  if (denied) {
+    return denied;
+  }
+
+  try {
+    const { id } = await params;
+
+    if (!validId(id)) {
+      return Response.json(
+        { success: false, error: "User ID ไม่ถูกต้อง" },
+        { status: 400 },
+      );
+    }
+
+    const dependencyResult = await query(
+      `
+        SELECT
+          u.id,
+          u.full_name,
+          (SELECT COUNT(*)::int FROM public.assets a
+            WHERE a.asset_owner_id = u.id) AS owned_assets,
+          (SELECT COUNT(*)::int FROM public.asset_assignments aa
+            WHERE aa.assigned_to = u.id) AS assignments,
+          (SELECT COUNT(*)::int FROM public.employee_accessories ea
+            WHERE ea.user_id = u.id) AS accessories,
+          (SELECT COUNT(*)::int FROM public.asset_audit_logs al
+            WHERE al.changed_by = u.id) AS audit_logs,
+          (SELECT COUNT(*)::int FROM public.asset_documents ad
+            WHERE ad.uploaded_by = u.id) AS documents,
+          (SELECT COUNT(*)::int FROM public.app_accounts account
+            WHERE account.user_id = u.id) AS login_accounts
+        FROM public."user" u
+        WHERE u.id = $1
+        LIMIT 1
+      `,
+      [id],
+    );
+
+    const user = dependencyResult.rows[0];
+
+    if (!user) {
+      return Response.json(
+        { success: false, error: "ไม่พบพนักงาน" },
+        { status: 404 },
+      );
+    }
+
+    const dependencies = {
+      owned_assets: Number(user.owned_assets),
+      assignments: Number(user.assignments),
+      accessories: Number(user.accessories),
+      audit_logs: Number(user.audit_logs),
+      documents: Number(user.documents),
+      login_accounts: Number(user.login_accounts),
+    };
+
+    if (Object.values(dependencies).some((count) => count > 0)) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "ไม่สามารถลบพนักงานได้ เนื่องจากยังมีข้อมูลอ้างอิง กรุณาโอน/คืนรายการที่เกี่ยวข้อง หรือเปลี่ยนสถานะพนักงานเป็น Inactive",
+          dependencies,
+        },
+        { status: 409 },
+      );
+    }
+
+    const deleteResult = await query(
+      `DELETE FROM public."user" WHERE id = $1 RETURNING id, full_name`,
+      [id],
+    );
+
+    if (!deleteResult.rowCount) {
+      return Response.json(
+        { success: false, error: "ไม่พบพนักงาน" },
+        { status: 404 },
+      );
+    }
+
+    return Response.json({
+      success: true,
+      deleted_user: deleteResult.rows[0],
+    });
+  } catch (error) {
+    console.error("DELETE /api/users/[id] error:", error);
+
+    if (error.code === "23503") {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "ไม่สามารถลบพนักงานได้ เนื่องจากมีข้อมูลใหม่อ้างอิงพนักงานคนนี้ กรุณาลองตรวจสอบอีกครั้ง",
+        },
+        { status: 409 },
+      );
+    }
+
+    return Response.json(
+      { success: false, error: "ไม่สามารถลบพนักงานได้" },
+      { status: 500 },
     );
   }
 }

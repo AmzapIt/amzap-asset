@@ -46,15 +46,10 @@ const initialForm = {
   status: "In Stock",
   notes: "",
 
-  // Assignment & Location
+  // Ownership & Location (Assignment is created from Asset Detail)
   assetOwner: "",
-  assignedTo: "",
   department: "",
   location: "",
-  building: "",
-  floor: "",
-  room: "",
-  assignedDate: "",
 
   // Purchase & Warranty
   purchaseDate: "",
@@ -117,17 +112,12 @@ const generalFields = [
 // 5 หมวดนี้จะถูกนำไปสร้างเป็นกล่องพับได้
 const collapsibleGroups = [
   {
-    title: "Assignment & Location",
-    description: "ผู้รับผิดชอบ ผู้ใช้งาน และสถานที่",
+    title: "Ownership & Location",
+    description: "ผู้รับผิดชอบหลักและสถานที่เริ่มต้น (มอบหมายผู้ครอบครองหลังสร้าง Asset)",
     fields: [
-      { name: "assetOwner", label: "Asset Owner" },
-      { name: "assignedTo", label: "Assigned To" },
+      { name: "assetOwner", label: "Asset Owner / ผู้รับผิดชอบ" },
       { name: "department", label: "Department" },
       { name: "location", label: "Location" },
-      { name: "building", label: "Building" },
-      { name: "floor", label: "Floor" },
-      { name: "room", label: "Room" },
-      { name: "assignedDate", label: "Assigned Date", type: "date" },
     ],
   },
   {
@@ -419,7 +409,7 @@ export default function AddAssetPage() {
   // รายชื่อพนักงานสำหรับ Asset Owner
   // ==================================================
 
-  // เก็บรายชื่อพนักงานที่ status = 1
+  // เก็บรายชื่อพนักงานที่ Active
   // ข้อมูลมาจาก GET /api/users/active
   const [activeUsers, setActiveUsers] = useState([]);
 
@@ -443,9 +433,9 @@ export default function AddAssetPage() {
   // ทำงานตอนเปิดหน้า Add Asset ครั้งแรก
   //
   // API จะดึง:
-  // SELECT id, full_name, status
+  // SELECT id, full_name, is_active
   // FROM public."user"
-  // WHERE status = 1
+  // WHERE is_active = true
   // ==================================================
   // ==================================================
   // โหลด Asset Types ที่ Active จาก Master Data
@@ -936,7 +926,7 @@ export default function AddAssetPage() {
               description={group.description}
             >
               {/* รวม dropdown Master Data ไว้ใน Assignment & Location โดยใช้ state และ API เดิม */}
-              {group.title === "Assignment & Location" && (
+              {group.title === "Ownership & Location" && (
                 <div className="mb-5">
                   <AssetLookups form={form} onChange={handleChange} />
                 </div>
@@ -961,7 +951,7 @@ export default function AddAssetPage() {
                             htmlFor="assetOwner"
                             className="mb-2 block font-medium"
                           >
-                            Asset Owner
+                            Asset Owner / ผู้รับผิดชอบ
                           </label>
 
                           <select
@@ -1006,6 +996,9 @@ export default function AddAssetPage() {
                               </option>
                             ))}
                           </select>
+                          <p className="mt-1 text-xs text-slate-500">
+                            ผู้ครอบครองจริงให้จัดการผ่าน Assignment ในหน้า Asset Detail หลังสร้าง Asset
+                          </p>
 
                           {/* ================================
                         แสดง Error ถ้าโหลดรายชื่อไม่ได้

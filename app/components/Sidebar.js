@@ -29,11 +29,13 @@ export default function Sidebar({ user }) {
     { kind: "locations", label: "Locations", icon: MapPin },
     { kind: "vendors", label: "Vendors", icon: Store },
     { kind: "asset_types", label: "Asset Types", icon: Tags },
+    { kind: "accessory_types", label: "Accessory Types", icon: Tags },
   ];
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/assets", label: "Asset List", icon: Package },
+    { href: "/accessories", label: "Accessory Summary", icon: Package },
     { href: "/users", label: "User Management", icon: Users },
     { href: "/reports", label: "Export / ใบรับมอบ", icon: Download },
   ];
@@ -106,7 +108,7 @@ export default function Sidebar({ user }) {
               Navigation
              ================================================= */}
           <nav className="mt-6 flex flex-col gap-1.5">
-            {navItems.slice(0, 3).map((item) => (
+            {navItems.slice(0, -1).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -132,7 +134,6 @@ export default function Sidebar({ user }) {
                     {item.label}
                   </Link>
                 ))}
-                
               </div>
             </details>
 
