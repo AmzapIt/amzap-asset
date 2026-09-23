@@ -3,6 +3,10 @@
 // =========================================================
 
 export const authConfig = {
+  // Production และ local `next start` ทำงานหลัง reverse proxy
+  // จึงต้องอนุญาตให้ Auth.js ใช้ Host header ของ request สร้าง callback URL
+  trustHost: true,
+
   pages: {
     // ถ้ายังไม่ได้ login ให้ไปหน้า /login
     signIn: "/login",
