@@ -29,6 +29,8 @@ function cleanText(value, maxLength) {
   return value.trim() || null;
 }
 
+// คืนทั้งรายการที่กำลังถืออยู่และประวัติที่คืนแล้ว โดยรายการปัจจุบัน
+// (returned_date เป็น NULL) จะเรียงขึ้นก่อน และยังอ่านประวัติของพนักงาน Inactive ได้
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -94,6 +96,8 @@ export async function GET(request, { params }) {
   }
 }
 
+// เพิ่มรายการเบิกให้พนักงาน Active โดยใช้ Accessory Type ที่ Active เท่านั้น
+// หนึ่งแถวเก็บ quantity ได้หลายชิ้น แต่ระบบปัจจุบันคืนทั้งแถวและยังไม่ตัด Stock
 export async function POST(request, { params }) {
   const denied = await requireWrite(request);
 

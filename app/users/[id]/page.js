@@ -41,6 +41,7 @@ export default async function UserDetailPage({ params }) {
         u.id,
         u.employee_code,
         u.full_name,
+        u.nickname,
         u.email,
         u.department_id,
         u.location_id,
@@ -170,6 +171,12 @@ export default async function UserDetailPage({ params }) {
                 {user.full_name}
               </h1>
 
+              {user.nickname && (
+                <p className="mt-1 text-sm font-medium text-blue-700">
+                  Nickname: {user.nickname}
+                </p>
+              )}
+
               <p className="mt-2 text-gray-600">{user.position || "-"}</p>
             </div>
 
@@ -216,6 +223,12 @@ export default async function UserDetailPage({ params }) {
               <p className="text-sm text-gray-500">Full Name</p>
 
               <p className="mt-1 font-medium">{display(user.full_name)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Nickname</p>
+
+              <p className="mt-1 font-medium">{display(user.nickname)}</p>
             </div>
 
             <div>

@@ -37,6 +37,8 @@ export default function AssetStatusByType({ rows }) {
     );
   }, [rows]);
 
+  // rows เป็นผล Aggregate จาก Server แล้ว จึงสร้าง Map ด้วยคู่ Type + Status
+  // เพื่ออ่านจำนวนโดยไม่ Query ซ้ำ; คอลัมน์ "รวม" นับเฉพาะสถานะที่เลือกอยู่
   const countMap = useMemo(
     () =>
       new Map(

@@ -23,6 +23,9 @@ function validDate(value) {
   );
 }
 
+// คืน Accessory ทั้งรายการโดยตั้ง returned_date ได้ครั้งเดียว; ยังไม่รองรับ Partial Return
+// user_id ป้องกันการคืนรายการของพนักงานอื่น และวันที่ต้องอยู่ระหว่างวันเบิกกับ
+// วันที่ปัจจุบันตามเวลา Asia/Bangkok
 export async function PATCH(request, { params }) {
   const denied = await requireWrite(request);
 

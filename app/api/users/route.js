@@ -15,6 +15,7 @@ export async function GET() {
         u.id,
         u.employee_code,
         u.full_name,
+        u.nickname,
         u.email,
         u.department_id,
         d.name AS department_name,
@@ -78,6 +79,9 @@ export async function POST(request) {
       typeof body.full_name === "string"
         ? body.full_name.trim()
         : "";
+
+    const nickname =
+      typeof body.nickname === "string" ? body.nickname.trim() : "";
 
     const email =
       typeof body.email === "string"
@@ -183,6 +187,13 @@ export async function POST(request) {
       }
     }
 
+    if (nickname.length > 100) {
+      return Response.json(
+        { error: "Nickname ต้องไม่เกิน 100 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
     if (locationId) {
       if (!/^[1-9]\d*$/.test(locationId)) {
         return Response.json(
@@ -219,7 +230,8 @@ export async function POST(request) {
           department_id,
           location_id,
           position,
-          is_active
+          is_active,
+          nickname
         )
         VALUES (
           $1,
@@ -228,12 +240,14 @@ export async function POST(request) {
           $4,
           $5,
           $6,
-          $7
+          $7,
+          $8
         )
         RETURNING
           id,
           employee_code,
           full_name,
+          nickname,
           email,
           department_id,
           location_id,
@@ -249,6 +263,7 @@ export async function POST(request) {
         locationId,
         position || null,
         isActive,
+        nickname || null,
       ]
     );
 

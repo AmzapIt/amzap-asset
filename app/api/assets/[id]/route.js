@@ -7,11 +7,9 @@ export const runtime = "nodejs";
 // ==================================================
 // GET /api/assets/[id]
 //
-// ใช้ดึงข้อมูล Asset รายตัว
-// สำหรับหน้า Edit Asset
-//
-// ตัวอย่าง:
-// GET /api/assets/12
+// โหลด Asset รายตัวสำหรับหน้ารายละเอียดและหน้าแก้ไข
+// คืนข้อมูล Asset พร้อม Asset Type และ Asset Owner
+// โดยยังแสดง Owner เดิมได้แม้พนักงานถูกเปลี่ยนเป็น Inactive
 // ==================================================
 export async function GET(request, { params }) {
   try {

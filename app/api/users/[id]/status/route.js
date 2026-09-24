@@ -72,6 +72,7 @@ export async function PATCH(request, { params }) {
           id,
           employee_code,
           full_name,
+          nickname,
           email,
           department_id,
           location_id,

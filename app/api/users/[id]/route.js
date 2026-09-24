@@ -36,6 +36,7 @@ export async function GET(request, { params }) {
           u.id,
           u.employee_code,
           u.full_name,
+          u.nickname,
           u.email,
           u.department_id,
           d.name AS department_name,
@@ -129,6 +130,9 @@ export async function PATCH(request, { params }) {
       typeof body.full_name === "string"
         ? body.full_name.trim()
         : "";
+
+    const nickname =
+      typeof body.nickname === "string" ? body.nickname.trim() : "";
 
     const email =
       typeof body.email === "string"
@@ -234,6 +238,13 @@ export async function PATCH(request, { params }) {
       }
     }
 
+    if (nickname.length > 100) {
+      return Response.json(
+        { success: false, error: "Nickname ต้องไม่เกิน 100 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
     if (locationId) {
       if (!/^[1-9]\d*$/.test(locationId)) {
         return Response.json(
@@ -270,12 +281,14 @@ export async function PATCH(request, { params }) {
           department_id = $4,
           location_id = $5,
           position = $6,
-          is_active = $7
-        WHERE id = $8
+          is_active = $7,
+          nickname = $8
+        WHERE id = $9
         RETURNING
           id,
           employee_code,
           full_name,
+          nickname,
           email,
           department_id,
           location_id,
@@ -291,6 +304,7 @@ export async function PATCH(request, { params }) {
         locationId,
         position || null,
         isActive,
+        nickname || null,
         id,
       ],
     );

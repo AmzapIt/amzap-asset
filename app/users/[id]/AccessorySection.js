@@ -34,6 +34,8 @@ export default function AccessorySection({ userId, canWrite }) {
     notes: "",
   });
 
+  // โหลดรายการและ Master Data พร้อมกัน แล้วโหลดใหม่หลังเพิ่มหรือคืน
+  // เพราะวันที่และสถานะสุดท้ายกำหนดโดย Server ไม่ใช้ state ฝั่ง Browser เป็นแหล่งจริง
   const loadData = useCallback(async () => {
     try {
       setLoading(true);

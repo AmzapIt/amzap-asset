@@ -36,6 +36,7 @@ export default function UserTable({ users }) {
       const matchSearch =
         !keyword ||
         user.full_name?.toLowerCase().includes(keyword) ||
+        user.nickname?.toLowerCase().includes(keyword) ||
         user.employee_code?.toLowerCase().includes(keyword) ||
         user.position?.toLowerCase().includes(keyword) ||
         user.department_name?.toLowerCase().includes(keyword) ||
@@ -126,7 +127,7 @@ export default function UserTable({ users }) {
         {/* Search */}
         <input
           type="text"
-          placeholder="ค้นหาชื่อ, รหัสพนักงาน, ตำแหน่ง, แผนก, Location, Email..."
+          placeholder="ค้นหาชื่อ, ชื่อเล่น, รหัสพนักงาน, ตำแหน่ง, แผนก, Location, Email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
@@ -251,6 +252,12 @@ export default function UserTable({ users }) {
                         >
                           {user.full_name}
                         </Link>
+
+                        {user.nickname && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {user.nickname}
+                          </p>
+                        )}
 
                       </td>
 

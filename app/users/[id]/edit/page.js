@@ -17,6 +17,7 @@ export default function EditUserPage() {
   const [form, setForm] = useState({
     employee_code: "",
     full_name: "",
+    nickname: "",
     email: "",
     position: "",
     department_id: "",
@@ -89,6 +90,8 @@ export default function EditUserPage() {
           employee_code: user.employee_code || "",
 
           full_name: user.full_name || "",
+
+          nickname: user.nickname || "",
 
           email: user.email || "",
 
@@ -251,6 +254,18 @@ export default function EditUserPage() {
                 onChange={handleChange}
                 className={inputClass}
                 required
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block font-medium">Nickname</label>
+
+              <input
+                name="nickname"
+                value={form.nickname}
+                onChange={handleChange}
+                maxLength={100}
+                className={inputClass}
               />
             </div>
 

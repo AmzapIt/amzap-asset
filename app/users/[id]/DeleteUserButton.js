@@ -26,6 +26,9 @@ export default function DeleteUserButton({ userId, userName }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
+  // confirm เป็นเพียงการป้องกันการกดผิดใน UI; DELETE API ตรวจ Permission
+  // และปฏิเสธการลบเมื่อ Asset, Assignment, Accessory, Audit, Document
+  // หรือ Login Account ยังอ้างอิงพนักงานคนนี้อยู่
   async function handleDelete() {
     if (deleting) return;
 

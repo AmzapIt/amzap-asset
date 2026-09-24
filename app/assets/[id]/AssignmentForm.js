@@ -19,6 +19,8 @@ export default function AssignmentForm({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  // เงื่อนไขนี้ควบคุมเฉพาะสิ่งที่แสดงใน UI เท่านั้น
+  // Permission, สถานะ Asset และความถูกต้องของ Assignment จะถูกตรวจซ้ำที่ Server
   const statusAllowsAssignment = ["In Stock", "Spare", "In Use"].includes(
     assetStatus,
   );
@@ -65,6 +67,8 @@ export default function AssignmentForm({
     const fields = Object.fromEntries(new FormData(event.currentTarget));
 
     try {
+      // expectedAssignmentId ป้องกัน Stale Update หาก Assignment ถูกเปลี่ยน
+      // หลังเปิดหน้านี้ ส่วน action "change" จะปิดแถวเดิมและสร้างประวัติแถวใหม่
       const response = await fetch(`/api/assets/${assetId}/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

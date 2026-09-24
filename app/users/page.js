@@ -11,6 +11,7 @@ export default async function UsersPage() {
       u.id,
       u.employee_code,
       u.full_name,
+      u.nickname,
       u.email,
       u.department_id,
       u.location_id,
@@ -30,6 +31,15 @@ export default async function UsersPage() {
   const users = result.rows;
   const activeUsers = users.filter((user) => user.is_active === true).length;
   const inactiveUsers = users.length - activeUsers;
+  // Location ID 1 และ 2 ถูกกำหนดจาก migration 012 ให้เป็นโรงงาน 1 และ 2
+  // ตัวเลขนี้รวมทั้ง Active/Inactive; คนที่ไม่มี Location หรืออยู่ที่อื่น
+  // ยังอยู่ในยอดพนักงานทั้งหมด แต่ไม่อยู่ในการ์ดของสองโรงงานนี้
+  const factoryOneUsers = users.filter(
+    (user) => Number(user.location_id) === 1,
+  ).length;
+  const factoryTwoUsers = users.filter(
+    (user) => Number(user.location_id) === 2,
+  ).length;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
@@ -54,11 +64,13 @@ export default async function UsersPage() {
           </Link>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
             ["พนักงานทั้งหมด", users.length, "text-slate-900"],
             ["Active", activeUsers, "text-emerald-600"],
             ["Inactive", inactiveUsers, "text-rose-600"],
+            ["Amzap โรงงาน 1", factoryOneUsers, "text-blue-700"],
+            ["Amzap โรงงาน 2", factoryTwoUsers, "text-violet-700"],
           ].map(([label, value, color]) => (
             <section
               key={label}

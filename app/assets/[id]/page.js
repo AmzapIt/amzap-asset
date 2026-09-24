@@ -151,10 +151,9 @@ async function getAssetDetail(id) {
       t.name AS asset_type,
 
       -- ==================================================
-      -- Asset Owner ปัจจุบัน
-      --
-      -- assets.asset_owner_id เก็บ user.id
-      -- เรา JOIN เพื่อเอาชื่อจริงมาใช้ในหน้า Edit
+      -- Asset Owner อ้างอิง public."user" ผ่าน assets.asset_owner_id
+      -- JOIN เพื่อแสดงชื่อพนักงานในหน้า Asset Detail
+      -- ไม่กรอง is_active เพื่อให้ข้อมูล Owner เดิมยังแสดงในประวัติได้
       -- ==================================================
       u.full_name AS asset_owner_name,
 

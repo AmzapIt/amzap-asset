@@ -10,6 +10,7 @@ const inputClass =
 const initialForm = {
   employee_code: "",
   full_name: "",
+  nickname: "",
   email: "",
   position: "",
   department_id: "",
@@ -220,6 +221,21 @@ export default function AddUserPage() {
                 onChange={handleChange}
                 className={inputClass}
                 required
+              />
+            </div>
+
+            {/* Nickname */}
+            <div>
+              <label className="mb-2 block font-medium">
+                Nickname
+              </label>
+
+              <input
+                name="nickname"
+                value={form.nickname}
+                onChange={handleChange}
+                maxLength={100}
+                className={inputClass}
               />
             </div>
 
