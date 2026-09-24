@@ -40,12 +40,17 @@ export async function GET(request, { params }) {
           u.department_id,
           d.name AS department_name,
           d.is_active AS department_is_active,
+          u.location_id,
+          l.name AS location_name,
+          l.is_active AS location_is_active,
           u.position,
           u.is_active,
           u.created_at
         FROM public."user" u
         LEFT JOIN public.departments d
           ON d.id = u.department_id
+        LEFT JOIN public.locations l
+          ON l.id = u.location_id
         WHERE u.id = $1
         LIMIT 1
       `,
@@ -140,6 +145,11 @@ export async function PATCH(request, { params }) {
         ? null
         : String(body.department_id);
 
+    const locationId =
+      body.location_id === "" || body.location_id == null
+        ? null
+        : String(body.location_id);
+
     const validActivityValues = [true, false, "true", "false"];
     const isActive = body.is_active === true || body.is_active === "true";
 
@@ -224,6 +234,32 @@ export async function PATCH(request, { params }) {
       }
     }
 
+    if (locationId) {
+      if (!/^[1-9]\d*$/.test(locationId)) {
+        return Response.json(
+          { success: false, error: "Location ไม่ถูกต้อง" },
+          { status: 400 },
+        );
+      }
+
+      const locationResult = await query(
+        `
+          SELECT id
+          FROM public.locations
+          WHERE id = $1
+          LIMIT 1
+        `,
+        [locationId],
+      );
+
+      if (!locationResult.rowCount) {
+        return Response.json(
+          { success: false, error: "ไม่พบ Location" },
+          { status: 400 },
+        );
+      }
+    }
+
     const result = await query(
       `
         UPDATE public."user"
@@ -232,15 +268,17 @@ export async function PATCH(request, { params }) {
           full_name = $2,
           email = $3,
           department_id = $4,
-          position = $5,
-          is_active = $6
-        WHERE id = $7
+          location_id = $5,
+          position = $6,
+          is_active = $7
+        WHERE id = $8
         RETURNING
           id,
           employee_code,
           full_name,
           email,
           department_id,
+          location_id,
           position,
           is_active,
           created_at
@@ -250,6 +288,7 @@ export async function PATCH(request, { params }) {
         fullName,
         email || null,
         departmentId,
+        locationId,
         position || null,
         isActive,
         id,

@@ -39,6 +39,7 @@ export default function UserTable({ users }) {
         user.employee_code?.toLowerCase().includes(keyword) ||
         user.position?.toLowerCase().includes(keyword) ||
         user.department_name?.toLowerCase().includes(keyword) ||
+        user.location_name?.toLowerCase().includes(keyword) ||
         user.email?.toLowerCase().includes(keyword);
 
       // ------------------------------
@@ -125,7 +126,7 @@ export default function UserTable({ users }) {
         {/* Search */}
         <input
           type="text"
-          placeholder="ค้นหาชื่อ, รหัสพนักงาน, ตำแหน่ง, แผนก, Email..."
+          placeholder="ค้นหาชื่อ, รหัสพนักงาน, ตำแหน่ง, แผนก, Location, Email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
@@ -188,6 +189,10 @@ export default function UserTable({ users }) {
                 </th>
 
                 <th className="px-4 py-3 font-semibold text-slate-600">
+                  Location
+                </th>
+
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Email
                 </th>
 
@@ -208,7 +213,7 @@ export default function UserTable({ users }) {
                 <tr>
 
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-4 py-10 text-center text-gray-500"
                   >
                     ไม่พบข้อมูล
@@ -257,6 +262,11 @@ export default function UserTable({ users }) {
                       {/* Department */}
                       <td className="px-4 py-3">
                         {user.department_name || "-"}
+                      </td>
+
+                      {/* Location */}
+                      <td className="px-4 py-3">
+                        {user.location_name || "-"}
                       </td>
 
                       {/* Email */}

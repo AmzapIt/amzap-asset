@@ -13,6 +13,7 @@ const initialForm = {
   email: "",
   position: "",
   department_id: "",
+  location_id: "",
   is_active: "true",
 };
 
@@ -24,8 +25,12 @@ export default function AddUserPage() {
   const [departments, setDepartments] =
     useState([]);
 
+  const [locations, setLocations] = useState([]);
+
   const [loadingDepartments, setLoadingDepartments] =
     useState(true);
+
+  const [loadingLocations, setLoadingLocations] = useState(true);
 
   const [saving, setSaving] =
     useState(false);
@@ -39,29 +44,35 @@ export default function AddUserPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadDepartments() {
+    async function loadMasterData() {
       try {
         setLoadingDepartments(true);
+        setLoadingLocations(true);
 
-        const response = await fetch(
-          "/api/master/departments",
-          {
-            signal: controller.signal,
-          }
-        );
+        const [departmentResponse, locationResponse] = await Promise.all([
+          fetch("/api/master/departments", { signal: controller.signal }),
+          fetch("/api/master/locations", { signal: controller.signal }),
+        ]);
 
-        const data = await response.json();
+        const [departmentData, locationData] = await Promise.all([
+          departmentResponse.json(),
+          locationResponse.json(),
+        ]);
 
-        if (!response.ok) {
+        if (!departmentResponse.ok) {
           throw new Error(
-            data.error ||
+            departmentData.error ||
               "ไม่สามารถโหลด Department ได้"
           );
         }
 
+        if (!locationResponse.ok) {
+          throw new Error(locationData.error || "ไม่สามารถโหลด Location ได้");
+        }
+
         // Employee ใหม่เลือกได้เฉพาะ Active
         const activeDepartments = (
-          data.rows || []
+          departmentData.rows || []
         )
           .filter(
             (department) =>
@@ -73,16 +84,23 @@ export default function AddUserPage() {
           );
 
         setDepartments(activeDepartments);
+
+        const activeLocations = (locationData.rows || [])
+          .filter((location) => location.is_active)
+          .sort((a, b) => Number(a.id) - Number(b.id));
+
+        setLocations(activeLocations);
       } catch (error) {
         if (error.name !== "AbortError") {
           setMessage(error.message);
         }
       } finally {
         setLoadingDepartments(false);
+        setLoadingLocations(false);
       }
     }
 
-    loadDepartments();
+    loadMasterData();
 
     return () => controller.abort();
   }, []);
@@ -267,6 +285,33 @@ export default function AddUserPage() {
                     </option>
                   )
                 )}
+              </select>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label className="mb-2 block font-medium">
+                Location
+              </label>
+
+              <select
+                name="location_id"
+                value={form.location_id}
+                onChange={handleChange}
+                disabled={loadingLocations}
+                className={inputClass}
+              >
+                <option value="">
+                  {loadingLocations
+                    ? "กำลังโหลด..."
+                    : "-- ไม่ระบุ Location --"}
+                </option>
+
+                {locations.map((location) => (
+                  <option key={location.id} value={String(location.id)}>
+                    {location.name}
+                  </option>
+                ))}
               </select>
             </div>
 

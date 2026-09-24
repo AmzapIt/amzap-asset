@@ -20,14 +20,17 @@ export default function EditUserPage() {
     email: "",
     position: "",
     department_id: "",
+    location_id: "",
     is_active: "true",
   });
 
   const [departments, setDepartments] = useState([]);
+  const [locations, setLocations] = useState([]);
 
   // Department เดิม
   // ใช้กรณีถูก Inactive ไปแล้ว
   const [currentDepartment, setCurrentDepartment] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +49,7 @@ export default function EditUserPage() {
         setLoading(true);
         setMessage("");
 
-        const [userResponse, departmentResponse] = await Promise.all([
+        const [userResponse, departmentResponse, locationResponse] = await Promise.all([
           fetch(`/api/users/${id}`, {
             signal: controller.signal,
           }),
@@ -54,11 +57,15 @@ export default function EditUserPage() {
           fetch("/api/master/departments", {
             signal: controller.signal,
           }),
+          fetch("/api/master/locations", {
+            signal: controller.signal,
+          }),
         ]);
 
         const userData = await userResponse.json();
 
         const departmentData = await departmentResponse.json();
+        const locationData = await locationResponse.json();
 
         if (!userResponse.ok || !userData.success) {
           throw new Error(userData.error || "ไม่สามารถโหลดข้อมูลพนักงานได้");
@@ -67,6 +74,12 @@ export default function EditUserPage() {
         if (!departmentResponse.ok) {
           throw new Error(
             departmentData.error || "ไม่สามารถโหลด Department ได้",
+          );
+        }
+
+        if (!locationResponse.ok) {
+          throw new Error(
+            locationData.error || "ไม่สามารถโหลด Location ได้",
           );
         }
 
@@ -84,6 +97,9 @@ export default function EditUserPage() {
           department_id:
             user.department_id != null ? String(user.department_id) : "",
 
+          location_id:
+            user.location_id != null ? String(user.location_id) : "",
+
           is_active: String(user.is_active),
         });
 
@@ -95,6 +111,12 @@ export default function EditUserPage() {
           .sort((a, b) => Number(a.id) - Number(b.id));
 
         setDepartments(activeDepartments);
+
+        const activeLocations = (locationData.rows || [])
+          .filter((location) => location.is_active)
+          .sort((a, b) => Number(a.id) - Number(b.id));
+
+        setLocations(activeLocations);
 
         // =================================================
         // ถ้า Department เดิมถูก Inactive
@@ -113,6 +135,20 @@ export default function EditUserPage() {
           });
         } else {
           setCurrentDepartment(null);
+        }
+
+        if (
+          user.location_id != null &&
+          !activeLocations.some(
+            (location) => String(location.id) === String(user.location_id),
+          )
+        ) {
+          setCurrentLocation({
+            id: user.location_id,
+            name: user.location_name || `Location ID ${user.location_id}`,
+          });
+        } else {
+          setCurrentLocation(null);
         }
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -265,6 +301,31 @@ export default function EditUserPage() {
                     {department.department_code
                       ? `${department.department_code} - ${department.name}`
                       : department.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block font-medium">Location</label>
+
+              <select
+                name="location_id"
+                value={form.location_id}
+                onChange={handleChange}
+                className={inputClass}
+              >
+                <option value="">-- ไม่ระบุ Location --</option>
+
+                {currentLocation && (
+                  <option value={String(currentLocation.id)}>
+                    {currentLocation.name} (Inactive)
+                  </option>
+                )}
+
+                {locations.map((location) => (
+                  <option key={location.id} value={String(location.id)}>
+                    {location.name}
                   </option>
                 ))}
               </select>

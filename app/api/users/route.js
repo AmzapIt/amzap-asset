@@ -18,12 +18,16 @@ export async function GET() {
         u.email,
         u.department_id,
         d.name AS department_name,
+        u.location_id,
+        l.name AS location_name,
         u.position,
         u.is_active,
         u.created_at
       FROM public."user" u
       LEFT JOIN public.departments d
         ON d.id = u.department_id
+      LEFT JOIN public.locations l
+        ON l.id = u.location_id
       ORDER BY u.id
     `);
 
@@ -90,6 +94,11 @@ export async function POST(request) {
       body.department_id == null
         ? null
         : String(body.department_id);
+
+    const locationId =
+      body.location_id === "" || body.location_id == null
+        ? null
+        : String(body.location_id);
 
     const validActivityValues = [true, false, "true", "false"];
     const isActive = body.is_active === true || body.is_active === "true";
@@ -174,6 +183,33 @@ export async function POST(request) {
       }
     }
 
+    if (locationId) {
+      if (!/^[1-9]\d*$/.test(locationId)) {
+        return Response.json(
+          { error: "Location ไม่ถูกต้อง" },
+          { status: 400 },
+        );
+      }
+
+      const locationResult = await query(
+        `
+          SELECT id
+          FROM public.locations
+          WHERE id = $1
+            AND is_active = true
+          LIMIT 1
+        `,
+        [locationId],
+      );
+
+      if (!locationResult.rowCount) {
+        return Response.json(
+          { error: "ไม่พบ Location หรือ Location ถูกปิดใช้งาน" },
+          { status: 400 },
+        );
+      }
+    }
+
     const result = await query(
       `
         INSERT INTO public."user" (
@@ -181,6 +217,7 @@ export async function POST(request) {
           full_name,
           email,
           department_id,
+          location_id,
           position,
           is_active
         )
@@ -190,7 +227,8 @@ export async function POST(request) {
           $3,
           $4,
           $5,
-          $6
+          $6,
+          $7
         )
         RETURNING
           id,
@@ -198,6 +236,7 @@ export async function POST(request) {
           full_name,
           email,
           department_id,
+          location_id,
           position,
           is_active,
           created_at
@@ -207,6 +246,7 @@ export async function POST(request) {
         fullName,
         email || null,
         departmentId,
+        locationId,
         position || null,
         isActive,
       ]

@@ -13,13 +13,17 @@ export default async function UsersPage() {
       u.full_name,
       u.email,
       u.department_id,
+      u.location_id,
       u.is_active,
       u.created_at,
       u."position",
-      d.name AS department_name
+      d.name AS department_name,
+      l.name AS location_name
     FROM public."user" u
     LEFT JOIN public.departments d
       ON d.id = u.department_id
+    LEFT JOIN public.locations l
+      ON l.id = u.location_id
     ORDER BY u.full_name ASC
   `);
 
