@@ -17,6 +17,7 @@ export async function GET() {
       SELECT
         id,
         full_name,
+        nickname,
         is_active
       FROM public."user"
       WHERE is_active = true
@@ -25,6 +26,7 @@ export async function GET() {
 
     // ส่งข้อมูลกลับเป็น JSON
     // users จะเป็น Array ของพนักงานที่ Active
+    // nickname ใช้แสดงใน Dropdown เท่านั้น ส่วน Asset ยังคงอ้างอิงด้วย user.id
     return Response.json({
       success: true,
       users: result.rows,

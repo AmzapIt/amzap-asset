@@ -328,7 +328,7 @@ export default async function AssetDetailPage({ params }) {
   } = data;
 
   const [activeUsers, availableLocations, databaseDate] = await Promise.all([
-    query('SELECT u.id,u.employee_code,u.full_name,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.is_active=true ORDER BY u.full_name,u.id'),
+    query('SELECT u.id,u.employee_code,u.full_name,u.nickname,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.is_active=true ORDER BY u.full_name,u.id'),
     query('SELECT id,name,building,floor,room FROM public.locations WHERE is_active=true ORDER BY name,id'),
     query("SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text AS today"),
   ]);

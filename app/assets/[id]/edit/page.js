@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
+import { formatUserDisplayName } from "@/lib/user-display";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -203,6 +204,7 @@ export default function EditAssetPage() {
               id: String(asset.asset_owner_id),
               full_name:
                 asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`,
+              nickname: asset.asset_owner_nickname || null,
               is_active: asset.asset_owner_is_active,
             });
           } else {
@@ -485,14 +487,14 @@ export default function EditAssetPage() {
                   {/* Owner เดิมที่ไม่อยู่ใน Active Users: ใช้ชื่อจาก GET Asset และคง ID เดิมไว้เมื่อบันทึก */}
                   {currentOwner && (
                     <option value={String(currentOwner.id)}>
-                      {currentOwner.full_name} (Inactive)
+                      {formatUserDisplayName(currentOwner)} (Inactive)
                     </option>
                   )}
 
                   {/* select ใช้ String เช่นเดียวกับ form.assetOwner เพื่อให้เลือก Owner เดิมได้ตรงกัน */}
                   {users.map((user) => (
                     <option key={user.id} value={String(user.id)}>
-                      {user.full_name}
+                      {formatUserDisplayName(user)}
                     </option>
                   ))}
                 </select>

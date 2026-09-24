@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
+import { formatUserDisplayName } from "@/lib/user-display";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -433,7 +434,7 @@ export default function AddAssetPage() {
   // ทำงานตอนเปิดหน้า Add Asset ครั้งแรก
   //
   // API จะดึง:
-  // SELECT id, full_name, is_active
+  // SELECT id, full_name, nickname, is_active
   // FROM public."user"
   // WHERE is_active = true
   // ==================================================
@@ -982,17 +983,18 @@ export default function AddAssetPage() {
                           แสดงรายชื่อพนักงาน Active
 
                           สิ่งที่ผู้ใช้เห็น:
-                          user.full_name
+                          user.full_name และ nickname (ถ้ามี)
 
                           สิ่งที่ Form เก็บ:
                           user.id
                       ================================= */}
-                            {/* แสดงชื่อพนักงาน แต่เก็บ User ID เป็นค่าของตัวเลือก
-    เช่น ผู้ใช้เห็นชื่อ "สมชาย" แต่ form.assetOwner เก็บ "27"
+                            {/* แสดงชื่อและชื่อเล่นเพื่อช่วยแยกพนักงานตอนเลือก
+    เช่น ผู้ใช้เห็น "วัจน์กร ถือนิล (เดย์)" แต่ form.assetOwner เก็บ "27"
+    nickname เป็นข้อความสำหรับแสดงเท่านั้นและไม่ถูกบันทึกลง Asset
     ใช้ String ให้ตรงกับค่าที่ HTML select ส่งผ่าน onChange */}
                             {activeUsers.map((user) => (
                               <option key={user.id} value={String(user.id)}>
-                                {user.full_name}
+                                {formatUserDisplayName(user)}
                               </option>
                             ))}
                           </select>

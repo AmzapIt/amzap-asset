@@ -52,6 +52,7 @@ export async function GET(request, { params }) {
           a.warranty_end::text AS warranty_end,
           t.name AS asset_type,
           u.full_name AS asset_owner_name,
+          u.nickname AS asset_owner_nickname,
           u.is_active AS asset_owner_is_active
         FROM public.assets a
         LEFT JOIN public.asset_types t

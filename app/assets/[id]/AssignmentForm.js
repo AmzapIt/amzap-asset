@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatUserDisplayName } from "@/lib/user-display";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -153,7 +154,7 @@ export default function AssignmentForm({
               <option value="">เลือกพนักงาน</option>
               {selectableUsers.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.employee_code} — {user.full_name}
+                  {user.employee_code} — {formatUserDisplayName(user)}
                   {user.department_name ? ` (${user.department_name})` : ""}
                 </option>
               ))}
