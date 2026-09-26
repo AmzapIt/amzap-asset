@@ -1,6 +1,15 @@
 import { validateAssetLookups } from "@/lib/master-data";
-import { query } from "@/lib/db";
+import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import {
+  parseAssetAdditional,
+  saveAssetAdditional,
+} from "@/lib/asset-additional";
+import {
+  buildAssetCode,
+  parseAssetCodeNumber,
+  parseRegistrationSiteId,
+} from "@/lib/asset-code";
 
 // บอก Next.js ให้ Route นี้ทำงานบน Node.js
 // เพราะเราใช้ pg เชื่อม PostgreSQL
@@ -95,8 +104,16 @@ export async function POST(request) {
   // 2. ดึงค่าจาก Form
   // เช่น body.type = "Monitor"
   const type = text(body.type);
-  const assetCode = text(body.assetCode);
   const assetName = text(body.assetName);
+  let registrationSiteId;
+  let assetCodeNumber;
+
+  try {
+    registrationSiteId = parseRegistrationSiteId(body.registrationSiteId);
+    assetCodeNumber = parseAssetCodeNumber(body.assetCodeNumber);
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 400 });
+  }
   // ==================================================
   // Asset Owner จากหน้า Add
   //
@@ -196,6 +213,13 @@ export async function POST(request) {
     );
   }
 
+  let additional;
+  try {
+    additional = parseAssetAdditional(body);
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 400 });
+  }
+
   // 4. เริ่มทำงานกับ PostgreSQL
   try {
     // ==================================================
@@ -230,13 +254,29 @@ export async function POST(request) {
 
     // หา ID ของประเภทจากชื่อที่ Frontend ส่งมา
     // เช่น "Monitor" → id = 3
-    const typeResult = await query(
-      `SELECT id
-       FROM asset_types
-       WHERE name = $1
-         AND is_active = TRUE`,
-      [type],
-    );
+    const [typeResult, registrationSiteResult] = await Promise.all([
+      query(
+        `SELECT id, prefix
+         FROM public.asset_types
+         WHERE name = $1
+           AND is_active = true`,
+        [type],
+      ),
+      query(
+        `SELECT id, site_code
+         FROM public.asset_registration_sites
+         WHERE id = $1
+           AND is_active = true`,
+        [registrationSiteId],
+      ),
+    ]);
+
+    if (registrationSiteResult.rows.length === 0) {
+      return Response.json(
+        { error: "ไม่พบสถานที่ขึ้นทะเบียน หรือสถานที่ถูกปิดใช้งาน" },
+        { status: 400 },
+      );
+    }
 
     // ถ้าไม่พบประเภท ให้หยุดก่อน INSERT
     if (typeResult.rows.length === 0) {
@@ -245,12 +285,19 @@ export async function POST(request) {
 
     // เอา ID ของประเภทมาใช้เป็น Foreign Key
     const assetTypeId = typeResult.rows[0].id;
+    const assetCode = buildAssetCode(
+      registrationSiteResult.rows[0].site_code,
+      typeResult.rows[0].prefix,
+      assetCodeNumber,
+    );
 
     // สร้างชื่อคอลัมน์และค่าจากรายการเดียวกัน เพื่อไม่ให้จำนวน VALUES
     // หรือหมายเลข $1, $2 คลาดเคลื่อนเมื่อเพิ่มช่อง Master Data
     // ชื่อคอลัมน์เป็นค่าคงที่ในโค้ด ส่วนข้อมูลจากฟอร์มส่งผ่าน parameters เท่านั้น
     const fields = [
+      ["asset_code", assetCode],
       ["asset_type_id", assetTypeId],
+      ["registration_site_id", registrationSiteId],
       ["received_date", receivedDate],
       ["asset_owner_id", assetOwner],
       ["asset_name", assetName],
@@ -274,51 +321,60 @@ export async function POST(request) {
       ["location_id", text(body.location)],
       ["vendor_id", text(body.vendor)],
     ];
-    // ถ้าไม่ระบุรหัส ให้ trigger เดิมสร้างรหัสตามประเภทและปีเหมือนเดิม
-    if (assetCode) fields.unshift(["asset_code", assetCode]);
+
+    // Server ประกอบรหัสเต็มจาก Site + Prefix + เลข 3 หลักที่ผ่าน Validation
+    // จึงไม่เชื่อรหัสเต็มจาก browser และ Database ยังบังคับ Unique ซ้ำอีกชั้น
     const columns = fields.map(([column]) => column).join(", ");
     const placeholders = fields.map((_, index) => "$" + (index + 1)).join(", ");
-    if (!assetCode) {
-      // รหัสที่กรอกเองไม่ได้เพิ่ม counter ใน trigger เดิม จึงปรับ counter
-      // ให้ไม่น้อยกว่าเลขที่ใช้จริงก่อนสร้างรหัสอัตโนมัติ โดยไม่แก้รหัส Asset เดิม
-      // ON CONFLICT ใช้ GREATEST เพื่อไม่ลด counter ของ request อื่นที่ทำพร้อมกัน
-      await query(`
-        INSERT INTO public.asset_code_counters(asset_type_id, code_year, last_number)
-        SELECT $1, EXTRACT(YEAR FROM CURRENT_DATE)::smallint,
-          COALESCE(MAX(RIGHT(a.asset_code, 3)::integer), 0)
-        FROM public.assets a
-        JOIN public.asset_types t ON t.id = a.asset_type_id
-        WHERE a.asset_type_id = $1
-          AND a.asset_code_year = EXTRACT(YEAR FROM CURRENT_DATE)::smallint
-          AND RIGHT(a.asset_code, 3) ~ '^[0-9]{3}$'
-          AND a.asset_code = t.prefix || '-AMZ' || RIGHT(a.asset_code_year::text, 2) || '-' || RIGHT(a.asset_code, 3)
-        ON CONFLICT(asset_type_id, code_year) DO UPDATE
-        SET last_number = GREATEST(asset_code_counters.last_number, EXCLUDED.last_number)
-      `, [assetTypeId]);
-    }
-    const result = await query(
-      "INSERT INTO public.assets (" + columns + ") VALUES (" + placeholders + ") RETURNING id, asset_code, asset_name",
-      fields.map(([, value]) => value),
-    );
+    const client = await getDbPool().connect();
+    try {
+      await client.query("BEGIN");
+      // Manual running number remains compatible with the old form. Keep the
+      // V2 counter at least as high as the entered number so a future automatic
+      // allocation cannot move backwards and collide with this code.
+      await client.query(
+        `INSERT INTO public.asset_code_v2_counters(
+           registration_site_id, asset_type_id, last_number
+         ) VALUES($1, $2, $3)
+         ON CONFLICT(registration_site_id, asset_type_id) DO UPDATE
+         SET last_number = GREATEST(
+           public.asset_code_v2_counters.last_number,
+           EXCLUDED.last_number
+         )`,
+        [registrationSiteId, assetTypeId, Number(assetCodeNumber)],
+      );
+      const result = await client.query(
+        "INSERT INTO public.assets (" + columns + ") VALUES (" + placeholders + ") RETURNING id, asset_code, asset_name",
+        fields.map(([, value]) => value),
+      );
+
+      await saveAssetAdditional(client, result.rows[0].id, additional);
+      await client.query("COMMIT");
 
     // 6. PostgreSQL INSERT สำเร็จ
     // RETURNING จะส่งข้อมูล Asset ที่เพิ่งสร้างกลับมา
-    return Response.json(
-      {
-        success: true,
-        asset: result.rows[0],
-      },
-      { status: 201 },
-    );
+      return Response.json(
+        {
+          success: true,
+          asset: result.rows[0],
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     // ถ้า SQL หรือ Database มีปัญหา
     // ให้ดูรายละเอียดจริงใน Terminal
     console.error("Save asset error:", error);
     if (error.code === "23505" && error.constraint === "assets_asset_code_key") {
-      return Response.json({ error: "รหัส Asset นี้มีอยู่แล้ว กรุณาใช้เลขอื่น หรือเว้นเลขท้ายให้ระบบสร้างรหัส" }, { status: 409 });
+      return Response.json({ error: "รหัส Asset นี้มีอยู่แล้ว กรุณาใช้เลขอื่น" }, { status: 409 });
     }
     if (error.code === "P0001" && error.message === "Asset code sequence exceeded 999") {
-      return Response.json({ error: "เลขรหัส Asset ของประเภทนี้ในปีนี้ครบ 999 แล้ว" }, { status: 409 });
+      return Response.json({ error: "เลขรหัส Asset ของโรงงานและประเภทนี้ครบ 999 แล้ว" }, { status: 409 });
     }
 
     return Response.json({ error: "บันทึกข้อมูลไม่สำเร็จ" }, { status: 500 });

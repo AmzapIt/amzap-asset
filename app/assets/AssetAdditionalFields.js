@@ -1,0 +1,56 @@
+"use client";
+
+const inputClass =
+  "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
+
+const technicalFields = [
+  ["hostname", "Hostname"], ["ipAddress", "IP Address"],
+  ["macAddress", "MAC Address"], ["operatingSystem", "Operating System"],
+  ["cpu", "CPU"], ["ramGb", "RAM (GB)", "number"],
+  ["storageGb", "Storage (GB)", "number"], ["biosFirmware", "BIOS / Firmware"],
+  ["vlan", "VLAN", "number"], ["managementIp", "Management IP"],
+  ["rack", "Rack"], ["rackU", "Rack U", "number"],
+  ["screenSize", "Screen Size"], ["resolution", "Resolution"],
+];
+
+const securityFields = [
+  ["encryptionType", "Encryption Type"], ["antivirusEdr", "Antivirus / EDR"],
+  ["lastSecurityCheck", "Last Security Check", "date"],
+  ["patchStatus", "Patch Status"], ["localAdminPolicy", "Local Admin Policy", "textarea"],
+  ["dataClassification", "Data Classification"],
+  ["lastAssetCheck", "Last Asset Check", "date"],
+  ["securityNotes", "Security Notes", "textarea"],
+];
+
+function Field({ name, label, type = "text", form, onChange, ...props }) {
+  const common = { id: name, name, value: form[name] ?? "", onChange, className: inputClass, ...props };
+  return <label className="block"><span className="mb-2 block font-medium">{label}</span>{type === "textarea" ? <textarea {...common} rows={3} /> : <input {...common} type={type} />}</label>;
+}
+
+function Section({ title, description, children }) {
+  return <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm"><summary className="cursor-pointer px-6 py-5 text-lg font-semibold">{title}</summary><div className="border-t border-slate-200 px-6 py-5"><p className="mb-5 text-sm text-slate-500">{description}</p>{children}</div></details>;
+}
+
+export default function AssetAdditionalFields({
+  form, onChange, sections = ["technical", "security", "documents", "maintenance"],
+  existingDocuments = [], existingMaintenance = [],
+}) {
+  return <>
+    {sections.includes("technical") && <Section title="Technical Information" description="ข้อมูล Hardware, Network และระบบปฏิบัติการ">
+      <div className="grid gap-5 md:grid-cols-2">{technicalFields.map(([name, label, type]) => <Field key={name} name={name} label={label} type={type} form={form} onChange={onChange} min={type === "number" ? (name === "vlan" || name === "rackU" ? "1" : "0") : undefined} max={name === "vlan" ? "4094" : undefined} step={name === "ramGb" || name === "storageGb" ? "0.01" : undefined} />)}</div>
+    </Section>}
+    {sections.includes("security") && <Section title="Security / Compliance" description="ข้อมูล Encryption, Endpoint Protection และการตรวจสอบล่าสุด">
+      <div className="grid gap-5 md:grid-cols-2"><label className="block"><span className="mb-2 block font-medium">Encryption</span><select name="encryptionEnabled" value={form.encryptionEnabled ?? ""} onChange={onChange} className={inputClass}><option value="">ยังไม่ระบุ</option><option value="true">Enabled</option><option value="false">Disabled</option></select></label>{securityFields.map(([name, label, type]) => <Field key={name} name={name} label={label} type={type} form={form} onChange={onChange} />)}</div>
+    </Section>}
+    {sections.includes("documents") && <Section title="Documents" description="เพิ่มลิงก์ HTTPS ของเอกสารที่เก็บใน Google Drive หรือพื้นที่จัดเก็บที่ได้รับอนุญาต">
+      {existingDocuments.length > 0 && <div className="mb-5 space-y-2">{existingDocuments.map((doc) => doc.storage_path?.startsWith("https://") ? <a key={doc.id} href={doc.storage_path} target="_blank" rel="noreferrer" className="block rounded-lg border p-3 text-blue-700 hover:bg-blue-50">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</a> : <div key={doc.id} className="rounded-lg border p-3">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</div>)}</div>}
+      <div className="grid gap-5 md:grid-cols-2"><Field name="documentType" label="Document Type" form={form} onChange={onChange} /><Field name="documentName" label="Document Name" form={form} onChange={onChange} /><div className="md:col-span-2"><Field name="documentUrl" label="Document URL (HTTPS)" type="url" form={form} onChange={onChange} placeholder="https://drive.google.com/..." /></div></div>
+      <p className="mt-3 text-xs text-slate-500">เว้นทั้งสามช่องว่างหากยังไม่มีเอกสาร ระบบยังไม่อัปโหลดไฟล์จากเครื่องในรอบนี้</p>
+    </Section>}
+    {sections.includes("maintenance") && <Section title="Maintenance" description="เพิ่มประวัติการซ่อมหรือบำรุงรักษาใหม่ รายการเดิมจะไม่ถูกเขียนทับ">
+      {existingMaintenance.length > 0 && <p className="mb-4 text-sm text-slate-600">มีประวัติเดิม {existingMaintenance.length} รายการ สามารถดูรายละเอียดทั้งหมดที่หน้า Asset Detail</p>}
+      <div className="grid gap-5 md:grid-cols-2"><Field name="maintenanceType" label="Maintenance Type" form={form} onChange={onChange} /><label className="block"><span className="mb-2 block font-medium">Status</span><select name="maintenanceStatus" value={form.maintenanceStatus || "Open"} onChange={onChange} className={inputClass}>{["Open", "In Progress", "Completed", "Cancelled"].map((status) => <option key={status}>{status}</option>)}</select></label><Field name="maintenanceReportedAt" label="Reported Date" type="date" form={form} onChange={onChange} /><Field name="maintenanceCompletedAt" label="Completed Date" type="date" form={form} onChange={onChange} min={form.maintenanceReportedAt || undefined} /><Field name="maintenanceCost" label="Cost (THB)" type="number" min="0" step="0.01" form={form} onChange={onChange} /><div className="md:col-span-2"><Field name="maintenanceDescription" label="Description" type="textarea" form={form} onChange={onChange} /></div><div className="md:col-span-2"><Field name="maintenanceNotes" label="Notes" type="textarea" form={form} onChange={onChange} /></div></div>
+      <p className="mt-3 text-xs text-slate-500">ถ้าไม่ต้องการเพิ่มประวัติใหม่ ให้เว้นรายละเอียด Maintenance ว่างไว้</p>
+    </Section>}
+  </>;
+}

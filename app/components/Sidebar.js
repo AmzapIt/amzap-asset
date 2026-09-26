@@ -8,9 +8,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  KeyRound,
   LayoutDashboard,
   MapPin,
   Package,
+  ShieldCheck,
   Store,
   Tags,
   Users,
@@ -37,7 +39,21 @@ export default function Sidebar({ user }) {
     { href: "/assets", label: "Asset List", icon: Package },
     { href: "/accessories", label: "Accessory Summary", icon: Package },
     { href: "/users", label: "User Management", icon: Users },
+  ];
+
+  // Hiding links improves navigation, but it is not a security boundary.
+  // The account page and every mutation verify the current role on the server.
+  const securityItems = [
+    ...(user?.role === "Admin"
+      ? [{ href: "/accounts", label: "System Accounts", icon: ShieldCheck }]
+      : []),
+    { href: "/account/password", label: "Change Password", icon: KeyRound },
+  ];
+
+  const compactItems = [
+    ...navItems,
     { href: "/reports", label: "Export / ใบรับมอบ", icon: Download },
+    ...securityItems,
   ];
 
   function isActive(href) {
@@ -108,7 +124,7 @@ export default function Sidebar({ user }) {
               Navigation
              ================================================= */}
           <nav className="mt-6 flex flex-col gap-1.5">
-            {navItems.slice(0, -1).map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -140,6 +156,16 @@ export default function Sidebar({ user }) {
             <Link href="/reports" className={linkClass(isActive("/reports"))}>
               Export / ใบรับมอบ
             </Link>
+
+            {securityItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={linkClass(isActive(item.href))}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
 
           {/* =================================================
@@ -160,7 +186,7 @@ export default function Sidebar({ user }) {
 
       {isCollapsed && (
         <nav className="mt-6 flex flex-col items-center gap-2">
-          {navItems.map((item) => (
+          {compactItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

@@ -1,6 +1,10 @@
 import { validateAssetLookups } from "@/lib/master-data";
-import { query } from "@/lib/db";
+import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import {
+  parseAssetAdditional,
+  saveAssetAdditional,
+} from "@/lib/asset-additional";
 
 export const runtime = "nodejs";
 
@@ -51,12 +55,16 @@ export async function GET(request, { params }) {
           a.warranty_start::text AS warranty_start,
           a.warranty_end::text AS warranty_end,
           t.name AS asset_type,
+          registration_site.site_code AS registration_site_code,
+          registration_site.name AS registration_site_name,
           u.full_name AS asset_owner_name,
           u.nickname AS asset_owner_nickname,
           u.is_active AS asset_owner_is_active
         FROM public.assets a
         LEFT JOIN public.asset_types t
           ON t.id = a.asset_type_id
+        LEFT JOIN public.asset_registration_sites registration_site
+          ON registration_site.id = a.registration_site_id
         LEFT JOIN public."user" u
           ON u.id = a.asset_owner_id
         WHERE a.id = $1
@@ -86,9 +94,45 @@ export async function GET(request, { params }) {
     // ==================================================
     // ส่งข้อมูลกลับไปให้หน้า Edit
     // ==================================================
+    const [
+      technicalResult,
+      securityResult,
+      documentsResult,
+      maintenanceResult,
+    ] =
+      await Promise.all([
+        query("SELECT * FROM public.asset_technical WHERE asset_id=$1", [id]),
+        query(
+          `SELECT *, last_security_check::text AS last_security_check,
+                     last_asset_check::text AS last_asset_check
+             FROM public.asset_security WHERE asset_id=$1`,
+          [id],
+        ),
+        query(
+          `SELECT id, document_type, file_name, storage_path, mime_type,
+                  file_size_bytes, is_primary_photo, created_at
+             FROM public.asset_documents WHERE asset_id=$1 ORDER BY id DESC`,
+          [id],
+        ),
+        query(
+          `SELECT id, maintenance_type, description, status,
+                  (reported_at AT TIME ZONE 'Asia/Bangkok')::date::text AS reported_at,
+                  (completed_at AT TIME ZONE 'Asia/Bangkok')::date::text AS completed_at,
+                  vendor_id, cost, notes, created_at
+             FROM public.asset_maintenance WHERE asset_id=$1 ORDER BY id DESC`,
+          [id],
+        ),
+      ]);
+
     return Response.json({
       success: true,
       asset,
+      additional: {
+        technical: technicalResult.rows[0] || null,
+        security: securityResult.rows[0] || null,
+        documents: documentsResult.rows,
+        maintenance: maintenanceResult.rows,
+      },
     });
 
   } catch (error) {
@@ -154,74 +198,9 @@ export async function PATCH(request, { params }) {
 
     // อ่านข้อมูล JSON ที่ Frontend ส่งมา
     const body = await request.json();
-    try { await validateAssetLookups(body,id); } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
-
-    // ==================================================
-    // แปลง Asset Owner
-    //
-    // Frontend อาจส่ง:
-    // "27"
-    //
-    // Database ต้องการ:
-    // 27
-    //
-    // ถ้าไม่ได้เลือก:
-    // NULL
-    // ==================================================
-    const assetOwnerId =
-      body.assetOwner === "" || body.assetOwner == null
-        ? null
-        : String(body.assetOwner).trim();
-
-    // ==================================================
-    // ตรวจ Asset Owner
-    // ==================================================
-    if (
-      assetOwnerId !== null &&
-      (!/^[1-9]\d{0,18}$/.test(assetOwnerId) ||
-        BigInt(assetOwnerId) > 9223372036854775807n)
-    ) {
-      return Response.json(
-        {
-          success: false,
-          error: "Invalid Asset Owner",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (assetOwnerId !== null) {
-      const ownerResult = await query(
-        `
-          SELECT u.id
-          FROM public."user" u
-          WHERE u.id = $1
-            AND (
-              u.is_active = true
-              OR EXISTS (
-                SELECT 1
-                FROM public.assets existing_asset
-                WHERE existing_asset.id = $2
-                  AND existing_asset.asset_owner_id = u.id
-              )
-            )
-          LIMIT 1
-        `,
-        [assetOwnerId, id],
-      );
-
-      if (ownerResult.rows.length === 0) {
-        return Response.json(
-          {
-            success: false,
-            error: "Asset Owner must be an active employee",
-          },
-          { status: 400 },
-        );
-      }
-    }
+    // Owner, Department and Location are Movement fields. Generic Edit only
+    // validates Vendor and cannot bypass asset_movements history.
+    try { await validateAssetLookups({ vendor: body.vendor },id); } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
 
     // ==================================================
     // Purchase Price
@@ -253,13 +232,24 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    let additional;
+    try {
+      additional = parseAssetAdditional(body);
+    } catch (error) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    const client = await getDbPool().connect();
+
     // ==================================================
     // UPDATE Asset
     //
     // ใช้ parameter $1, $2, ...
     // ไม่เอาค่าจากผู้ใช้ต่อ SQL โดยตรง
     // ==================================================
-    const result = await query(
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(
       `
         UPDATE public.assets
         SET
@@ -271,21 +261,18 @@ export async function PATCH(request, { params }) {
           description = $6,
           status = $7,
           received_date = $8,
-          asset_owner_id = $9,
-          purchase_date = $10,
-          purchase_price = $11,
-          po_number = $12,
-          invoice_number = $13,
-          warranty_start = $14,
-          warranty_end = $15,
-          warranty_type = $16,
-          cost_center = $17,
-          notes = $18,
-          owning_department_id = CASE WHEN $20 THEN $21::bigint ELSE owning_department_id END,
-          location_id = CASE WHEN $22 THEN $23::bigint ELSE location_id END,
-          vendor_id = CASE WHEN $24 THEN $25::bigint ELSE vendor_id END,
+          purchase_date = $9,
+          purchase_price = $10,
+          po_number = $11,
+          invoice_number = $12,
+          warranty_start = $13,
+          warranty_end = $14,
+          warranty_type = $15,
+          cost_center = $16,
+          notes = $17,
+          vendor_id = CASE WHEN $19 THEN $20::bigint ELSE vendor_id END,
           updated_at = NOW()
-        WHERE id = $19
+        WHERE id = $18
         RETURNING *
       `,
       [
@@ -297,7 +284,6 @@ export async function PATCH(request, { params }) {
         body.description?.trim() || null,
         body.status || null,
         body.receivedDate || null,
-        assetOwnerId,
         body.purchaseDate || null,
         purchasePrice,
         body.poNumber?.trim() || null,
@@ -308,10 +294,7 @@ export async function PATCH(request, { params }) {
         body.costCenter?.trim() || null,
         body.notes?.trim() || null,
         id,
-        // $20–$25 ต้องครบตาม CASE WHEN ใน SQL: แยกการไม่ส่ง field
-        // (คงค่าเดิม) ออกจากการส่งค่าว่าง (ล้างค่าเป็น NULL)
-        Object.hasOwn(body, "department"), body.department || null,
-        Object.hasOwn(body, "location"), body.location || null,
+        // Vendor ยังแก้ในหน้า Edit ได้ตามเดิม ส่วน Movement fields ไม่อยู่ใน UPDATE นี้
         Object.hasOwn(body, "vendor"), body.vendor || null,
       ]
     );
@@ -319,7 +302,8 @@ export async function PATCH(request, { params }) {
     // ==================================================
     // ไม่พบ Asset
     // ==================================================
-    if (result.rowCount === 0) {
+      if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
       return Response.json(
         {
           success: false,
@@ -329,15 +313,24 @@ export async function PATCH(request, { params }) {
           status: 404,
         }
       );
-    }
+      }
+
+      await saveAssetAdditional(client, id, additional);
+      await client.query("COMMIT");
 
     // ==================================================
     // ส่ง Asset ที่ Update แล้วกลับไป
     // ==================================================
-    return Response.json({
-      success: true,
-      asset: result.rows[0],
-    });
+      return Response.json({
+        success: true,
+        asset: result.rows[0],
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
 
   } catch (error) {
     console.error(

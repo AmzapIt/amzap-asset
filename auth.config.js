@@ -13,10 +13,38 @@ export const authConfig = {
   },
 
   callbacks: {
+    // Proxy uses this lightweight config and reads custom values from the JWT.
+    // Exposing only the forced-change flag is enough to restrict navigation.
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.mustChangePassword =
+          token.mustChangePassword === true;
+      }
+
+      return session;
+    },
+
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
 
       const isLoginPage = nextUrl.pathname.startsWith("/login");
+      const isPasswordChangePage = nextUrl.pathname.startsWith(
+        "/account/password",
+      );
+      const isPasswordChangeApi = nextUrl.pathname.startsWith(
+        "/api/account/password",
+      );
+
+      // A temporary/legacy password creates a restricted session. It may use
+      // only the change-password page and endpoint until the flag is cleared.
+      if (
+        isLoggedIn &&
+        auth.user.mustChangePassword === true &&
+        !isPasswordChangePage &&
+        !isPasswordChangeApi
+      ) {
+        return Response.redirect(new URL("/account/password", nextUrl));
+      }
 
       // ถ้า login แล้ว แต่ยังอยู่หน้า login
       // ให้กลับหน้าหลัก

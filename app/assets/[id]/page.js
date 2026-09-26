@@ -1,4 +1,5 @@
 import AssignmentForm from "./AssignmentForm";
+import MovementForm from "./MovementForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -56,6 +57,17 @@ function formatMoney(value, currency = "THB") {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })} ${currency || "THB"}`;
+}
+
+function movementTransition(fromId, toId, fromName, toName) {
+  const unchanged =
+    fromId == null && toId == null
+      ? true
+      : String(fromId) === String(toId);
+
+  if (unchanged) return null;
+
+  return `${fromName || "ไม่ระบุ"} → ${toName || "ไม่ระบุ"}`;
 }
 
 // ==================================================
@@ -149,6 +161,8 @@ async function getAssetDetail(id) {
 
       -- ชื่อประเภท Asset
       t.name AS asset_type,
+      registration_site.site_code AS registration_site_code,
+      registration_site.name AS registration_site_name,
 
       -- ==================================================
       -- Asset Owner อ้างอิง public."user" ผ่าน assets.asset_owner_id
@@ -165,6 +179,9 @@ async function getAssetDetail(id) {
 
     LEFT JOIN public.asset_types t
       ON t.id = a.asset_type_id
+
+    LEFT JOIN public.asset_registration_sites registration_site
+      ON registration_site.id = a.registration_site_id
 
     -- ==================================================
     -- "user" ต้องใส่ double quote
@@ -193,6 +210,7 @@ async function getAssetDetail(id) {
     documents,
     auditLogs,
     maintenance,
+    movements,
   ] = await Promise.all([
     readOptional(
       "asset_assignments",
@@ -222,6 +240,40 @@ async function getAssetDetail(id) {
     readOptional(
       "asset_maintenance",
       "SELECT * FROM public.asset_maintenance WHERE asset_id = $1 ORDER BY id DESC LIMIT 20",
+      [id],
+    ),
+    readOptional(
+      "asset_movements",
+      `SELECT
+         movement.id,
+         movement.movement_date::text AS movement_date,
+         movement.from_location_id,
+         movement.to_location_id,
+         movement.from_department_id,
+         movement.to_department_id,
+         movement.from_owner_id,
+         movement.to_owner_id,
+         movement.reason,
+         movement.notes,
+         movement.created_at,
+         from_location.name AS from_location_name,
+         to_location.name AS to_location_name,
+         from_department.name AS from_department_name,
+         to_department.name AS to_department_name,
+         from_owner.full_name AS from_owner_name,
+         to_owner.full_name AS to_owner_name,
+         account.display_name AS changed_by_name
+       FROM public.asset_movements movement
+       LEFT JOIN public.locations from_location ON from_location.id=movement.from_location_id
+       LEFT JOIN public.locations to_location ON to_location.id=movement.to_location_id
+       LEFT JOIN public.departments from_department ON from_department.id=movement.from_department_id
+       LEFT JOIN public.departments to_department ON to_department.id=movement.to_department_id
+       LEFT JOIN public."user" from_owner ON from_owner.id=movement.from_owner_id
+       LEFT JOIN public."user" to_owner ON to_owner.id=movement.to_owner_id
+       LEFT JOIN public.app_accounts account ON account.id=movement.changed_by_account_id
+       WHERE movement.asset_id=$1
+       ORDER BY movement.movement_date DESC, movement.id DESC
+       LIMIT 100`,
       [id],
     ),
   ]);
@@ -263,6 +315,7 @@ async function getAssetDetail(id) {
     documents,
     auditLogs,
     maintenance,
+    movements,
     peopleMap,
     locationMap,
     departmentMap,
@@ -321,15 +374,38 @@ export default async function AssetDetailPage({ params }) {
     documents,
     auditLogs,
     maintenance,
+    movements,
     peopleMap,
     locationMap,
     departmentMap,
     vendorMap,
   } = data;
 
-  const [activeUsers, availableLocations, databaseDate] = await Promise.all([
-    query('SELECT u.id,u.employee_code,u.full_name,u.nickname,d.name AS department_name FROM public."user" u LEFT JOIN public.departments d ON d.id=u.department_id WHERE u.is_active=true ORDER BY u.full_name,u.id'),
-    query('SELECT id,name,building,floor,room FROM public.locations WHERE is_active=true ORDER BY name,id'),
+  const [activeUsers, availableLocations, availableDepartments, databaseDate] = await Promise.all([
+    query(
+      `SELECT u.id,u.employee_code,u.full_name,u.nickname,u.is_active,
+              d.name AS department_name,l.name AS location_name
+       FROM public."user" u
+       LEFT JOIN public.departments d ON d.id=u.department_id
+       LEFT JOIN public.locations l ON l.id=u.location_id
+       WHERE u.is_active=true OR u.id=$1
+       ORDER BY u.full_name,u.id`,
+      [asset.asset_owner_id],
+    ),
+    query(
+      `SELECT id,name,building,floor,room,is_active
+       FROM public.locations
+       WHERE is_active=true OR id=$1
+       ORDER BY name,id`,
+      [asset.location_id],
+    ),
+    query(
+      `SELECT id,name,is_active
+       FROM public.departments
+       WHERE is_active=true OR id=$1
+       ORDER BY name,id`,
+      [asset.owning_department_id],
+    ),
     query("SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text AS today"),
   ]);
 
@@ -388,12 +464,10 @@ export default async function AssetDetailPage({ params }) {
       : (vendorMap.get(String(asset.vendor_id))?.name ??
         `ไม่พบ Vendor (ID ${asset.vendor_id})`);
 
-  // Location ปัจจุบันใช้จาก Assignment ก่อน
-  // ถ้าไม่มีจึงใช้ Location ที่เก็บใน Asset
-  const currentLocationId = currentAssignment?.location_id ?? asset.location_id;
-
-  const currentDepartmentId =
-    currentAssignment?.department_id ?? asset.owning_department_id;
+  // assets เก็บ Location และ Owning Department ปัจจุบัน ส่วน Assignment
+  // เก็บ snapshot ณ วันที่มอบหมายเพื่อไม่ให้ Movement เขียนทับประวัติเดิม
+  const currentLocationId = asset.location_id;
+  const currentDepartmentId = asset.owning_department_id;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
@@ -457,6 +531,16 @@ export default async function AssetDetailPage({ params }) {
           <InfoGrid
             rows={[
               ["รหัสทรัพย์สิน", asset.asset_code],
+              [
+                "สถานที่ขึ้นทะเบียน",
+                asset.registration_site_code && asset.registration_site_name
+                  ? `${asset.registration_site_code} — ${asset.registration_site_name}`
+                  : "ยังไม่ได้กำหนด",
+              ],
+              [
+                "รหัสเดิม",
+                asset.history_assets,
+              ],
               ["ประเภทอุปกรณ์", asset.asset_type],
               ["ชื่อทรัพย์สิน", asset.asset_name],
               ["Asset Owner", ownerName],
@@ -475,7 +559,7 @@ export default async function AssetDetailPage({ params }) {
         </section>
 
         {/* ================= ASSIGNMENT ================= */}
-        <DetailSection title="Assignment & Location">
+        <DetailSection title="Assignment / Current Holder">
           <AssignmentForm
             key={currentAssignment?.id ?? "none"}
             assetId={String(asset.id)}
@@ -502,8 +586,8 @@ export default async function AssetDetailPage({ params }) {
                 currentHolderName,
               ],
               ["แหล่งข้อมูลผู้ครอบครอง", holderSource],
-              ["แผนก", departmentName(currentDepartmentId)],
-              ["Location", locationName(currentLocationId)],
+              ["Owning Department", departmentName(currentDepartmentId)],
+              ["Current Location", locationName(currentLocationId)],
               ["วันที่มอบหมาย", formatDate(currentAssignment?.assigned_date)],
             ]}
           />
@@ -533,6 +617,91 @@ export default async function AssetDetailPage({ params }) {
                   />
                 </div>
               ))}
+            </div>
+          )}
+        </DetailSection>
+
+        {/* Movement changes asset master data; Assignment history remains intact. */}
+        <DetailSection title="Asset Movement">
+          <MovementForm
+            key={[
+              asset.location_id ?? "none",
+              asset.owning_department_id ?? "none",
+              asset.asset_owner_id ?? "none",
+            ].join("-")}
+            assetId={String(asset.id)}
+            currentLocationId={asset.location_id}
+            currentDepartmentId={asset.owning_department_id}
+            currentOwnerId={asset.asset_owner_id}
+            locations={availableLocations.rows}
+            departments={availableDepartments.rows}
+            users={activeUsers.rows}
+            today={databaseDate.rows[0].today}
+            canWrite={canWrite}
+          />
+
+          <h3 className="mb-3 font-semibold">ประวัติการโอนย้าย</h3>
+
+          {movements === null ? (
+            <p className="text-sm text-amber-700">
+              ยังไม่มีตาราง asset_movements กรุณารัน Migration 015
+            </p>
+          ) : movements.length === 0 ? (
+            <p className="text-sm text-slate-500">ยังไม่มีประวัติ Asset Movement</p>
+          ) : (
+            <div className="space-y-3">
+              {movements.map((movement) => {
+                const changedRows = [
+                  [
+                    "Location",
+                    movementTransition(
+                      movement.from_location_id,
+                      movement.to_location_id,
+                      movement.from_location_name,
+                      movement.to_location_name,
+                    ),
+                  ],
+                  [
+                    "Owning Department",
+                    movementTransition(
+                      movement.from_department_id,
+                      movement.to_department_id,
+                      movement.from_department_name,
+                      movement.to_department_name,
+                    ),
+                  ],
+                  [
+                    "Asset Owner",
+                    movementTransition(
+                      movement.from_owner_id,
+                      movement.to_owner_id,
+                      movement.from_owner_name,
+                      movement.to_owner_name,
+                    ),
+                  ],
+                ].filter(([, value]) => value);
+
+                return (
+                  <article key={movement.id} className="rounded-lg border border-slate-200 p-4">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-slate-800">
+                          {formatDate(movement.movement_date)} · {movement.reason}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          บันทึกโดย {movement.changed_by_name || "บัญชีที่ถูกลบ"} · {formatDate(movement.created_at, true)}
+                        </p>
+                      </div>
+                    </div>
+                    <InfoGrid rows={changedRows} />
+                    {movement.notes && (
+                      <p className="mt-4 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+                        {movement.notes}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </DetailSection>
@@ -635,7 +804,19 @@ export default async function AssetDetailPage({ params }) {
             <div className="space-y-2">
               {documents.map((doc) => (
                 <div key={doc.id} className="rounded-lg border p-3">
-                  <p className="font-medium">{doc.file_name}</p>
+                  {typeof doc.storage_path === "string" &&
+                  doc.storage_path.startsWith("https://") ? (
+                    <a
+                      href={doc.storage_path}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-blue-700 hover:underline"
+                    >
+                      {doc.file_name}
+                    </a>
+                  ) : (
+                    <p className="font-medium">{doc.file_name}</p>
+                  )}
                   <p className="mt-1 text-sm text-gray-500">
                     {display(doc.document_type)} ·{" "}
                     {formatDate(doc.created_at, true)}

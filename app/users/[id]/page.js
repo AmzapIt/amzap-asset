@@ -99,9 +99,9 @@ export default async function UserDetailPage({ params }) {
           LIMIT 1
         ) aa ON true
         LEFT JOIN public.locations l
-          ON l.id = COALESCE(aa.location_id, a.location_id)
+          ON l.id = a.location_id
         LEFT JOIN public.departments d
-          ON d.id = COALESCE(aa.department_id, a.owning_department_id)
+          ON d.id = a.owning_department_id
         WHERE
           aa.assigned_to = $1
           OR (

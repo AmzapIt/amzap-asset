@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 // ==================================================
@@ -17,6 +17,40 @@ const statusColors = {
   Disposed: "bg-gray-200 text-gray-700",
   Lost: "bg-red-100 text-red-800",
 };
+
+const sortText = (left, right) =>
+  String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+
+function getOptionCounts(assets, key) {
+  return assets.reduce((counts, asset) => {
+    const value = asset[key];
+
+    if (value) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+
+    return counts;
+  }, new Map());
+}
+
+function toSortableDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const parts = String(value).split("/");
+
+  if (parts.length !== 3) {
+    return String(value);
+  }
+
+  const [day, month, year] = parts;
+
+  return `${year}-${month}-${day}`;
+}
 
 function SortableHeader({
   label,
@@ -69,6 +103,10 @@ export default function AssetTable({ assets }) {
   // เก็บสถานะที่เลือก เช่น In Use
   const [selectedStatus, setSelectedStatus] = useState("");
 
+  // Location และสถานะการครอบครองช่วยแยกรายการที่ต้องติดตามได้เร็วขึ้น
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedHolder, setSelectedHolder] = useState("");
+
   // ==================================================
   // เก็บข้อมูลการเรียง
   //
@@ -84,48 +122,63 @@ export default function AssetTable({ assets }) {
   const router = useRouter();
 
   // ==================================================
-  // 3. สร้างรายการประเภทจากข้อมูลจริง
-  // Set ใช้ตัดชื่อประเภทที่ซ้ำกันออก
+  // 3. สร้างตัวเลือก Filter และจำนวนรายการจากข้อมูลจริง
+  // เมื่อเพิ่ม Type, Status หรือ Location ใหม่ Dropdown จะอัปเดตตามข้อมูลอัตโนมัติ
   // ==================================================
-  const assetTypes = [
-    ...new Set(
-      assets
-        .map((asset) => asset.asset_type)
-        .filter(Boolean)
-    ),
-  ].sort((a, b) =>
-    String(a).localeCompare(String(b), undefined, {
-      numeric: true,
-      sensitivity: "base",
-    })
-  );
+  const filterOptions = useMemo(() => {
+    const typeCounts = getOptionCounts(assets, "asset_type");
+    const statusCounts = getOptionCounts(assets, "status");
+    const locationCounts = getOptionCounts(assets, "location");
+    const knownStatuses = Object.keys(statusColors).filter((status) =>
+      statusCounts.has(status),
+    );
+    const additionalStatuses = [...statusCounts.keys()]
+      .filter((status) => !statusColors[status])
+      .sort(sortText);
+
+    return {
+      types: [...typeCounts.keys()].sort(sortText),
+      statuses: [...knownStatuses, ...additionalStatuses],
+      locations: [...locationCounts.keys()].sort(sortText),
+      typeCounts,
+      statusCounts,
+      locationCounts,
+      assignedCount: assets.filter((asset) => Boolean(asset.current_holder))
+        .length,
+      unlocatedCount: assets.filter((asset) => !asset.location).length,
+    };
+  }, [assets]);
 
   // ==================================================
   // 4. กรองข้อมูลด้วย JavaScript
   // ไม่ได้แก้หรือลบข้อมูลใน PostgreSQL
   // ==================================================
-  const filteredAssets = assets.filter((asset) => {
-    // แปลงข้อความค้นหาเป็นตัวพิมพ์เล็ก
+  const filteredAssets = useMemo(() => {
+    // แปลงคำค้นหาเพียงครั้งเดียวต่อการเปลี่ยน Filter
     const keyword = searchText.toLowerCase().trim();
 
-    // ค้นหาจากหลาย Field
-    const matchesSearch =
-      !keyword ||
-      [
-        asset.asset_code,
-        asset.asset_type,
-        asset.asset_name,
-        asset.brand,
-        asset.model,
-        asset.serial_number,
-        asset.current_holder,
-        asset.location,
-        asset.status,
-      ].some((value) =>
-        String(value ?? "")
-          .toLowerCase()
-          .includes(keyword)
-      );
+    return assets.filter((asset) => {
+      // ค้นหาจากหลาย Field และยังรองรับรหัส Asset เดิม
+      const matchesSearch =
+        !keyword ||
+        [
+          asset.asset_code,
+          asset.legacy_asset_codes,
+          asset.asset_type,
+          asset.asset_name,
+          asset.brand,
+          asset.model,
+          asset.serial_number,
+          asset.owner_name,
+          asset.current_holder,
+          asset.location,
+          asset.department,
+          asset.status,
+        ].some((value) =>
+          String(value ?? "")
+            .toLowerCase()
+            .includes(keyword)
+        );
 
     // ถ้ายังไม่เลือกประเภท ให้ผ่านทั้งหมด
     const matchesType =
@@ -137,13 +190,34 @@ export default function AssetTable({ assets }) {
       !selectedStatus ||
       asset.status === selectedStatus;
 
+    const matchesLocation =
+      !selectedLocation ||
+      (selectedLocation === "__none__" && !asset.location) ||
+      asset.location === selectedLocation;
+
+    const hasHolder = Boolean(asset.current_holder);
+    const matchesHolder =
+      !selectedHolder ||
+      (selectedHolder === "assigned" && hasHolder) ||
+      (selectedHolder === "unassigned" && !hasHolder);
+
     // ต้องตรงกับเงื่อนไขทั้งหมด
     return (
       matchesSearch &&
       matchesType &&
-      matchesStatus
+      matchesStatus &&
+      matchesLocation &&
+      matchesHolder
     );
-  });
+    });
+  }, [
+    assets,
+    searchText,
+    selectedHolder,
+    selectedLocation,
+    selectedStatus,
+    selectedType,
+  ]);
 
   // ==================================================
   // 5. ฟังก์ชันแปลงวันที่
@@ -157,27 +231,12 @@ export default function AssetTable({ assets }) {
   // ตอน Sort ต้องแปลงเป็น:
   // 2026-09-18
   // ==================================================
-  function toSortableDate(value) {
-    if (!value) {
-      return "";
-    }
-
-    const parts = String(value).split("/");
-
-    if (parts.length !== 3) {
-      return String(value);
-    }
-
-    const [day, month, year] = parts;
-
-    return `${year}-${month}-${day}`;
-  }
-
   // ==================================================
   // 6. เรียงข้อมูลหลัง Search / Filter
   // ==================================================
-  const sortedAssets = [...filteredAssets].sort(
-    (a, b) => {
+  const sortedAssets = useMemo(
+    () =>
+      [...filteredAssets].sort((a, b) => {
       const key = sortConfig.key;
 
       let valueA;
@@ -245,7 +304,8 @@ export default function AssetTable({ assets }) {
       return sortConfig.direction === "asc"
         ? result
         : -result;
-    }
+      }),
+    [filteredAssets, sortConfig],
   );
 
   // ==================================================
@@ -281,31 +341,67 @@ export default function AssetTable({ assets }) {
 
   const sortableHeaderProps = { sortConfig, onSort: handleSort };
 
+  const activeFilterCount = [
+    searchText.trim(),
+    selectedType,
+    selectedStatus,
+    selectedLocation,
+    selectedHolder,
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setSearchText("");
+    setSelectedType("");
+    setSelectedStatus("");
+    setSelectedLocation("");
+    setSelectedHolder("");
+  }
+
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* ==========================================
           SEARCH & FILTER
       ========================================== */}
-      <div className="grid grid-cols-1 gap-4 border-b border-slate-200 p-5 md:grid-cols-[2fr_1fr_1fr]">
+      <div className="border-b border-slate-200 bg-slate-50/60 p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">ค้นหาและกรอง Asset</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              เลือกหลายเงื่อนไขพร้อมกันเพื่อค้นหารายการที่ต้องการ
+            </p>
+          </div>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-blue-500"
+            >
+              ล้าง Filter ทั้งหมด ({activeFilterCount})
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {/* ช่องค้นหา */}
-        <div>
+        <div className="sm:col-span-2 xl:col-span-2">
           <label
             htmlFor="assetSearch"
-            className="mb-2 block text-sm font-medium"
+            className="mb-2 block text-sm font-medium text-slate-700"
           >
-            Search
+            ค้นหา
           </label>
 
           <input
             id="assetSearch"
-            type="text"
+            type="search"
             value={searchText}
             onChange={(event) =>
               setSearchText(
                 event.target.value
               )
             }
-            placeholder="ค้นหารหัส, ชื่อทรัพย์สิน, Serial, ผู้ครอบครอง..."
+            placeholder="รหัส, Serial, ชื่อ Asset, ผู้ครอบครอง..."
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
@@ -329,16 +425,14 @@ export default function AssetTable({ assets }) {
             }
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
-            <option value="">
-              All Types
-            </option>
+            <option value="">ทุกประเภท ({assets.length})</option>
 
-            {assetTypes.map((type) => (
+            {filterOptions.types.map((type) => (
               <option
                 key={type}
                 value={type}
               >
-                {type}
+                {type} ({filterOptions.typeCounts.get(type)})
               </option>
             ))}
           </select>
@@ -363,22 +457,69 @@ export default function AssetTable({ assets }) {
             }
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
-            <option value="">
-              All Statuses
-            </option>
+            <option value="">ทุกสถานะ ({assets.length})</option>
 
-            {Object.keys(
-              statusColors
-            ).map((status) => (
+            {filterOptions.statuses.map((status) => (
               <option
                 key={status}
                 value={status}
               >
-                {status}
+                {status} ({filterOptions.statusCounts.get(status)})
               </option>
             ))}
           </select>
         </div>
+
+        <div>
+          <label
+            htmlFor="locationFilter"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
+            Location
+          </label>
+          <select
+            id="locationFilter"
+            value={selectedLocation}
+            onChange={(event) => setSelectedLocation(event.target.value)}
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="">ทุกสถานที่ ({assets.length})</option>
+            {filterOptions.locations.map((location) => (
+              <option key={location} value={location}>
+                {location} ({filterOptions.locationCounts.get(location)})
+              </option>
+            ))}
+            {filterOptions.unlocatedCount > 0 && (
+              <option value="__none__">
+                ยังไม่ระบุ Location ({filterOptions.unlocatedCount})
+              </option>
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="holderFilter"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
+            การครอบครอง
+          </label>
+          <select
+            id="holderFilter"
+            value={selectedHolder}
+            onChange={(event) => setSelectedHolder(event.target.value)}
+            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="">ทั้งหมด ({assets.length})</option>
+            <option value="assigned">
+              มีผู้ครอบครอง ({filterOptions.assignedCount})
+            </option>
+            <option value="unassigned">
+              ยังไม่มีผู้ครอบครอง ({assets.length - filterOptions.assignedCount})
+            </option>
+          </select>
+        </div>
+      </div>
       </div>
 
       {/* ==========================================
@@ -386,17 +527,24 @@ export default function AssetTable({ assets }) {
       ========================================== */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
         <span>
-          Showing {sortedAssets.length} of{" "}
-          {assets.length} assets
+          พบ <strong className="font-semibold text-slate-800">{sortedAssets.length}</strong>{" "}
+          จาก {assets.length} รายการ
         </span>
 
         {/* แสดงว่าตอนนี้กำลังเรียงอะไร */}
+        <div className="flex items-center gap-3">
+          {activeFilterCount > 0 && (
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+              ใช้ {activeFilterCount} Filter
+            </span>
+          )}
         <span className="text-xs text-slate-400">
           Sort: {sortConfig.key}{" "}
           {sortConfig.direction === "asc"
             ? "↑"
             : "↓"}
         </span>
+        </div>
       </div>
 
       {/* ==========================================
@@ -549,9 +697,21 @@ export default function AssetTable({ assets }) {
           ไม่พบข้อมูล
       ========================================== */}
       {sortedAssets.length === 0 && (
-        <p className="p-6 text-center text-gray-500">
-          ไม่พบข้อมูลทรัพย์สิน
-        </p>
+        <div className="p-8 text-center">
+          <p className="font-medium text-slate-700">ไม่พบ Asset ที่ตรงกับเงื่อนไข</p>
+          <p className="mt-1 text-sm text-slate-500">
+            ลองเปลี่ยนคำค้นหาหรือยกเลิก Filter บางรายการ
+          </p>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              ล้าง Filter ทั้งหมด
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

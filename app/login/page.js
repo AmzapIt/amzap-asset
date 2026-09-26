@@ -23,23 +23,23 @@ export default function LoginPage() {
         </div>
 
         <form action={formAction} className="space-y-4">
-          {/* Email */}
+          {/* Email or Username */}
           <div>
             <label
               htmlFor="email"
               className="block text-sm font-medium mb-1"
             >
-              Email
+              Email or Username
             </label>
 
             <input
               id="email"
               name="email"
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               required
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-              placeholder="you@company.com"
+              placeholder="username or you@company.com"
             />
           </div>
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              minLength={6}
+              minLength={1}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
               placeholder="Password"
             />

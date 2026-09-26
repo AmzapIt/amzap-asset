@@ -6,6 +6,7 @@ import { useState } from "react";
 const dependencyLabels = {
   owned_assets: "Asset Owner",
   assignments: "Assignment",
+  movements: "Asset Movement",
   accessories: "Accessories",
   audit_logs: "Audit Log",
   documents: "Documents",

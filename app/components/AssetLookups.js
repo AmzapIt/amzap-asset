@@ -1,12 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-export default function AssetLookups({ form, onChange }) {
+const allFields = ["department", "location", "vendor"];
+
+export default function AssetLookups({ form, onChange, fields = allFields }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
     Promise.all(
-      ["departments", "locations", "vendors"].map(async (kind) => {
+      fields.map(async (name) => {
+        const kind = `${name}s`;
         const r = await fetch(`/api/master/${kind}`, {
           signal: controller.signal,
         });
@@ -20,11 +23,11 @@ export default function AssetLookups({ form, onChange }) {
         if (e.name !== "AbortError") setError(e.message);
       });
     return () => controller.abort();
-  }, []);
+  }, [fields]);
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       {error && <p role="alert">{error}</p>}
-      {["department", "location", "vendor"].map((name, index) => (
+      {fields.map((name, index) => (
         <label key={name} className="block">
           {name}
           <select

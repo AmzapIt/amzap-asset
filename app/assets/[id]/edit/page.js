@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
+import AssetAdditionalFields from "@/app/assets/AssetAdditionalFields";
+import {
+  additionalFromApi,
+  emptyAdditionalForm,
+} from "@/lib/asset-additional";
 import { formatUserDisplayName } from "@/lib/user-display";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -23,6 +28,8 @@ const statuses = [
 // Class กลางสำหรับ Input
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
+
+const vendorLookupFields = ["vendor"];
 
 // ==================================================
 // หน้า Edit Asset
@@ -64,7 +71,13 @@ export default function EditAssetPage() {
     warrantyType: "",
     costCenter: "",
     notes: "",
+    ...emptyAdditionalForm,
   });
+
+  // Documents/Maintenance เป็นประวัติหลายรายการ จึงแสดงของเดิมแบบอ่านอย่างเดียว
+  // และใช้ช่องว่างในฟอร์มสำหรับเพิ่มรายการใหม่โดยไม่เขียนทับประวัติ
+  const [existingDocuments, setExistingDocuments] = useState([]);
+  const [existingMaintenance, setExistingMaintenance] = useState([]);
 
   // ==================================================
   // ข้อมูลที่ดูได้ แต่ห้ามแก้
@@ -77,6 +90,8 @@ export default function EditAssetPage() {
   // ==================================================
   const [assetCode, setAssetCode] = useState("");
   const [assetType, setAssetType] = useState("");
+  const [registrationSite, setRegistrationSite] = useState("");
+  const [previousAssetCode, setPreviousAssetCode] = useState("");
 
   // รายชื่อพนักงาน Active สำหรับ Asset Owner
   const [users, setUsers] = useState([]);
@@ -164,7 +179,11 @@ export default function EditAssetPage() {
           warrantyType: asset.warranty_type || "",
           costCenter: asset.cost_center || "",
           notes: asset.notes || "",
+          ...additionalFromApi(assetData.additional),
         });
+
+        setExistingDocuments(assetData.additional?.documents || []);
+        setExistingMaintenance(assetData.additional?.maintenance || []);
 
         // ==================================================
         // โหลดรายชื่อพนักงาน Active
@@ -221,6 +240,12 @@ export default function EditAssetPage() {
         // ----------------------------------------------
         setAssetCode(asset.asset_code || "");
         setAssetType(asset.asset_type || "");
+        setRegistrationSite(
+          asset.registration_site_code && asset.registration_site_name
+            ? `${asset.registration_site_code} — ${asset.registration_site_name}`
+            : "ยังไม่ได้กำหนด",
+        );
+        setPreviousAssetCode(asset.history_assets || "");
         setReady(true);
 
       } catch (error) {
@@ -364,6 +389,32 @@ export default function EditAssetPage() {
                 </p>
               </div>
 
+              <div>
+                <label className="mb-2 block font-medium">สถานที่ขึ้นทะเบียน</label>
+                <input
+                  value={registrationSite}
+                  readOnly
+                  className={`${inputClass} bg-gray-100`}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  เป็นส่วนหนึ่งของ Asset Code และไม่เปลี่ยนตาม Location ปัจจุบัน
+                </p>
+              </div>
+
+              {previousAssetCode && (
+                <div>
+                  <label className="mb-2 block font-medium">รหัสเดิม</label>
+                  <input
+                    value={previousAssetCode}
+                    readOnly
+                    className={`${inputClass} bg-amber-50`}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    เก็บไว้สำหรับค้นหาและเทียบกับป้ายเดิม
+                  </p>
+                </div>
+              )}
+
               {/* Asset Type */}
               <div>
                 <label className="mb-2 block font-medium">Asset Type</label>
@@ -479,8 +530,8 @@ export default function EditAssetPage() {
                   id="assetOwner"
                   name="assetOwner"
                   value={form.assetOwner}
-                  onChange={handleChange}
-                  className={inputClass}
+                  disabled
+                  className={`${inputClass} cursor-not-allowed opacity-70`}
                 >
                   <option value="">-- ไม่มี Asset Owner --</option>
 
@@ -499,7 +550,7 @@ export default function EditAssetPage() {
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
-                  Asset Owner ไม่ใช่ผู้ครอบครองปัจจุบัน การมอบหมายหรือคืนให้ทำในหน้า Asset Detail
+                  การเปลี่ยน Asset Owner ต้องใช้ Asset Movement ในหน้า Detail เพื่อเก็บประวัติ
                 </p>
               </div>
 
@@ -521,15 +572,19 @@ export default function EditAssetPage() {
           {/* จัดกลุ่ม Master Data เหมือนหน้า Add โดยไม่เปลี่ยนข้อมูลหรือวิธีบันทึก */}
           <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Department / Location / Vendor</h2>
+              <h2 className="text-xl font-semibold">Vendor</h2>
               <Link
                 href={`/assets/${id}`}
                 className="text-sm font-medium text-blue-600 hover:underline"
               >
-                จัดการผู้ครอบครองที่หน้า Asset Detail
+                จัดการ Owner / Department / Location ที่หน้า Asset Detail
               </Link>
             </div>
-            <AssetLookups form={form} onChange={handleChange} />
+            <AssetLookups
+              form={form}
+              onChange={handleChange}
+              fields={vendorLookupFields}
+            />
           </section>
 
           {/* ==================================================
@@ -647,6 +702,13 @@ export default function EditAssetPage() {
               </div>
             </div>
           </section>
+
+          <AssetAdditionalFields
+            form={form}
+            onChange={handleChange}
+            existingDocuments={existingDocuments}
+            existingMaintenance={existingMaintenance}
+          />
 
           {/* ==================================================
               SAVE / CANCEL

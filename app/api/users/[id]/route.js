@@ -382,6 +382,9 @@ export async function DELETE(request, { params }) {
             WHERE a.asset_owner_id = u.id) AS owned_assets,
           (SELECT COUNT(*)::int FROM public.asset_assignments aa
             WHERE aa.assigned_to = u.id) AS assignments,
+          (SELECT COUNT(*)::int FROM public.asset_movements movement
+            WHERE movement.from_owner_id = u.id
+               OR movement.to_owner_id = u.id) AS movements,
           (SELECT COUNT(*)::int FROM public.employee_accessories ea
             WHERE ea.user_id = u.id) AS accessories,
           (SELECT COUNT(*)::int FROM public.asset_audit_logs al
@@ -409,6 +412,7 @@ export async function DELETE(request, { params }) {
     const dependencies = {
       owned_assets: Number(user.owned_assets),
       assignments: Number(user.assignments),
+      movements: Number(user.movements),
       accessories: Number(user.accessories),
       audit_logs: Number(user.audit_logs),
       documents: Number(user.documents),
