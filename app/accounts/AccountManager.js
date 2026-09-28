@@ -320,6 +320,8 @@ export default function AccountManager({
                   type="password"
                   required
                   autoComplete="new-password"
+                  minLength={6}
+                  maxLength={12}
                   value={form.password}
                   onChange={(event) => setField("password", event.target.value)}
                   className={inputClass}
@@ -331,13 +333,15 @@ export default function AccountManager({
                   type="password"
                   required
                   autoComplete="new-password"
+                  minLength={6}
+                  maxLength={12}
                   value={form.confirmPassword}
                   onChange={(event) => setField("confirmPassword", event.target.value)}
                   className={inputClass}
                 />
               </label>
               <p className="self-end text-xs leading-5 text-slate-500">
-                อย่างน้อย 12 ตัว และมี A-Z, a-z, ตัวเลข และอักขระพิเศษ
+                รหัสผ่านยาว 6–12 ตัวอักษร ไม่มีข้อกำหนดรูปแบบอื่น
               </p>
             </>
           )}
@@ -371,13 +375,16 @@ export default function AccountManager({
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-6">
           <h2 className="text-lg font-bold text-amber-950">Reset Password</h2>
           <p className="mt-1 text-sm text-amber-800">
-            ตั้งรหัสผ่านชั่วคราวให้บัญชีที่เลือก ระบบจะไม่แสดงรหัสผ่านนี้อีก
+            ตั้งรหัสผ่านชั่วคราวยาว 6–12 ตัวอักษรให้บัญชีที่เลือก
+            ไม่มีข้อกำหนดรูปแบบอื่น ระบบจะไม่แสดงรหัสผ่านนี้อีก
           </p>
           <form onSubmit={submitReset} className="mt-4 grid gap-4 md:grid-cols-2">
             <input
               type="password"
               required
               autoComplete="new-password"
+              minLength={6}
+              maxLength={12}
               placeholder="New password"
               value={resetForm.password}
               onChange={(event) =>
@@ -389,6 +396,8 @@ export default function AccountManager({
               type="password"
               required
               autoComplete="new-password"
+              minLength={6}
+              maxLength={12}
               placeholder="Confirm new password"
               value={resetForm.confirmPassword}
               onChange={(event) =>

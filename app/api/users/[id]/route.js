@@ -387,6 +387,8 @@ export async function DELETE(request, { params }) {
                OR movement.to_owner_id = u.id) AS movements,
           (SELECT COUNT(*)::int FROM public.employee_accessories ea
             WHERE ea.user_id = u.id) AS accessories,
+          (SELECT COUNT(*)::int FROM public.accessory_stock_movements am
+            WHERE am.from_user_id=u.id OR am.to_user_id=u.id) AS accessory_movements,
           (SELECT COUNT(*)::int FROM public.asset_audit_logs al
             WHERE al.changed_by = u.id) AS audit_logs,
           (SELECT COUNT(*)::int FROM public.asset_documents ad
@@ -414,6 +416,7 @@ export async function DELETE(request, { params }) {
       assignments: Number(user.assignments),
       movements: Number(user.movements),
       accessories: Number(user.accessories),
+      accessory_movements: Number(user.accessory_movements),
       audit_logs: Number(user.audit_logs),
       documents: Number(user.documents),
       login_accounts: Number(user.login_accounts),

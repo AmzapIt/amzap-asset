@@ -83,6 +83,8 @@ export default function ChangePasswordForm({ mustChangePassword = false }) {
             type="password"
             required
             autoComplete="new-password"
+            minLength={6}
+            maxLength={12}
             value={form.newPassword}
             onChange={(event) => setField("newPassword", event.target.value)}
             className={inputClass}
@@ -95,6 +97,8 @@ export default function ChangePasswordForm({ mustChangePassword = false }) {
             type="password"
             required
             autoComplete="new-password"
+            minLength={6}
+            maxLength={12}
             value={form.confirmPassword}
             onChange={(event) => setField("confirmPassword", event.target.value)}
             className={inputClass}
@@ -102,8 +106,7 @@ export default function ChangePasswordForm({ mustChangePassword = false }) {
         </label>
 
         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
-          รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร และมีตัวพิมพ์ใหญ่ A-Z,
-          ตัวพิมพ์เล็ก a-z, ตัวเลข และอักขระพิเศษ
+          รหัสผ่านยาว 6–12 ตัวอักษร ไม่มีข้อกำหนดรูปแบบอื่น
         </div>
 
         {(error || success) && (

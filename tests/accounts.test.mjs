@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   AccountError,
+  changeOwnPassword,
   createAccount,
+  resetAccountPassword,
   updateAccount,
 } from "../lib/accounts.js";
+import { hashPassword, passwordMatches } from "../lib/account-security.js";
 
 function fakePool(handler) {
   const calls = [];
@@ -19,6 +22,7 @@ function fakePool(handler) {
 
   return {
     calls,
+    query: client.query,
     async connect() {
       return client;
     },
@@ -93,7 +97,7 @@ test("create account returns safe fields and sends only a hash to SQL", async ()
     return { rowCount: 0, rows: [] };
   });
 
-  const password = "StrongPass#123";
+  const password = "123456";
   const account = await createAccount({
     email: " New.User@Example.com ",
     username: "new.user",
@@ -110,4 +114,61 @@ test("create account returns safe fields and sends only a hash to SQL", async ()
   assert.equal(insertParams[1], "new.user");
   assert.notEqual(insertParams[3], password);
   assert.match(insertParams[3], /^\$2[aby]\$/);
+});
+
+test("reset password accepts a six-digit password and stores only its hash", async () => {
+  const pool = fakePool((sql) => {
+    if (sql.startsWith("UPDATE public.app_accounts")) {
+      return { rowCount: 1, rows: [{ id: "2" }] };
+    }
+    return { rowCount: 0, rows: [] };
+  });
+
+  await resetAccountPassword(
+    "2", { password: "123456", confirmPassword: "123456" }, "1", pool,
+  );
+
+  const update = pool.calls.find((call) => call.sql.startsWith("UPDATE"));
+  assert.notEqual(update.params[1], "123456");
+  assert.equal(await passwordMatches("123456", update.params[1]), true);
+});
+
+test("own password change allows reusing a password within the new length range", async () => {
+  const password = "abcdef";
+  const hash = await hashPassword(password);
+  const pool = fakePool((sql) => {
+    if (sql.startsWith("SELECT id, password_hash")) {
+      return { rowCount: 1, rows: [{ id: "1", password_hash: hash }] };
+    }
+    return { rowCount: 0, rows: [] };
+  });
+
+  await changeOwnPassword("1", {
+    currentPassword: password,
+    newPassword: password,
+    confirmPassword: password,
+  }, pool);
+
+  const update = pool.calls.find((call) => call.sql.startsWith("UPDATE"));
+  assert.equal(await passwordMatches(password, update.params[1]), true);
+  assert.equal(pool.calls.some((call) => call.sql === "COMMIT"), true);
+});
+
+test("own password change still requires the correct current password", async () => {
+  const hash = await hashPassword("abcdef");
+  const pool = fakePool((sql) => {
+    if (sql.startsWith("SELECT id, password_hash")) {
+      return { rowCount: 1, rows: [{ id: "1", password_hash: hash }] };
+    }
+    return { rowCount: 0, rows: [] };
+  });
+
+  await assert.rejects(changeOwnPassword("1", {
+    currentPassword: "wrong!",
+    newPassword: "123456",
+    confirmPassword: "123456",
+  }, pool), (error) => error instanceof AccountError && error.status === 401);
+
+  assert.equal(pool.calls.some((call) => call.sql.startsWith("UPDATE")), false);
+  assert.equal(pool.calls.some((call) => call.sql === "ROLLBACK"), true);
 });

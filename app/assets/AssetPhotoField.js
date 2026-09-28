@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export default function AssetPhotoField({ disabled = false, onChange, photo }) {
-  const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (!photo) {
-      setPreviewUrl("");
-      return undefined;
-    }
-
+  // React 19 เรียก cleanup ของ callback ref เมื่อเปลี่ยนรูปหรือถอด Preview
+  // จึงคืน Object URL ได้โดยไม่ต้องใช้ state/effect เพิ่มเพื่อแสดงรูป
+  const previewRef = useCallback((image) => {
+    if (!image || !photo) return undefined;
     const url = URL.createObjectURL(photo);
-    setPreviewUrl(url);
+    image.src = url;
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
@@ -68,14 +65,12 @@ export default function AssetPhotoField({ disabled = false, onChange, photo }) {
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       {photo && (
         <div className="mt-4 flex flex-wrap items-start gap-4">
-          {previewUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-            <img
-              src={previewUrl}
-              alt="ตัวอย่างรูป Asset ที่เลือก"
-              className="h-32 w-32 rounded-lg border border-slate-200 object-cover"
-            />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
+          <img
+            ref={previewRef}
+            alt="ตัวอย่างรูป Asset ที่เลือก"
+            className="h-32 w-32 rounded-lg border border-slate-200 object-cover"
+          />
           <div className="text-sm text-slate-600">
             <p className="font-medium text-slate-800">{photo.name}</p>
             <p className="mt-1">{(photo.size / 1024 / 1024).toFixed(2)} MB</p>

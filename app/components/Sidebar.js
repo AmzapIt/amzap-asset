@@ -13,6 +13,7 @@ import {
   MapPin,
   Menu,
   Package,
+  Settings,
   ShieldCheck,
   Store,
   Tags,
@@ -58,7 +59,7 @@ export default function Sidebar({ user }) {
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/assets", label: "Asset List", icon: Package },
-    { href: "/accessories", label: "Accessory Summary", icon: Package },
+    { href: "/accessories", label: "Accessories / Stock", icon: Package },
     { href: "/users", label: "User Management", icon: Users },
   ];
 
@@ -73,17 +74,18 @@ export default function Sidebar({ user }) {
 
   // Hiding links improves navigation, but it is not a security boundary.
   // The account page and every mutation verify the current role on the server.
-  const securityItems = [
+  const settingsItems = [
     ...(user?.role === "Admin"
       ? [{ href: "/accounts", label: "System Accounts", icon: ShieldCheck }]
       : []),
     { href: "/account/password", label: "Change Password", icon: KeyRound },
   ];
+  const isSettingsActive = settingsItems.some((item) => isActive(item.href));
+  const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsActive);
 
   const compactItems = [
     ...navItems,
     { href: "/reports/assets", label: "Export / ใบรับมอบ", icon: Download },
-    ...securityItems,
   ];
 
   function isActive(href) {
@@ -221,21 +223,44 @@ export default function Sidebar({ user }) {
                 </div>
               </details>
 
-              {securityItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 font-semibold ${
-                    isActive(item.href)
+              <details open={isSettingsOpen}>
+                <summary
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setIsSettingsOpen((open) => !open);
+                  }}
+                  className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 font-semibold ${
+                    isSettingsActive
                       ? "bg-blue-50 text-blue-700"
                       : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
-                  <item.icon size={19} />
-                  {item.label}
-                </Link>
-              ))}
+                  <Settings size={19} aria-hidden="true" />
+                  <span>Settings</span>
+                  <ChevronRight
+                    size={16}
+                    aria-hidden="true"
+                    className={`ml-auto transition-transform ${isSettingsOpen ? "rotate-90" : ""}`}
+                  />
+                </summary>
+                <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
+                  {settingsItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMobileOpen(false)}
+                      className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${
+                        isActive(item.href)
+                          ? "bg-blue-50 font-semibold text-blue-700"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <item.icon size={17} aria-hidden="true" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
             </nav>
 
             <form action={logoutAction} className="mt-6 border-t border-slate-200 pt-4">
@@ -356,15 +381,43 @@ export default function Sidebar({ user }) {
               </div>
             </details>
 
-            {securityItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={linkClass(isActive(item.href))}
+            <details open={isSettingsOpen}>
+              <summary
+                onClick={(event) => {
+                  event.preventDefault();
+                  setIsSettingsOpen((open) => !open);
+                }}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 font-semibold transition ${
+                  isSettingsActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                }`}
               >
-                {item.label}
-              </Link>
-            ))}
+                <Settings size={18} aria-hidden="true" />
+                <span>Settings</span>
+                <ChevronRight
+                  size={16}
+                  aria-hidden="true"
+                  className={`ml-auto transition-transform ${isSettingsOpen ? "rotate-90" : ""}`}
+                />
+              </summary>
+              <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
+                {settingsItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                      isActive(item.href)
+                        ? "bg-blue-50 font-semibold text-blue-700"
+                        : "text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                    }`}
+                  >
+                    <item.icon size={16} aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </details>
           </nav>
 
           {/* =================================================
@@ -399,6 +452,20 @@ export default function Sidebar({ user }) {
               </span>
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setIsCollapsed(false);
+              setIsSettingsOpen(true);
+            }}
+            className={linkClass(isSettingsActive)}
+            title="Settings"
+            aria-label="Settings"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Settings size={18} strokeWidth={2} aria-hidden="true" />
+            </span>
+          </button>
         </nav>
       )}
     </aside>

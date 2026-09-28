@@ -8,6 +8,7 @@ const dependencyLabels = {
   assignments: "Assignment",
   movements: "Asset Movement",
   accessories: "Accessories",
+  accessory_movements: "Accessory Movement",
   audit_logs: "Audit Log",
   documents: "Documents",
   login_accounts: "Login Account",
