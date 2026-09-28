@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Downloaded machine-specific configuration; keep outside commits.
+/env.download
+
 # vercel
 .vercel
 

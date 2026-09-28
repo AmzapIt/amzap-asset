@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AMZAP Asset Management
 
-## Getting Started
+ระบบจัดการ IT Asset, พนักงาน, การเบิก/คืน/โอน, Accessories คลังกลาง และรายงาน ใช้ Next.js 16.3.4, React 19.2.8, PostgreSQL และ Auth.js
 
-First, run the development server:
+## เริ่มอ่านเมื่อย้ายเครื่อง
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. [HANDOFF.md](HANDOFF.md) — สิ่งที่ทำแล้ว งานค้าง ผลทดสอบ สถานะฐานข้อมูล และขั้นตอนเริ่มงานบนเครื่องใหม่
+2. [PROJECT_BACKLOG.md](PROJECT_BACKLOG.md) — คิวงานที่ยังต้องทำ/ตรวจและกติกาปัจจุบัน
+3. [AGENTS.md](AGENTS.md) — ข้อกำหนดสำหรับแก้โค้ด Next.js รุ่นที่ติดตั้ง
+4. [คู่มือ Accessories / Stock](docs/accessory-stock.md)
+5. [ตั้งค่า Google Drive สำหรับรูป Asset](docs/google-drive-photo-setup.md)
+
+สถานะที่บันทึกล่าสุด: 29 กันยายน 2026; โค้ดที่ตรวจผ่านอยู่ใน Commit `22de93e` และเอกสารส่งต่ออัปเดตต่อจาก Commit นี้
+
+## เปิดระบบบนเครื่องใหม่
+
+ต้องมี Git, Node.js/npm, สิทธิ์เข้าถึง Repository และค่าตั้งค่าจากเจ้าของระบบ เครื่องที่ตรวจผ่านใช้ Node.js v25.2.1/npm 11.6.2
+
+```powershell
+git clone https://github.com/watchakornday/amzap-asset.git
+Set-Location amzap-asset
+npm.cmd ci
+Copy-Item -LiteralPath .env.example -Destination .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy เฉพาะ Clone ใหม่ที่ยังไม่มี `.env.local` แล้วเติม `DATABASE_URL`, `AUTH_SECRET` และค่า Google Drive ที่ต้องใช้ ดูรายละเอียดและรายการ Environment ใน [HANDOFF.md](HANDOFF.md) ไฟล์ `.env.local` และ `env.download` ไม่มากับ Git
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
+npm.cmd run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+เปิด `http://localhost:3000` แล้ว Login ด้วยบัญชีระบบที่เจ้าของจัดเตรียม macOS/Linux ใช้ `npm` แทน `npm.cmd` และ `cp .env.example .env.local` สำหรับ Clone ใหม่
 
-## Learn More
+## ฐานข้อมูล
 
-To learn more about Next.js, take a look at the following resources:
+ใช้ฐานข้อมูลเดิมผ่าน `DATABASE_URL` หรือฐานที่ Restore โครงสร้างไว้แล้ว Repository ยังไม่มี Schema/Seed ครบสำหรับสร้างฐานว่างจากศูนย์ Dev/Build ไม่ได้รัน Migration อัตโนมัติ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `migrations/019-accessory-stock.sql` ใช้แล้วกับฐานข้อมูลเดิม: คลังกลาง, 2 รายการ Stock, พร้อมเบิก 0 และพนักงานถือ 3 ชิ้น ณ วันที่ตรวจ
+- `migrations/018-global-asset-type-running-number.sql` มีในโค้ด แต่ฐานข้อมูลเดิมยังใช้ตัวนับ Site/Type ต้องตรวจและดำเนินการตามงานค้างใน HANDOFF
+- Migration `008-employee-accessories.sql` อยู่ที่ `app/migrations/` ส่วน Migration อื่นอยู่ที่ `migrations/`
+- อย่ารัน Migration ทั้งหมดกับฐานใหม่โดยไม่ตรวจโครงสร้าง/ข้อมูลเป้าหมายก่อน
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## คำสั่งตรวจเพิ่มเติม
 
-## Deploy on Vercel
+```powershell
+# ต้องมี PostgreSQL/Schema และบัญชี Admin Active ตามเงื่อนไขของ Integration test
+npm.cmd run test:accessories:db
+# ทดลอง Migration 019 ภายใน Transaction ที่ Rollback
+npm.cmd run test:accessories:db -- --with-migration
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+ผลก่อน Commit เอกสาร: Unit Tests 42 ข้อ, Lint, Build และ PostgreSQL Integration Checks 44 ข้อผ่าน การทดสอบคลิก UI หลัง Login และการตรวจ Production ยังอยู่ในคิวงาน Build ต้องเชื่อมต่อ Google Fonts ได้ตามการตั้งค่าฟอนต์เดิม
