@@ -329,20 +329,30 @@ export async function POST(request) {
     const client = await getDbPool().connect();
     try {
       await client.query("BEGIN");
-      // Manual running number remains compatible with the old form. Keep the
-      // V2 counter at least as high as the entered number so a future automatic
-      // allocation cannot move backwards and collide with this code.
-      await client.query(
-        `INSERT INTO public.asset_code_v2_counters(
-           registration_site_id, asset_type_id, last_number
-         ) VALUES($1, $2, $3)
-         ON CONFLICT(registration_site_id, asset_type_id) DO UPDATE
-         SET last_number = GREATEST(
-           public.asset_code_v2_counters.last_number,
-           EXCLUDED.last_number
-         )`,
-        [registrationSiteId, assetTypeId, Number(assetCodeNumber)],
+      // Running Number ใช้ร่วมกันตาม Asset Type ทุกโรงงาน จึงล็อกตาม Type
+      // ภายใน Transaction ก่อนตรวจเลขซ้ำ ป้องกันสอง request เลือกเลขเดียวกัน
+      // พร้อมกันแล้วผ่านการตรวจทั้งคู่
+      await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [
+        assetTypeId,
+      ]);
+
+      const duplicateRunningNumber = await client.query(
+        `SELECT asset_code
+         FROM public.assets
+         WHERE asset_type_id = $1
+           AND right(asset_code, 3) = $2
+           AND asset_code ~ '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
+         LIMIT 1`,
+        [assetTypeId, assetCodeNumber],
       );
+
+      if (duplicateRunningNumber.rowCount) {
+        const conflict = new Error("Asset Type running number already exists");
+        conflict.code = "ASSET_RUNNING_NUMBER_CONFLICT";
+        conflict.assetCode = duplicateRunningNumber.rows[0].asset_code;
+        throw conflict;
+      }
+
       const result = await client.query(
         "INSERT INTO public.assets (" + columns + ") VALUES (" + placeholders + ") RETURNING id, asset_code, asset_name",
         fields.map(([, value]) => value),
@@ -372,6 +382,19 @@ export async function POST(request) {
     console.error("Save asset error:", error);
     if (error.code === "23505" && error.constraint === "assets_asset_code_key") {
       return Response.json({ error: "รหัส Asset นี้มีอยู่แล้ว กรุณาใช้เลขอื่น" }, { status: 409 });
+    }
+    if (
+      error.code === "ASSET_RUNNING_NUMBER_CONFLICT" ||
+      (error.code === "23505" &&
+        error.constraint === "assets_asset_type_running_number_key")
+    ) {
+      const usedCode = error.assetCode ? ` (${error.assetCode})` : "";
+      return Response.json(
+        {
+          error: `เลข Running นี้ถูกใช้กับ Asset Type เดียวกันแล้ว${usedCode} กรุณาใช้เลขอื่น`,
+        },
+        { status: 409 },
+      );
     }
     if (error.code === "P0001" && error.message === "Asset code sequence exceeded 999") {
       return Response.json({ error: "เลขรหัส Asset ของโรงงานและประเภทนี้ครบ 999 แล้ว" }, { status: 409 });

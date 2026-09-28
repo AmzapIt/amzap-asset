@@ -39,13 +39,15 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full">
+      <body className="min-h-full bg-slate-50 lg:flex">
         {/* ถ้าไม่ได้ Login Sidebar จะ return null
             เช่นตอนอยู่หน้า /login */}
         <Sidebar user={session?.user ?? null} />
 
         {/* เนื้อหาของหน้าปัจจุบัน */}
-        <div className="min-w-0 flex-1">
+        <div
+          className={`min-w-0 flex-1 ${session?.user ? "pt-16 lg:pt-0" : ""}`}
+        >
           {children}
         </div>
       </body>

@@ -75,7 +75,7 @@ export default function AssetStatusByType({ rows }) {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">
@@ -124,7 +124,7 @@ export default function AssetStatusByType({ rows }) {
         <p className="mt-4 text-sm text-gray-500">ยังไม่มีข้อมูล Asset</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="min-w-[620px] text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="whitespace-nowrap px-4 py-3">Asset Type</th>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
 import AssetAdditionalFields from "@/app/assets/AssetAdditionalFields";
+import AssetPhotoField from "@/app/assets/AssetPhotoField";
 import {
   additionalFromApi,
   emptyAdditionalForm,
@@ -78,6 +79,7 @@ export default function EditAssetPage() {
   // และใช้ช่องว่างในฟอร์มสำหรับเพิ่มรายการใหม่โดยไม่เขียนทับประวัติ
   const [existingDocuments, setExistingDocuments] = useState([]);
   const [existingMaintenance, setExistingMaintenance] = useState([]);
+  const [photo, setPhoto] = useState(null);
 
   // ==================================================
   // ข้อมูลที่ดูได้ แต่ห้ามแก้
@@ -312,8 +314,33 @@ export default function EditAssetPage() {
         throw new Error(data.error || "ไม่สามารถแก้ไข Asset ได้");
       }
 
+      if (photo) {
+        const photoForm = new FormData();
+        photoForm.append("photo", photo);
+        const photoResponse = await fetch(`/api/assets/${id}/photos`, {
+          method: "POST",
+          body: photoForm,
+        });
+        const photoData = await photoResponse.json();
+
+        if (!photoResponse.ok || !photoData.success) {
+          // ข้อมูล Asset ถูกแก้ไขสำเร็จแล้ว แต่คงหน้า Edit ไว้เพื่อให้เลือก
+          // รูปใหม่และกด Save ซ้ำได้ โดยไม่ทำให้ข้อมูล Asset สูญหาย
+          setMessage(
+            `แก้ไข Asset สำเร็จ แต่ Upload รูปไม่สำเร็จ: ${
+              photoData.error || "กรุณาลองใหม่"
+            }`,
+          );
+          return;
+        }
+      }
+
       // แจ้งผลสำเร็จ
-      window.alert("แก้ไข Asset สำเร็จ");
+      window.alert(
+        photo
+          ? "แก้ไข Asset และ Upload รูปไป Google Drive สำเร็จ"
+          : "แก้ไข Asset สำเร็จ",
+      );
 
       // ----------------------------------------------
       // Save เสร็จแล้วกลับหน้า Asset Detail
@@ -336,7 +363,7 @@ export default function EditAssetPage() {
   // ==================================================
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8">
+      <main className="min-h-screen bg-slate-50 px-4 py-5 sm:px-6 sm:py-8">
         <div className="mx-auto max-w-[1200px]">กำลังโหลดข้อมูล Asset...</div>
       </main>
     );
@@ -346,7 +373,7 @@ export default function EditAssetPage() {
   // UI
   // ==================================================
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1200px]">
         {/* กลับหน้า Detail */}
         <Link
@@ -360,7 +387,7 @@ export default function EditAssetPage() {
         <div className="mt-4">
           <p className="text-sm text-gray-500">Edit Asset</p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-800">{assetCode}</h1>
+          <h1 className="mt-1 break-words text-2xl font-bold text-gray-800 sm:text-3xl">{assetCode}</h1>
 
           <p className="mt-2 text-gray-500">แก้ไขข้อมูลทรัพย์สิน</p>
         </div>
@@ -370,7 +397,7 @@ export default function EditAssetPage() {
           {/* ==================================================
               GENERAL INFORMATION
           ================================================== */}
-          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-xl font-semibold">General Information</h2>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -570,7 +597,7 @@ export default function EditAssetPage() {
           </section>
 
           {/* จัดกลุ่ม Master Data เหมือนหน้า Add โดยไม่เปลี่ยนข้อมูลหรือวิธีบันทึก */}
-          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Vendor</h2>
               <Link
@@ -590,7 +617,7 @@ export default function EditAssetPage() {
           {/* ==================================================
               PURCHASE & WARRANTY
           ================================================== */}
-          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-xl font-semibold">Purchase & Warranty</h2>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -710,10 +737,22 @@ export default function EditAssetPage() {
             existingMaintenance={existingMaintenance}
           />
 
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="text-xl font-semibold">Asset Photo</h2>
+            <p className="mt-1 mb-5 text-sm text-slate-500">
+              รูปล่าสุดจะเป็นรูปหลัก ส่วนรูปเดิมยังคงอยู่ในประวัติเอกสาร
+            </p>
+            <AssetPhotoField
+              disabled={saving || !ready}
+              photo={photo}
+              onChange={setPhoto}
+            />
+          </section>
+
           {/* ==================================================
               SAVE / CANCEL
           ================================================== */}
-          <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             {/* Error */}
             {message && (
               <p
@@ -724,7 +763,7 @@ export default function EditAssetPage() {
               </p>
             )}
 
-            <div className="flex items-center justify-between gap-4">
+            <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
               {/* Cancel */}
               <Link
                 href={`/assets/${id}`}

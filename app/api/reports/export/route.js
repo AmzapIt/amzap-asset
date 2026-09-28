@@ -1,5 +1,6 @@
-import { getReportAssets,getRecipient } from "@/lib/asset-report";
+import { getCurrentAccessories,getReportAssets,getRecipient } from "@/lib/asset-report";
 import { assetWorkbook,assetPdf,handoverPdf } from "@/lib/export-files";
+import { findHandoverConflict } from "@/lib/report-validation";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 
@@ -18,7 +19,7 @@ export async function POST(request) {
   const validId=v=>typeof v==="string"&&/^[1-9]\d{0,18}$/.test(v)&&BigInt(v)<=9223372036854775807n;
   // จำกัดชนิดเอกสาร จำนวนรายการ และห้าม ID ซ้ำ เพื่อลดงานสร้างไฟล์เกินขนาด
   // ขีดจำกัดแต่ละแบบ: handover 7, PDF 500, Excel 5,000 รายการ
-  if(!body||!["xlsx","pdf","handover"].includes(body.format)||!Array.isArray(body.ids)||!body.ids.length||body.ids.length>(body.format==="handover"?7:body.format==="pdf"?500:5000)||!body.ids.every(validId)||new Set(body.ids).size!==body.ids.length)
+  if(!body||!["xlsx","pdf","handover"].includes(body.format)||!Array.isArray(body.ids)||(body.format!=="handover"&&!body.ids.length)||body.ids.length>(body.format==="handover"?7:body.format==="pdf"?500:5000)||!body.ids.every(validId)||new Set(body.ids).size!==body.ids.length)
     return Response.json({error:"เลือกรายการให้ถูกต้อง: ใบส่งมอบไม่เกิน 7, PDF ไม่เกิน 500, Excel ไม่เกิน 5,000 รายการ"},{status:400});
   // whitelist ช่องฟอร์มและจำกัดความยาวก่อนนำไปจัดหน้า PDF
   // ตรวจวันที่ทั้งรูปแบบและวันจริง เช่น 30 กุมภาพันธ์ต้องไม่ผ่าน
@@ -41,7 +42,33 @@ export async function POST(request) {
     if(body.format==="handover"){
       const recipient=await getRecipient(body.recipientId);
       if(!recipient)return Response.json({error:"ไม่พบพนักงาน"},{status:404});
-      buffer=await handoverPdf(rows,recipient,form);
+
+      // ใบคืนต้องอ้างอิงเฉพาะ Asset ที่พนักงานคนนี้ถืออยู่จริง ส่วนใบรับมอบ
+      // อนุญาต Asset ว่างหรือ Asset ที่คนเดิมถืออยู่ แต่ไม่ยอมให้เลือกของคนอื่น
+      // การตรวจซ้ำฝั่ง Server ป้องกัน request ที่ข้ามข้อจำกัดบนหน้าเว็บ
+      const wrongHolder = findHandoverConflict(
+        rows,
+        body.recipientId,
+        form.kind,
+      );
+
+      if (wrongHolder) {
+        return Response.json(
+          {
+            error:
+              form.kind === "คืนอุปกรณ์"
+                ? `Asset ${wrongHolder.asset_code} ไม่ได้อยู่ในการครอบครองของพนักงานที่เลือก`
+                : `Asset ${wrongHolder.asset_code} มีผู้ครอบครองคนอื่นอยู่ กรุณาคืนหรือโอนก่อน`,
+          },
+          { status: 409 },
+        );
+      }
+
+      // Accessory ถูกดึงด้วย recipientId ที่ตรวจแล้วและเฉพาะรายการยังไม่คืน
+      // จึงไม่มีข้อมูล Accessory จาก Browser ปะปนในเอกสาร
+      const accessories=await getCurrentAccessories(body.recipientId);
+      if(!rows.length&&!accessories.length)return Response.json({error:"พนักงานไม่มี Asset หรือ Accessory สำหรับสร้างเอกสาร"},{status:400});
+      buffer=await handoverPdf(rows,recipient,form,accessories);
     }else buffer=await (body.format==="xlsx"?assetWorkbook(rows):assetPdf(rows));
     // ส่งไฟล์เป็น binary พร้อมชื่อดาวน์โหลด และ no-store เพื่อไม่ cache รายงานพนักงาน
     const extension=body.format==="xlsx"?"xlsx":"pdf";

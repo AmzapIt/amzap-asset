@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { query } from "@/lib/db";
+import { formatUserDisplayName } from "@/lib/user-display";
 
 // ใช้ Node.js เพราะหน้านี้เชื่อม PostgreSQL ผ่าน pg
 export const runtime = "nodejs";
@@ -92,11 +93,11 @@ function InfoGrid({ rows }) {
 function DetailSection({ title, children }) {
   return (
     <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-      <summary className="cursor-pointer px-6 py-5 font-semibold text-gray-800">
+      <summary className="cursor-pointer px-4 py-4 font-semibold text-gray-800 sm:px-6 sm:py-5">
         {title}
       </summary>
 
-      <div className="border-t px-6 py-5">{children}</div>
+      <div className="border-t px-4 py-4 sm:px-6 sm:py-5">{children}</div>
     </details>
   );
 }
@@ -170,6 +171,7 @@ async function getAssetDetail(id) {
       -- ไม่กรอง is_active เพื่อให้ข้อมูล Owner เดิมยังแสดงในประวัติได้
       -- ==================================================
       u.full_name AS asset_owner_name,
+      u.nickname AS asset_owner_nickname,
 
       -- เก็บสถานะ Active ของ Owner เดิมไว้ด้วย
       -- เพื่อรู้ว่า Owner คนเดิม Active หรือ Inactive
@@ -261,7 +263,9 @@ async function getAssetDetail(id) {
          from_department.name AS from_department_name,
          to_department.name AS to_department_name,
          from_owner.full_name AS from_owner_name,
+         from_owner.nickname AS from_owner_nickname,
          to_owner.full_name AS to_owner_name,
+         to_owner.nickname AS to_owner_nickname,
          account.display_name AS changed_by_name
        FROM public.asset_movements movement
        LEFT JOIN public.locations from_location ON from_location.id=movement.from_location_id
@@ -409,13 +413,14 @@ export default async function AssetDetailPage({ params }) {
     query("SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text AS today"),
   ]);
 
-  // Helper แปลง ID เป็นชื่อจริง
+  // Helper แปลง ID เป็นชื่อสำหรับแสดงผล โดยชื่อเล่นไม่ถูกใช้เป็นค่าบันทึก
   function personName(personId) {
     if (personId == null) return null;
-    return (
-      peopleMap.get(String(personId))?.full_name ??
-      `ไม่พบรายชื่อ (ID ${personId})`
-    );
+    const person = peopleMap.get(String(personId));
+
+    return person
+      ? formatUserDisplayName(person)
+      : `ไม่พบรายชื่อ (ID ${personId})`;
   }
 
   function departmentName(departmentId) {
@@ -441,7 +446,10 @@ export default async function AssetDetailPage({ params }) {
   // Owner และ assignee อ้างอิง public."user" แต่เป็นคนละบทบาท
   const ownerName = asset.asset_owner_id == null
     ? "ไม่มี Asset Owner"
-    : (asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`) +
+    : (formatUserDisplayName({
+        full_name: asset.asset_owner_name,
+        nickname: asset.asset_owner_nickname,
+      }) || `Owner ID ${asset.asset_owner_id}`) +
       (asset.asset_owner_is_active === false ? " (Inactive)" : "");
 
   // ข้อมูลเดิมยังไม่มี Assignment จึงใช้ Owner เป็นผู้ครอบครองชั่วคราวเท่านั้น
@@ -525,7 +533,7 @@ export default async function AssetDetailPage({ params }) {
           </div>
         </div>
         {/* ================= GENERAL ================= */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-6 text-lg font-semibold">General Information</h2>
 
           <InfoGrid
@@ -675,8 +683,14 @@ export default async function AssetDetailPage({ params }) {
                     movementTransition(
                       movement.from_owner_id,
                       movement.to_owner_id,
-                      movement.from_owner_name,
-                      movement.to_owner_name,
+                      formatUserDisplayName({
+                        full_name: movement.from_owner_name,
+                        nickname: movement.from_owner_nickname,
+                      }),
+                      formatUserDisplayName({
+                        full_name: movement.to_owner_name,
+                        nickname: movement.to_owner_nickname,
+                      }),
                     ),
                   ],
                 ].filter(([, value]) => value);
@@ -820,6 +834,7 @@ export default async function AssetDetailPage({ params }) {
                   <p className="mt-1 text-sm text-gray-500">
                     {display(doc.document_type)} ·{" "}
                     {formatDate(doc.created_at, true)}
+                    {doc.is_primary_photo ? " · รูปหลัก" : ""}
                   </p>
                 </div>
               ))}

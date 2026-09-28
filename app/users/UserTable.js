@@ -164,9 +164,75 @@ export default function UserTable({ users }) {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
 
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 md:hidden">
+          {filteredUsers.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">
+              ไม่พบข้อมูล
+            </p>
+          ) : (
+            filteredUsers.map((user) => {
+              const isActive = user.is_active === true;
 
-          <table className="min-w-full text-sm">
+              return (
+                <article key={user.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs font-semibold text-slate-500">
+                        {user.employee_code || "-"}
+                      </p>
+                      <Link
+                        href={`/users/${user.id}`}
+                        className="mt-1 block break-words font-semibold text-blue-700"
+                      >
+                        {user.full_name}
+                        {user.nickname ? ` (${user.nickname})` : ""}
+                      </Link>
+                    </div>
+                    <select
+                      aria-label={`สถานะของ ${user.full_name}`}
+                      value={isActive ? "true" : "false"}
+                      disabled={updatingId === user.id}
+                      onChange={(event) =>
+                        handleStatusChange(user.id, event.target.value)
+                      }
+                      className={`shrink-0 rounded-full border px-2.5 py-1.5 text-xs font-medium ${
+                        isActive
+                          ? "border-green-200 bg-green-50 text-green-700"
+                          : "border-red-200 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Position</dt>
+                      <dd className="mt-0.5 break-words">{user.position || "-"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Department</dt>
+                      <dd className="mt-0.5 break-words">{user.department_name || "-"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Location</dt>
+                      <dd className="mt-0.5 break-words">{user.location_name || "-"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Email</dt>
+                      <dd className="mt-0.5 break-all">{user.email || "-"}</dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+
+          <table className="min-w-[980px] text-sm">
 
             {/* Header */}
             <thead className="bg-slate-50 text-left">

@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { formatAssetCodeNumber } from "@/lib/asset-code";
 
 export const runtime = "nodejs";
 
@@ -11,9 +12,10 @@ function validBigintId(value) {
     BigInt(value) <= 9223372036854775807n
   );
 }
-// Return the highest code that currently exists for one registration site and
-// Asset Type. This endpoint is read-only; the result is informational and does
-// not reserve the next number.
+// Return the highest running number for one Asset Type across every
+// registration site. F1/F2 identify the registration site, but NB/MON/etc.
+// share one running-number sequence. This read-only result does not reserve a
+// number; the create API and database still verify uniqueness when saving.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const registrationSiteId = searchParams.get("registrationSiteId");
@@ -30,17 +32,13 @@ export async function GET(request) {
     const result = await query(
       `
         SELECT
-          registration_site.site_code,
           asset_type.prefix,
           (
             SELECT max(right(asset.asset_code, 3)::integer)
             FROM public.assets asset
-            WHERE asset.registration_site_id = registration_site.id
-              AND asset.asset_type_id = asset_type.id
+            WHERE asset.asset_type_id = asset_type.id
               AND right(asset.asset_code, 3) ~ '^[0-9]{3}$'
-              AND asset.asset_code = registration_site.site_code
-                || '-' || asset_type.prefix || '-'
-                || right(asset.asset_code, 3)
+              AND asset.asset_code ~ '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
           ) AS latest_number
         FROM public.asset_registration_sites registration_site
         CROSS JOIN public.asset_types asset_type
@@ -61,16 +59,12 @@ export async function GET(request) {
     }
 
     const row = result.rows[0];
-    const latestNumber =
-      row.latest_number == null ? null : String(row.latest_number).padStart(3, "0");
+    const latestNumber = formatAssetCodeNumber(row.latest_number);
 
     return Response.json({
       success: true,
       latestNumber,
-      latestCode:
-        latestNumber == null
-          ? null
-          : `${row.site_code}-${row.prefix}-${latestNumber}`,
+      assetTypePrefix: row.prefix,
     });
   } catch (error) {
     console.error("Load latest Asset Code error:", error);

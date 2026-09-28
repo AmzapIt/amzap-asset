@@ -167,7 +167,7 @@ export default async function UserDetailPage({ params }) {
             <div>
               <p className="text-sm text-gray-500">User / Employee Detail</p>
 
-              <h1 className="mt-1 text-3xl font-bold text-gray-800">
+              <h1 className="mt-1 break-words text-2xl font-bold text-gray-800 sm:text-3xl">
                 {user.full_name}
               </h1>
 
@@ -207,7 +207,7 @@ export default async function UserDetailPage({ params }) {
         </div>
 
         {/* Employee Information */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-6 text-lg font-semibold text-gray-800">
             Employee Information
           </h2>
@@ -270,8 +270,8 @@ export default async function UserDetailPage({ params }) {
         </section>
 
         {/* Current Assets */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
                 Current Assets
@@ -293,7 +293,7 @@ export default async function UserDetailPage({ params }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-[900px] text-sm">
                 <thead className="bg-slate-50 text-left">
                   <tr>
                     <th className="px-4 py-3">Asset Code</th>
@@ -359,7 +359,7 @@ export default async function UserDetailPage({ params }) {
         </section>
 
         {/* Asset History */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
@@ -381,7 +381,7 @@ export default async function UserDetailPage({ params }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-[760px] text-sm">
                 <thead className="bg-slate-50 text-left">
                   <tr>
                     <th className="px-4 py-3">Asset</th>

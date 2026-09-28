@@ -42,14 +42,14 @@ export default async function UsersPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+        <header className="flex flex-col gap-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-lg sm:p-7 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
               People & access
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-white">
+            <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
               Users / Employees
             </h1>
             <p className="mt-2 text-blue-100">
@@ -58,7 +58,7 @@ export default async function UsersPage() {
           </div>
           <Link
             href="/users/add"
-            className="rounded-lg bg-white px-4 py-2.5 font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
+            className="w-full rounded-lg bg-white px-4 py-2.5 text-center font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 sm:w-auto"
           >
             + Add Employee
           </Link>
@@ -74,7 +74,7 @@ export default async function UsersPage() {
           ].map(([label, value, color]) => (
             <section
               key={label}
-              className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6"
             >
               <p className="text-sm text-slate-500">{label}</p>
               <p className={`mt-3 text-3xl font-bold ${color}`}>

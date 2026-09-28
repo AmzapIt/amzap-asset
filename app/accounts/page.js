@@ -65,13 +65,13 @@ export default async function AccountsPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
-        <header className="rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+        <header className="rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-lg sm:p-7">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
             Security & access
           </p>
-          <h1 className="mt-2 text-3xl font-bold">System Accounts</h1>
+          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">System Accounts</h1>
           <p className="mt-2 max-w-3xl text-blue-100">
             จัดการบัญชี Login, สิทธิ์การใช้งาน และการเชื่อมบัญชีกับพนักงาน
           </p>

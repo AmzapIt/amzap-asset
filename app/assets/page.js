@@ -35,17 +35,17 @@ export default async function AssetsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
         {/* ==========================================
             HEADER
         ========================================== */}
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+        <header className="flex flex-col gap-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-lg sm:p-7 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
               Inventory & equipment
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-white">
+            <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
               Assets
             </h1>
 
@@ -54,16 +54,16 @@ export default async function AssetsPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
             <Link
               href="/reports"
-              className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="rounded-lg border border-white/30 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Export / ใบรับมอบ
             </Link>
             <Link
               href="/assets/add"
-              className="inline-flex items-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
+              className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
             >
               + Add Asset
             </Link>

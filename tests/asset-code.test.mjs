@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildAssetCode,
   buildAssetCodePreview,
+  formatAssetCodeNumber,
   parseAssetCodeNumber,
   parseRegistrationSiteId,
 } from "../lib/asset-code.js";
@@ -19,6 +20,16 @@ test("validates the manual three-digit suffix and composes the full code", () =>
 
   for (const value of ["", "1", "01", "1000", "12A", 1]) {
     assert.throws(() => parseAssetCodeNumber(value));
+  }
+});
+
+test("formats the shared latest running number without a site prefix", () => {
+  assert.equal(formatAssetCodeNumber(40), "040");
+  assert.equal(formatAssetCodeNumber("7"), "007");
+  assert.equal(formatAssetCodeNumber(null), null);
+
+  for (const value of [-1, 1000, "invalid"]) {
+    assert.throws(() => formatAssetCodeNumber(value));
   }
 });
 

@@ -362,7 +362,7 @@ export default function AssetTable({ assets }) {
       {/* ==========================================
           SEARCH & FILTER
       ========================================== */}
-      <div className="border-b border-slate-200 bg-slate-50/60 p-5">
+      <div className="border-b border-slate-200 bg-slate-50/60 p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold text-slate-900">ค้นหาและกรอง Asset</h2>
@@ -375,7 +375,7 @@ export default function AssetTable({ assets }) {
             <button
               type="button"
               onClick={resetFilters}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-blue-500"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-blue-500 sm:w-auto"
             >
               ล้าง Filter ทั้งหมด ({activeFilterCount})
             </button>
@@ -547,10 +547,99 @@ export default function AssetTable({ assets }) {
         </div>
       </div>
 
+      {/* มือถือไม่มีหัวตารางให้กด จึงมีตัวเลือก Sort แยกเพื่อคงความสามารถเดิม */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-slate-200 p-4 md:hidden">
+        <select
+          aria-label="เรียง Asset ตาม"
+          value={sortConfig.key}
+          onChange={(event) =>
+            setSortConfig((previous) => ({
+              ...previous,
+              key: event.target.value,
+            }))
+          }
+          className="min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+        >
+          <option value="asset_code">เรียงตามรหัสทรัพย์สิน</option>
+          <option value="asset_type">เรียงตามประเภท</option>
+          <option value="serial_number">เรียงตาม Serial Number</option>
+          <option value="current_holder">เรียงตามผู้ครอบครอง</option>
+          <option value="location">เรียงตาม Location</option>
+          <option value="status">เรียงตามสถานะ</option>
+          <option value="received_date">เรียงตามวันที่รับเข้า</option>
+        </select>
+        <button
+          type="button"
+          onClick={() =>
+            setSortConfig((previous) => ({
+              ...previous,
+              direction: previous.direction === "asc" ? "desc" : "asc",
+            }))
+          }
+          className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"
+          aria-label="สลับทิศทางการเรียง"
+        >
+          {sortConfig.direction === "asc" ? "น้อย → มาก" : "มาก → น้อย"}
+        </button>
+      </div>
+
+      {/* Card view อ่านง่ายกว่า Table บนมือถือและแตะเปิด Detail ได้ทั้งใบ */}
+      <div className="divide-y divide-slate-100 md:hidden">
+        {sortedAssets.map((asset) => (
+          <Link
+            key={asset.id}
+            href={`/assets/${asset.id}`}
+            className="block p-4 transition active:bg-blue-50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words font-semibold text-blue-700">
+                  {asset.asset_code}
+                </p>
+                <p className="mt-1 break-words font-mono text-sm font-medium text-slate-800">
+                  {asset.serial_number || "-"}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
+                  statusColors[asset.status] || "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {asset.status || "-"}
+              </span>
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">ประเภท</dt>
+                <dd className="mt-0.5 break-words text-slate-700">{asset.asset_type || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Brand / Model</dt>
+                <dd className="mt-0.5 break-words text-slate-700">
+                  {[asset.brand, asset.model].filter(Boolean).join(" / ") || "-"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">ผู้ครอบครอง</dt>
+                <dd className="mt-0.5 break-words text-slate-700">{asset.current_holder || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Location</dt>
+                <dd className="mt-0.5 break-words text-slate-700">{asset.location || "-"}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-slate-500">วันที่รับเข้า</dt>
+                <dd className="mt-0.5 text-slate-700">{asset.received_date || "-"}</dd>
+              </div>
+            </dl>
+          </Link>
+        ))}
+      </div>
+
       {/* ==========================================
           ASSET TABLE
       ========================================== */}
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1180px] text-left text-sm">
           <thead className="bg-slate-50">
             <tr>
@@ -568,8 +657,8 @@ export default function AssetTable({ assets }) {
 
               <SortableHeader
                 {...sortableHeaderProps}
-                label="ชื่อทรัพย์สิน"
-                sortKey="asset_name"
+                label="Serial Number"
+                sortKey="serial_number"
               />
 
               <SortableHeader
@@ -643,9 +732,11 @@ export default function AssetTable({ assets }) {
                   {asset.asset_type || "-"}
                 </td>
 
-                {/* ชื่อทรัพย์สิน */}
+                {/* Serial Number */}
                 <td className="px-5 py-5 text-slate-700">
-                  {asset.asset_name || "-"}
+                  <span className="font-mono">
+                    {asset.serial_number || "-"}
+                  </span>
                 </td>
 
                 {/* ยี่ห้อ / รุ่น */}

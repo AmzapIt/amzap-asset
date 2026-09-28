@@ -17,8 +17,8 @@ export default async function AccessoriesSummaryPage() {
     console.error("Load accessory summary failed:", error);
 
     return (
-      <main className="min-h-screen bg-slate-50 p-8 text-slate-900">
-        <h1 className="text-3xl font-bold">Accessory Summary</h1>
+      <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8">
+        <h1 className="text-2xl font-bold sm:text-3xl">Accessory Summary</h1>
         <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
           ไม่สามารถโหลดข้อมูล Accessories ได้ กรุณาลองใหม่
         </p>
@@ -34,26 +34,26 @@ export default async function AccessoriesSummaryPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+        <header className="flex flex-col gap-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-lg sm:p-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
               Equipment without Asset Code
             </p>
-            <h1 className="mt-2 text-3xl font-bold">Accessory Summary</h1>
+            <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Accessory Summary</h1>
             <p className="mt-2 text-blue-100">
               สรุปจากรายการเบิกและคืน Accessories ของพนักงาน
             </p>
           </div>
-          <Link href="/users" className="rounded-lg bg-white px-4 py-2.5 font-semibold text-blue-900">
+          <Link href="/users" className="w-full rounded-lg bg-white px-4 py-2.5 text-center font-semibold text-blue-900 sm:w-auto">
             ดูพนักงาน
           </Link>
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map(([label, value, color]) => (
-            <section key={label} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <section key={label} className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
               <h2 className="text-sm text-slate-500">{label}</h2>
               <p className={`mt-3 text-3xl font-bold ${color}`}>{number(value)}</p>
             </section>
@@ -65,12 +65,12 @@ export default async function AccessoriesSummaryPage() {
         </p>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-          <div className="border-b border-slate-200 p-6">
+          <div className="border-b border-slate-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold">สรุปตามประเภท</h2>
             <p className="mt-1 text-sm text-slate-500">รวมทั้งประเภท Active และ Inactive ที่มีใน Master Data</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[620px] text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="px-5 py-3">Accessory Type</th>
@@ -99,7 +99,7 @@ export default async function AccessoriesSummaryPage() {
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-          <div className="border-b border-slate-200 p-6">
+          <div className="border-b border-slate-200 p-4 sm:p-6">
             <h2 className="text-lg font-semibold">พนักงานที่ถือ Accessories อยู่</h2>
             <p className="mt-1 text-sm text-slate-500">กดชื่อเพื่อดูรายการและประวัติในหน้า User Detail</p>
           </div>
@@ -107,7 +107,7 @@ export default async function AccessoriesSummaryPage() {
             <p className="p-8 text-center text-sm text-slate-500">ยังไม่มี Accessories ที่กำลังถูกถือครอง</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[640px] text-left text-sm">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="px-5 py-3">Employee</th>

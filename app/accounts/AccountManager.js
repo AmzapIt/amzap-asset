@@ -210,7 +210,7 @@ export default function AccountManager({
         ))}
       </section>
 
-      <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold">
@@ -368,7 +368,7 @@ export default function AccountManager({
       )}
 
       {resetId && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-6">
           <h2 className="text-lg font-bold text-amber-950">Reset Password</h2>
           <p className="mt-1 text-sm text-amber-800">
             ตั้งรหัสผ่านชั่วคราวให้บัญชีที่เลือก ระบบจะไม่แสดงรหัสผ่านนี้อีก
@@ -396,7 +396,7 @@ export default function AccountManager({
               }
               className={inputClass}
             />
-            <div className="flex gap-3 md:col-span-2">
+            <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
               <button
                 type="submit"
                 disabled={resetting}
@@ -448,7 +448,7 @@ export default function AccountManager({
 
         <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-[880px] text-sm">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Account</th>

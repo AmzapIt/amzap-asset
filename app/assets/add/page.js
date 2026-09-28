@@ -3,6 +3,7 @@
 import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
 import AssetAdditionalFields from "@/app/assets/AssetAdditionalFields";
+import AssetPhotoField from "@/app/assets/AssetPhotoField";
 import {
   additionalFieldNames,
   emptyAdditionalForm,
@@ -334,12 +335,12 @@ function FormField({ field, form, onChange }) {
 function CollapsibleSection({ title, description, children }) {
   return (
     <details className="rounded-lg bg-white shadow">
-      <summary className="cursor-pointer px-6 py-5 font-semibold text-gray-800">
+      <summary className="cursor-pointer px-4 py-4 font-semibold text-gray-800 sm:px-6 sm:py-5">
         {title}
       </summary>
 
       {/* ส่วนนี้จะซ่อนอยู่จนกว่าผู้ใช้จะกดเปิด */}
-      <div className="border-t px-6 py-5">
+      <div className="border-t px-4 py-5 sm:px-6">
         <p className="mb-5 text-sm text-gray-500">{description}</p>
 
         {children}
@@ -396,7 +397,7 @@ export default function AddAssetPage() {
   const [registrationSites, setRegistrationSites] = useState([]);
   const [loadingRegistrationSites, setLoadingRegistrationSites] = useState(true);
   const [registrationSitesError, setRegistrationSitesError] = useState("");
-  const [latestAssetCode, setLatestAssetCode] = useState(null);
+  const [latestAssetCodeNumber, setLatestAssetCodeNumber] = useState(null);
   const [loadingLatestAssetCode, setLoadingLatestAssetCode] = useState(false);
   const [latestAssetCodeError, setLatestAssetCodeError] = useState("");
   const router = useRouter();
@@ -419,7 +420,8 @@ export default function AddAssetPage() {
   // เก็บ Error ถ้าโหลดรายชื่อพนักงานไม่สำเร็จ
   const [usersError, setUsersError] = useState("");
 
-  // เก็บไฟล์ที่เลือกไว้ชั่วคราว ยังไม่ได้ Upload
+  // เก็บรูปไว้ชั่วคราวใน Browser แล้วอัปโหลดหลัง API สร้าง Asset สำเร็จ
+  // เพราะชื่อไฟล์และแถว asset_documents ต้องอ้างอิง Asset ID ที่สร้างแล้ว
   const [photo, setPhoto] = useState(null);
 
   // ใช้ควบคุมปุ่ม Save และข้อความ Error
@@ -613,11 +615,13 @@ export default function AddAssetPage() {
           throw new Error(data.error || "ไม่สามารถตรวจรหัสล่าสุดได้");
         }
 
-        setLatestAssetCode(data.latestCode || null);
+        // API ส่งเฉพาะเลข Running รวมของ Asset Type ทุกโรงงาน เช่น 040
+        // เพราะ F1/F2 เป็นเพียง Site ที่ขึ้นทะเบียน ไม่ได้แยกชุดเลขอีกต่อไป
+        setLatestAssetCodeNumber(data.latestNumber || null);
       } catch (error) {
         if (error.name !== "AbortError") {
           console.error("Load latest Asset Code error:", error);
-          setLatestAssetCode(null);
+          setLatestAssetCodeNumber(null);
           setLatestAssetCodeError(error.message || "ไม่สามารถตรวจรหัสล่าสุดได้");
         }
       } finally {
@@ -664,20 +668,6 @@ export default function AddAssetPage() {
       return;
     }
 
-    // เตือนก่อนบันทึกถ้ามีข้อมูลที่ API ยังไม่รองรับ
-    // Photo ยังรอเชื่อม Storage ส่วนข้อมูล Technical/Security/Document URL/
-    // Maintenance ถูกส่งให้ API และบันทึกจริงแล้ว
-    const hasUnconnectedData = photo !== null;
-
-    if (
-      hasUnconnectedData &&
-      !window.confirm(
-        "มีข้อมูลในหมวดที่ยังไม่ได้เชื่อม API หรือไฟล์แนบ ข้อมูลส่วนนี้จะยังไม่ถูกบันทึก ต้องการบันทึกเฉพาะข้อมูลที่รองรับต่อหรือไม่?",
-      )
-    ) {
-      return;
-    }
-
     setSaving(true);
 
     try {
@@ -707,17 +697,37 @@ export default function AddAssetPage() {
 
       // Asset Code ต้องมาจาก PostgreSQL จริง
       const assetCode = data.asset?.asset_code;
+      const assetId = data.asset?.id;
 
-      if (!assetCode) {
-        throw new Error("API ไม่ส่ง Asset Code กลับมา");
+      if (!assetCode || !assetId) {
+        throw new Error("API ไม่ส่ง Asset ID หรือ Asset Code กลับมา");
       }
 
-      // แสดง Alert หลังบันทึกสำเร็จ
+      if (photo) {
+        const photoForm = new FormData();
+        photoForm.append("photo", photo);
+        const photoResponse = await fetch(`/api/assets/${assetId}/photos`, {
+          method: "POST",
+          body: photoForm,
+        });
+        const photoData = await photoResponse.json();
+
+        if (!photoResponse.ok || !photoData.success) {
+          // Asset ถูกสร้างแล้ว จึงพาไปหน้า Detail แทนการค้างอยู่ที่หน้า Add
+          // ซึ่งอาจทำให้ผู้ใช้กด Save ซ้ำและสร้าง Asset ซ้ำโดยไม่ตั้งใจ
+          window.alert(
+            `สร้าง Asset ${assetCode} สำเร็จ แต่ Upload รูปไม่สำเร็จ\n${
+              photoData.error || "กรุณาเพิ่มรูปใหม่จากหน้า Edit"
+            }`,
+          );
+          router.push(`/assets/${assetId}`);
+          return;
+        }
+      }
+
       window.alert(
         `บันทึกข้อมูลสำเร็จ\nAsset Code: ${assetCode}${
-          hasUnconnectedData
-            ? "\n\nหมายเหตุ: ข้อมูลในหมวดที่ยังไม่เชื่อม API และไฟล์แนบยังไม่ได้บันทึก"
-            : ""
+          photo ? "\nUpload รูปไป Google Drive แล้ว" : ""
         }`,
       );
 
@@ -734,9 +744,9 @@ export default function AddAssetPage() {
   // 11. ส่วนแสดงผลหน้าเว็บ
   // ==================================================
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1200px]">
-        <h1 className="text-3xl font-bold text-gray-800">Add Asset</h1>
+        <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">Add Asset</h1>
 
         <p className="mt-2 text-gray-500">ลงทะเบียนทรัพย์สิน IT</p>
 
@@ -745,7 +755,7 @@ export default function AddAssetPage() {
               GENERAL INFORMATION
               หมวดนี้แสดงตลอด ไม่ต้องกดเปิด
           ========================================== */}
-          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-xl font-semibold text-gray-800">
               General Information
             </h2>
@@ -868,7 +878,7 @@ export default function AddAssetPage() {
                         ? "เลือก Site และ Type"
                         : loadingLatestAssetCode
                         ? "กำลังตรวจสอบ..."
-                        : latestAssetCode || "ยังไม่มีรหัส"}
+                        : latestAssetCodeNumber || "ยังไม่มีเลข"}
                     </span>
                   </p>
                 </div>
@@ -890,22 +900,12 @@ export default function AddAssetPage() {
               ))}
             </div>
 
-            {/* Photo ยังไม่ Upload */}
             <div className="mt-5">
-              <label className="mb-2 block font-medium">Photo</label>
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => setPhoto(event.target.files?.[0] || null)}
-                className={inputClass}
+              <AssetPhotoField
+                disabled={saving}
+                photo={photo}
+                onChange={setPhoto}
               />
-
-              {photo && (
-                <p className="mt-2 text-sm text-gray-500">
-                  Selected: {photo.name}
-                </p>
-              )}
             </div>
           </section>
 
@@ -1037,7 +1037,7 @@ export default function AddAssetPage() {
           {/* ==========================================
               SAVE / BACK
           ========================================== */}
-          <div className="rounded-lg bg-white p-6 shadow">
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
             {message && (
               <p
                 role="alert"
@@ -1047,7 +1047,7 @@ export default function AddAssetPage() {
               </p>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
               <Link
                 href="/assets"
                 className="rounded-lg border border-slate-200 px-5 py-3 font-medium text-slate-700 hover:bg-slate-50"

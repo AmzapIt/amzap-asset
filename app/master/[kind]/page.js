@@ -60,7 +60,7 @@ export default function MasterPage() {
 
   if (!config) {
     return (
-      <main className="p-8">
+      <main className="px-4 py-5 sm:px-6 sm:py-8">
         <p>Master Data not found</p>
       </main>
     );
@@ -141,17 +141,17 @@ export default function MasterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 xl:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px]">
       {/* =====================================================
           Header
          ===================================================== */}
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-7 text-white shadow-lg">
+      <header className="mb-6 flex flex-col gap-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-lg sm:p-7 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-200">
             Configuration
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-white">
+          <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
             {config.label}
           </h1>
 
@@ -163,7 +163,7 @@ export default function MasterPage() {
         <button
           type="button"
           onClick={addNew}
-          className="rounded-lg bg-white px-4 py-2.5 font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+          className="w-full rounded-lg bg-white px-4 py-2.5 text-center font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:w-auto"
         >
           + Add
         </button>
@@ -187,7 +187,7 @@ export default function MasterPage() {
       {editor && (
         <form
           onSubmit={save}
-          className="mb-6 rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"
+          className="mb-6 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6"
         >
           <h2 className="mb-4 text-lg font-semibold">
             {editor.id
@@ -255,7 +255,7 @@ export default function MasterPage() {
             Active
           </label>
 
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 grid gap-3 sm:flex">
             <button
               type="submit"
               disabled={busy}
@@ -282,7 +282,8 @@ export default function MasterPage() {
           Table
          ===================================================== */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto">
+        <table className="min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50">
             <tr>
               {config.listFields.map((field) => (
@@ -368,6 +369,7 @@ export default function MasterPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       </div>
     </main>

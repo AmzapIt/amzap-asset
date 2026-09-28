@@ -28,7 +28,7 @@ function Field({ name, label, type = "text", form, onChange, ...props }) {
 }
 
 function Section({ title, description, children }) {
-  return <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm"><summary className="cursor-pointer px-6 py-5 text-lg font-semibold">{title}</summary><div className="border-t border-slate-200 px-6 py-5"><p className="mb-5 text-sm text-slate-500">{description}</p>{children}</div></details>;
+  return <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm"><summary className="cursor-pointer px-4 py-4 text-lg font-semibold sm:px-6 sm:py-5">{title}</summary><div className="border-t border-slate-200 px-4 py-5 sm:px-6"><p className="mb-5 text-sm text-slate-500">{description}</p>{children}</div></details>;
 }
 
 export default function AssetAdditionalFields({

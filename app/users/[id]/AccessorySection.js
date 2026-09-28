@@ -159,7 +159,7 @@ export default function AccessorySection({ userId, canWrite }) {
   const historyAccessories = accessories.filter((item) => item.returned_date);
 
   return (
-    <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">Accessories</h2>
@@ -187,7 +187,7 @@ export default function AccessorySection({ userId, canWrite }) {
       {canWrite && showAdd && (
         <form
           onSubmit={handleAdd}
-          className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5"
+          className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
         >
           <h3 className="font-semibold text-slate-800">Add Equipment</h3>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -251,7 +251,7 @@ export default function AccessorySection({ userId, canWrite }) {
               />
             </label>
           </div>
-          <div className="mt-5 flex justify-end gap-3">
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => setShowAdd(false)}
@@ -279,7 +279,7 @@ export default function AccessorySection({ userId, canWrite }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-[680px] text-sm">
               <thead className="bg-gray-50 text-left">
                 <tr>
                   <th className="px-4 py-3">Equipment</th>
@@ -341,7 +341,7 @@ export default function AccessorySection({ userId, canWrite }) {
             {historyAccessories.length === 0 ? (
               <p className="text-sm text-gray-500">ยังไม่มีประวัติการคืน</p>
             ) : (
-              <table className="min-w-full text-sm">
+              <table className="min-w-[600px] text-sm">
                 <thead className="bg-gray-50 text-left">
                   <tr>
                     <th className="px-4 py-3">Equipment</th>
