@@ -423,6 +423,7 @@ export default function AddAssetPage() {
   // เก็บรูปไว้ชั่วคราวใน Browser แล้วอัปโหลดหลัง API สร้าง Asset สำเร็จ
   // เพราะชื่อไฟล์และแถว asset_documents ต้องอ้างอิง Asset ID ที่สร้างแล้ว
   const [photo, setPhoto] = useState(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
 
   // ใช้ควบคุมปุ่ม Save และข้อความ Error
   const [saving, setSaving] = useState(false);
@@ -654,7 +655,7 @@ export default function AddAssetPage() {
     event.preventDefault();
 
     // ป้องกันการกด Save ซ้ำ
-    if (saving) return;
+    if (saving || photoProcessing) return;
 
     setMessage("");
 
@@ -905,6 +906,7 @@ export default function AddAssetPage() {
                 disabled={saving}
                 photo={photo}
                 onChange={setPhoto}
+                onProcessingChange={setPhotoProcessing}
               />
             </div>
           </section>
@@ -1057,10 +1059,14 @@ export default function AddAssetPage() {
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || photoProcessing}
                 className="rounded-lg bg-slate-900 px-6 py-3 font-medium text-white hover:bg-blue-900 disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Save Asset"}
+                {saving
+                  ? "Saving..."
+                  : photoProcessing
+                    ? "Preparing photo..."
+                    : "Save Asset"}
               </button>
             </div>
           </div>

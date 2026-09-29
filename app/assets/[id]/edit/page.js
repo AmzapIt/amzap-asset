@@ -80,6 +80,7 @@ export default function EditAssetPage() {
   const [existingDocuments, setExistingDocuments] = useState([]);
   const [existingMaintenance, setExistingMaintenance] = useState([]);
   const [photo, setPhoto] = useState(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
 
   // ==================================================
   // ข้อมูลที่ดูได้ แต่ห้ามแก้
@@ -285,7 +286,7 @@ export default function EditAssetPage() {
     event.preventDefault();
 
     // ป้องกันกด Save ซ้ำ
-    if (saving || !ready) return;
+    if (saving || photoProcessing || !ready) return;
 
     try {
       setSaving(true);
@@ -746,6 +747,7 @@ export default function EditAssetPage() {
               disabled={saving || !ready}
               photo={photo}
               onChange={setPhoto}
+              onProcessingChange={setPhotoProcessing}
             />
           </section>
 
@@ -775,10 +777,14 @@ export default function EditAssetPage() {
               {/* Save */}
               <button
                 type="submit"
-                disabled={saving || !ready}
+                disabled={saving || photoProcessing || !ready}
                 className="rounded-lg bg-slate-900 px-6 py-3 font-medium text-white hover:bg-blue-900 disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving
+                  ? "Saving..."
+                  : photoProcessing
+                    ? "Preparing photo..."
+                    : "Save Changes"}
               </button>
             </div>
           </div>

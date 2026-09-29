@@ -79,5 +79,6 @@ Environment Variables ตอนเริ่ม Server
 - ห้ามส่ง Client Secret หรือ Refresh Token ใน Chat
 - ห้าม Commit `.env.local`
 - ไฟล์ยังเป็น Private และระบบไม่ตั้งค่า Anyone with the link อัตโนมัติ
-- รองรับ JPG, PNG และ WebP ขนาดสูงสุด 4 MB
+- ช่องถ่ายรูปบนมือถือรับรูปจากกล้องและคลังรูป รวมถึง HEIC/HEIF จาก iPhone
+  แล้วแปลง/ย่อเป็น JPG ใน Browser อัตโนมัติเมื่อจำเป็น ก่อนส่งไฟล์ไม่เกิน 4 MB
 - หากยกเลิกสิทธิ์ OAuth หรือเปลี่ยนรหัสผ่านจน Token ใช้ไม่ได้ ต้องสร้าง Refresh Token ใหม่
