@@ -3,7 +3,8 @@
 import { useCallback, useRef, useState } from "react";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
-const MAX_PHOTO_DIMENSION = 2560;
+const TARGET_PHOTO_BYTES = 1.5 * 1024 * 1024;
+const MAX_PHOTO_DIMENSION = 1920;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CONVERTIBLE_TYPES = new Set([
   ...ALLOWED_TYPES,
@@ -34,7 +35,8 @@ function canvasToJpeg(canvas, quality) {
 }
 
 async function preparePhoto(file) {
-  if (ALLOWED_TYPES.has(file.type) && file.size <= MAX_PHOTO_BYTES) {
+  // ไฟล์ที่เล็กอยู่แล้วไม่ต้องแปลงซ้ำ เพื่อไม่ลดคุณภาพโดยไม่จำเป็น
+  if (ALLOWED_TYPES.has(file.type) && file.size <= TARGET_PHOTO_BYTES) {
     return file;
   }
 
@@ -60,7 +62,7 @@ async function preparePhoto(file) {
     let height = Math.max(1, Math.round(image.naturalHeight * initialScale));
     let lastBlob = null;
 
-    // ลดคุณภาพก่อน แล้วค่อยลดความละเอียดหากรูปยังเกิน 4 MB
+    // ลดคุณภาพก่อน แล้วค่อยลดความละเอียดหากรูปยังเกินเป้าหมาย 1.5 MB
     // เพื่อคงรายละเอียดบนป้าย Serial/Asset ให้ชัดที่สุดเท่าที่ทำได้
     for (let resizePass = 0; resizePass < 3; resizePass += 1) {
       const canvas = document.createElement("canvas");
@@ -76,7 +78,7 @@ async function preparePhoto(file) {
 
       for (const quality of [0.88, 0.76, 0.64, 0.52]) {
         lastBlob = await canvasToJpeg(canvas, quality);
-        if (lastBlob.size <= MAX_PHOTO_BYTES) {
+        if (lastBlob.size <= TARGET_PHOTO_BYTES) {
           const baseName = file.name.replace(/\.[^.]+$/, "") || "asset-photo";
           return new File([lastBlob], `${baseName}.jpg`, {
             type: "image/jpeg",
@@ -87,6 +89,16 @@ async function preparePhoto(file) {
 
       width = Math.max(1, Math.round(width * 0.8));
       height = Math.max(1, Math.round(height * 0.8));
+    }
+
+    // หากรูปซับซ้อนมากจนไม่ถึงเป้าหมาย แต่ยังต่ำกว่าเพดานของ Server
+    // ให้ใช้ผลลัพธ์ที่เล็กที่สุดแทนการบังคับผู้ใช้ถ่ายใหม่
+    if (lastBlob && lastBlob.size <= MAX_PHOTO_BYTES) {
+      const baseName = file.name.replace(/\.[^.]+$/, "") || "asset-photo";
+      return new File([lastBlob], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: file.lastModified || Date.now(),
+      });
     }
 
     throw new Error("รูปมีขนาดใหญ่เกินไปและไม่สามารถย่อให้ต่ำกว่า 4 MB ได้");
@@ -156,7 +168,7 @@ export default function AssetPhotoField({
       </label>
       <p className="mt-1 text-sm text-slate-500">
         ถ่ายรูปจากกล้องหรือเลือกจากคลังรูป ระบบจะย่อและแปลง HEIC/HEIF
-        เป็น JPG ให้อัตโนมัติเมื่อจำเป็น
+        เป็น JPG ให้อัตโนมัติ โดยตั้งเป้าขนาดไม่เกิน 1.5 MB
       </p>
 
       <input

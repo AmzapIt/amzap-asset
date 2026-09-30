@@ -52,6 +52,27 @@ function toSortableDate(value) {
   return `${year}-${month}-${day}`;
 }
 
+function PhotoStatus({ hasPhoto }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+        hasPhoto
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-slate-100 text-slate-500"
+      }`}
+      aria-label={hasPhoto ? "มีรูป Asset แล้ว" : "ยังไม่มีรูป Asset"}
+    >
+      <span
+        aria-hidden="true"
+        className={`h-2 w-2 rounded-full ${
+          hasPhoto ? "bg-emerald-500" : "bg-slate-400"
+        }`}
+      />
+      {hasPhoto ? "มีรูป" : "ยังไม่มีรูป"}
+    </span>
+  );
+}
+
 function SortableHeader({
   label,
   sortKey,
@@ -599,6 +620,9 @@ export default function AssetTable({ assets }) {
                 <p className="mt-1 break-words font-mono text-sm font-medium text-slate-800">
                   {asset.serial_number || "-"}
                 </p>
+                <div className="mt-2">
+                  <PhotoStatus hasPhoto={asset.has_photo} />
+                </div>
               </div>
               <span
                 className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -640,7 +664,7 @@ export default function AssetTable({ assets }) {
           ASSET TABLE
       ========================================== */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1180px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-slate-50">
             <tr>
               <SortableHeader
@@ -648,6 +672,13 @@ export default function AssetTable({ assets }) {
                 label="รหัสทรัพย์สิน"
                 sortKey="asset_code"
               />
+
+              <th
+                scope="col"
+                className="whitespace-nowrap px-5 py-4 text-xs font-semibold text-slate-500"
+              >
+                รูป
+              </th>
 
               <SortableHeader
                 {...sortableHeaderProps}
@@ -725,6 +756,11 @@ export default function AssetTable({ assets }) {
                   >
                     {asset.asset_code}
                   </Link>
+                </td>
+
+                {/* สถานะรูปตรวจจาก asset_documents โดยไม่โหลดไฟล์จาก Google Drive */}
+                <td className="px-5 py-5">
+                  <PhotoStatus hasPhoto={asset.has_photo} />
                 </td>
 
                 {/* ประเภท */}
