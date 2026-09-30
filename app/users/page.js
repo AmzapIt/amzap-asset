@@ -7,6 +7,42 @@ export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   const result = await query(`
+    WITH current_assignments AS (
+      SELECT DISTINCT ON (assignment.asset_id)
+        assignment.asset_id,
+        assignment.assigned_to
+      FROM public.asset_assignments assignment
+      WHERE assignment.returned_date IS NULL
+      ORDER BY
+        assignment.asset_id,
+        assignment.assigned_date DESC,
+        assignment.id DESC
+    ),
+    current_holders AS (
+      SELECT
+        CASE
+          WHEN current_assignment.assigned_to IS NOT NULL
+            THEN current_assignment.assigned_to
+          WHEN NOT EXISTS (
+            SELECT 1
+            FROM public.asset_assignments assignment_history
+            WHERE assignment_history.asset_id = asset.id
+          )
+            THEN asset.asset_owner_id
+          ELSE NULL
+        END AS user_id
+      FROM public.assets asset
+      LEFT JOIN current_assignments current_assignment
+        ON current_assignment.asset_id = asset.id
+    ),
+    asset_counts AS (
+      SELECT
+        current_holders.user_id,
+        COUNT(*)::int AS current_asset_count
+      FROM current_holders
+      WHERE current_holders.user_id IS NOT NULL
+      GROUP BY current_holders.user_id
+    )
     SELECT
       u.id,
       u.employee_code,
@@ -19,12 +55,15 @@ export default async function UsersPage() {
       u.created_at,
       u."position",
       d.name AS department_name,
-      l.name AS location_name
+      l.name AS location_name,
+      COALESCE(asset_counts.current_asset_count, 0) AS current_asset_count
     FROM public."user" u
     LEFT JOIN public.departments d
       ON d.id = u.department_id
     LEFT JOIN public.locations l
       ON l.id = u.location_id
+    LEFT JOIN asset_counts
+      ON asset_counts.user_id = u.id
     ORDER BY u.full_name ASC
   `);
 
@@ -40,6 +79,10 @@ export default async function UsersPage() {
   const factoryTwoUsers = users.filter(
     (user) => Number(user.location_id) === 2,
   ).length;
+  const usersWithAssets = users.filter(
+    (user) => Number(user.current_asset_count) > 0,
+  ).length;
+  const usersWithoutAssets = users.length - usersWithAssets;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
@@ -64,13 +107,15 @@ export default async function UsersPage() {
           </Link>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {[
             ["พนักงานทั้งหมด", users.length, "text-slate-900"],
             ["Active", activeUsers, "text-emerald-600"],
             ["Inactive", inactiveUsers, "text-rose-600"],
             ["Amzap โรงงาน 1", factoryOneUsers, "text-blue-700"],
             ["Amzap โรงงาน 2", factoryTwoUsers, "text-violet-700"],
+            ["มี Asset", usersWithAssets, "text-emerald-700"],
+            ["ยังไม่มี Asset", usersWithoutAssets, "text-amber-700"],
           ].map(([label, value, color]) => (
             <section
               key={label}

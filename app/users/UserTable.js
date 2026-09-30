@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+function getCurrentAssetCount(user) {
+  const count = Number(user.current_asset_count);
+  return Number.isFinite(count) ? count : 0;
+}
+
 export default function UserTable({ users }) {
   // ==================================================
   // State
@@ -17,6 +22,9 @@ export default function UserTable({ users }) {
 
   // Filter สถานะ
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Filter การครอบครอง Asset
+  const [assetFilter, setAssetFilter] = useState("all");
 
   // เก็บ ID ของ User ที่กำลัง Update
   const [updatingId, setUpdatingId] = useState(null);
@@ -51,9 +59,26 @@ export default function UserTable({ users }) {
         (statusFilter === "active" && isActive) ||
         (statusFilter === "inactive" && !isActive);
 
-      return matchSearch && matchStatus;
+      const hasCurrentAssets = getCurrentAssetCount(user) > 0;
+      const matchAsset =
+        assetFilter === "all" ||
+        (assetFilter === "assigned" && hasCurrentAssets) ||
+        (assetFilter === "unassigned" && !hasCurrentAssets);
+
+      return matchSearch && matchStatus && matchAsset;
     });
-  }, [userList, search, statusFilter]);
+  }, [userList, search, statusFilter, assetFilter]);
+
+  const assetSummary = useMemo(() => {
+    const assigned = userList.filter(
+      (user) => getCurrentAssetCount(user) > 0,
+    ).length;
+
+    return {
+      assigned,
+      unassigned: userList.length - assigned,
+    };
+  }, [userList]);
 
   // ==================================================
   // เปลี่ยนสถานะ User
@@ -154,6 +179,21 @@ export default function UserTable({ users }) {
           </option>
         </select>
 
+        {/* Filter การครอบครอง Asset */}
+        <select
+          value={assetFilter}
+          onChange={(event) => setAssetFilter(event.target.value)}
+          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 md:w-56"
+        >
+          <option value="all">ทุกสถานะ Asset</option>
+          <option value="assigned">
+            มี Asset แล้ว ({assetSummary.assigned})
+          </option>
+          <option value="unassigned">
+            ยังไม่มี Asset ({assetSummary.unassigned})
+          </option>
+        </select>
+
       </div>
 
       {/* ================= RESULT COUNT ================= */}
@@ -172,6 +212,7 @@ export default function UserTable({ users }) {
           ) : (
             filteredUsers.map((user) => {
               const isActive = user.is_active === true;
+              const currentAssetCount = getCurrentAssetCount(user);
 
               return (
                 <article key={user.id} className="p-4">
@@ -223,6 +264,24 @@ export default function UserTable({ users }) {
                       <dt className="text-xs text-slate-500">Email</dt>
                       <dd className="mt-0.5 break-all">{user.email || "-"}</dd>
                     </div>
+                    <div className="col-span-2">
+                      <dt className="text-xs text-slate-500">
+                        Asset ที่ครอบครอง
+                      </dt>
+                      <dd className="mt-1">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            currentAssetCount > 0
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {currentAssetCount > 0
+                            ? `มี Asset ${currentAssetCount.toLocaleString("th-TH")} รายการ`
+                            : "ยังไม่มี Asset"}
+                        </span>
+                      </dd>
+                    </div>
                   </dl>
                 </article>
               );
@@ -232,7 +291,7 @@ export default function UserTable({ users }) {
 
         <div className="hidden overflow-x-auto md:block">
 
-          <table className="min-w-[980px] text-sm">
+          <table className="min-w-[1120px] text-sm">
 
             {/* Header */}
             <thead className="bg-slate-50 text-left">
@@ -264,6 +323,10 @@ export default function UserTable({ users }) {
                 </th>
 
                 <th className="px-4 py-3 font-semibold text-slate-600">
+                  Asset ที่ครอบครอง
+                </th>
+
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Status
                 </th>
 
@@ -280,7 +343,7 @@ export default function UserTable({ users }) {
                 <tr>
 
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className="px-4 py-10 text-center text-gray-500"
                   >
                     ไม่พบข้อมูล
@@ -295,6 +358,7 @@ export default function UserTable({ users }) {
                   // เช็กสถานะ User
                   // ==================================================
                   const isActive = user.is_active === true;
+                  const currentAssetCount = getCurrentAssetCount(user);
 
                   return (
                     <tr
@@ -345,6 +409,21 @@ export default function UserTable({ users }) {
                       {/* Email */}
                       <td className="px-4 py-3">
                         {user.email || "-"}
+                      </td>
+
+                      {/* Current Assets */}
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            currentAssetCount > 0
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {currentAssetCount > 0
+                            ? `${currentAssetCount.toLocaleString("th-TH")} รายการ`
+                            : "ยังไม่มี Asset"}
+                        </span>
                       </td>
 
                       {/* ================= STATUS DROPDOWN ================= */}

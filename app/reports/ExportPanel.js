@@ -259,13 +259,14 @@ export default function ExportPanel({ accessories, assets, users, view }) {
         </div>
 
         <div className="max-h-96 overflow-auto rounded-xl border border-slate-200">
-          <table className="min-w-[760px] w-full text-left text-sm">
+          <table className="min-w-[900px] w-full text-left text-sm">
             <thead className="sticky top-0 bg-slate-100 text-slate-700">
               <tr>
                 <th className="p-3">เลือก</th>
                 <th className="p-3">Asset Code</th>
                 <th className="p-3">ชื่อทรัพย์สิน</th>
                 <th className="p-3">สถานะ</th>
+                <th className="p-3">Asset Owner</th>
                 <th className="p-3">ผู้ครอบครองปัจจุบัน</th>
                 <th className="p-3">แหล่งข้อมูล</th>
               </tr>
@@ -297,6 +298,7 @@ export default function ExportPanel({ accessories, assets, users, view }) {
                   </td>
                   <td className="p-3">{asset.asset_name || "-"}</td>
                   <td className="p-3">{asset.status || "-"}</td>
+                  <td className="p-3">{asset.owner_name || "-"}</td>
                   <td className="p-3">{asset.current_holder || "-"}</td>
                   <td className="p-3 text-xs text-slate-500">
                     {asset.holder_source || "-"}

@@ -1,8 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
+const DEFAULT_SORT_CONFIG = {
+  key: "asset_code",
+  direction: "asc",
+};
+const SORT_KEYS = new Set([
+  "asset_code",
+  "asset_type",
+  "serial_number",
+  "brand_model",
+  "current_holder",
+  "location",
+  "status",
+  "received_date",
+]);
+
+function storedText(value) {
+  return typeof value === "string" && value.length <= 500 ? value : "";
+}
 
 // ==================================================
 // 1. สีของ Status
@@ -128,19 +148,92 @@ export default function AssetTable({ assets }) {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedHolder, setSelectedHolder] = useState("");
 
+  // ป้องกันค่าเริ่มต้นเขียนทับ sessionStorage ก่อนอ่านค่าที่เคยใช้เสร็จ
+  const [hasRestoredFilters, setHasRestoredFilters] = useState(false);
+
   // ==================================================
   // เก็บข้อมูลการเรียง
   //
   // ค่าเริ่มต้น:
   // asset_code จากน้อยไปมาก
   // ==================================================
-  const [sortConfig, setSortConfig] = useState({
-    key: "asset_code",
-    direction: "asc",
-  });
+  const [sortConfig, setSortConfig] = useState(DEFAULT_SORT_CONFIG);
 
   // ใช้เปลี่ยนหน้าเมื่อผู้ใช้คลิกแถว
   const router = useRouter();
+
+  // จำ Search / Filter / Sort ภายใน Browser tab เดิม เมื่อออกไปหน้าอื่นแล้วกลับมา
+  useEffect(() => {
+    const restoreTimer = window.setTimeout(() => {
+      try {
+        const storedValue = window.sessionStorage.getItem(
+          ASSET_LIST_STORAGE_KEY,
+        );
+
+        if (storedValue) {
+          const stored = JSON.parse(storedValue);
+
+          if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+            setSearchText(storedText(stored.searchText));
+            setSelectedType(storedText(stored.selectedType));
+            setSelectedStatus(storedText(stored.selectedStatus));
+            setSelectedLocation(storedText(stored.selectedLocation));
+            setSelectedHolder(
+              ["", "assigned", "unassigned"].includes(stored.selectedHolder)
+                ? stored.selectedHolder
+                : "",
+            );
+
+            if (
+              stored.sortConfig &&
+              SORT_KEYS.has(stored.sortConfig.key) &&
+              ["asc", "desc"].includes(stored.sortConfig.direction)
+            ) {
+              setSortConfig({
+                key: stored.sortConfig.key,
+                direction: stored.sortConfig.direction,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Restore Asset filters error:", error);
+        window.sessionStorage.removeItem(ASSET_LIST_STORAGE_KEY);
+      } finally {
+        setHasRestoredFilters(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredFilters) return;
+
+    try {
+      window.sessionStorage.setItem(
+        ASSET_LIST_STORAGE_KEY,
+        JSON.stringify({
+          searchText,
+          selectedType,
+          selectedStatus,
+          selectedLocation,
+          selectedHolder,
+          sortConfig,
+        }),
+      );
+    } catch (error) {
+      console.warn("Save Asset filters error:", error);
+    }
+  }, [
+    hasRestoredFilters,
+    searchText,
+    selectedHolder,
+    selectedLocation,
+    selectedStatus,
+    selectedType,
+    sortConfig,
+  ]);
 
   // ==================================================
   // 3. สร้างตัวเลือก Filter และจำนวนรายการจากข้อมูลจริง
@@ -388,7 +481,7 @@ export default function AssetTable({ assets }) {
           <div>
             <h2 className="font-semibold text-slate-900">ค้นหาและกรอง Asset</h2>
             <p className="mt-1 text-sm text-slate-500">
-              เลือกหลายเงื่อนไขพร้อมกันเพื่อค้นหารายการที่ต้องการ
+              เลือกหลายเงื่อนไขพร้อมกัน ระบบจะจำค่าไว้เมื่อกลับมาหน้านี้
             </p>
           </div>
 
