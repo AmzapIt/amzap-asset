@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { filenameFromContentDisposition } from "@/lib/export-filename";
 import { formatUserDisplayName } from "@/lib/user-display";
 
 const HANDOVER_KINDS = [
@@ -133,7 +134,10 @@ export default function ExportPanel({ accessories, assets, users, view }) {
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = `AMZAP-${format}.${format === "xlsx" ? "xlsx" : "pdf"}`;
+      link.download = filenameFromContentDisposition(
+        response.headers.get("Content-Disposition"),
+        `AMZAP-${format}.${format === "xlsx" ? "xlsx" : "pdf"}`,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();

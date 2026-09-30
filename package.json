@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/assignments.test.mjs tests/asset-additional.test.mjs tests/asset-code.test.mjs tests/asset-movements.test.mjs tests/account-security.test.mjs tests/accounts.test.mjs tests/auth-config.test.mjs tests/report-validation.test.mjs tests/user-display.test.mjs tests/accessory-inventory.test.mjs",
+    "test": "node --test tests/assignments.test.mjs tests/asset-additional.test.mjs tests/asset-code.test.mjs tests/asset-movements.test.mjs tests/account-security.test.mjs tests/accounts.test.mjs tests/auth-config.test.mjs tests/report-validation.test.mjs tests/user-display.test.mjs tests/export-filename.test.mjs tests/accessory-inventory.test.mjs",
     "test:accessories:db": "node tests/accessory-inventory.integration.mjs"
   },
   "dependencies": {

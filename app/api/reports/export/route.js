@@ -1,5 +1,6 @@
 import { getCurrentAccessories,getReportAssets,getRecipient } from "@/lib/asset-report";
 import { assetWorkbook,assetPdf,handoverPdf } from "@/lib/export-files";
+import { handoverFilename } from "@/lib/export-filename";
 import { findHandoverConflict } from "@/lib/report-validation";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -39,6 +40,7 @@ export async function POST(request) {
     const rows=await getReportAssets(body.ids);
     if(rows.length!==body.ids.length)return Response.json({error:"บางรายการไม่พบในระบบ กรุณาโหลดหน้าใหม่"},{status:404});
     let buffer;
+    let filename;
     if(body.format==="handover"){
       const recipient=await getRecipient(body.recipientId);
       if(!recipient)return Response.json({error:"ไม่พบพนักงาน"},{status:404});
@@ -69,9 +71,14 @@ export async function POST(request) {
       const accessories=await getCurrentAccessories(body.recipientId);
       if(!rows.length&&!accessories.length)return Response.json({error:"พนักงานไม่มี Asset หรือ Accessory สำหรับสร้างเอกสาร"},{status:400});
       buffer=await handoverPdf(rows,recipient,form,accessories);
-    }else buffer=await (body.format==="xlsx"?assetWorkbook(rows):assetPdf(rows));
+      filename=handoverFilename(recipient);
+    }else {
+      buffer=await (body.format==="xlsx"?assetWorkbook(rows):assetPdf(rows));
+      filename=`AMZAP-${body.format}.${body.format==="xlsx"?"xlsx":"pdf"}`;
+    }
     // ส่งไฟล์เป็น binary พร้อมชื่อดาวน์โหลด และ no-store เพื่อไม่ cache รายงานพนักงาน
     const extension=body.format==="xlsx"?"xlsx":"pdf";
-    return new Response(new Uint8Array(buffer),{headers:{"Content-Type":extension==="xlsx"?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"application/pdf","Content-Disposition":`attachment; filename="AMZAP-${body.format}.${extension}"`,"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+    const fallbackFilename=`AMZAP-${body.format}.${extension}`;
+    return new Response(new Uint8Array(buffer),{headers:{"Content-Type":extension==="xlsx"?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"application/pdf","Content-Disposition":`attachment; filename="${fallbackFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
   }catch(error){console.error("Export failed",error);return Response.json({error:"ไม่สามารถสร้างรายงานได้ กรุณาลองใหม่"},{status:500});}
 }
