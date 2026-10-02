@@ -35,3 +35,36 @@ body {
 table {
   max-width: 100%;
 }
+
+.asset-label {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40mm;
+  height: 30mm;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #000;
+  break-inside: avoid;
+}
+
+.asset-label strong {
+  max-width: 38mm;
+  overflow: hidden;
+  font: 700 9pt Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.asset-label img {
+  display: block;
+  width: 19mm;
+  height: 19mm;
+  object-fit: contain;
+}
+
+@media screen {
+  .label-print-area { display: none; }
+}

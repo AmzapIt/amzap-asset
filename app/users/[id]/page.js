@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { query } from "@/lib/db";
 import AccessorySection from "./AccessorySection";
 import DeleteUserButton from "./DeleteUserButton";
+import OffboardingPanel from "./OffboardingPanel";
+import { getOffboardingOverview } from "@/lib/offboarding";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,7 +71,7 @@ export default async function UserDetailPage({ params }) {
   // ==================================================
   // 2. ดึง Asset ปัจจุบันและประวัติที่พนักงานคนนี้เคยถือ
   // ==================================================
-  const [currentAssetResult, assetHistoryResult] = await Promise.all([
+  const [currentAssetResult, assetHistoryResult, offboarding] = await Promise.all([
     query(
       `
         SELECT
@@ -107,6 +109,14 @@ export default async function UserDetailPage({ params }) {
           OR (
             aa.id IS NULL
             AND a.asset_owner_id = $1
+            AND a.status = 'In Use'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM public.employee_offboarding_items item
+              JOIN public.employee_offboardings offboarding ON offboarding.id=item.offboarding_id
+              WHERE item.asset_id=a.id AND item.resolution='not_held'
+                AND offboarding.user_id=a.asset_owner_id
+            )
             AND NOT EXISTS (
               SELECT 1
               FROM public.asset_assignments assignment_history
@@ -147,6 +157,7 @@ export default async function UserDetailPage({ params }) {
       `,
       [id],
     ),
+    getOffboardingOverview(id),
   ]);
 
   const currentAssets = currentAssetResult.rows;
@@ -268,6 +279,15 @@ export default async function UserDetailPage({ params }) {
             </div>
           </div>
         </section>
+
+        <OffboardingPanel
+          userId={id}
+          userName={user.full_name}
+          isActive={isActive}
+          canManageUsers={canManageUsers}
+          canWrite={canWrite}
+          overview={offboarding}
+        />
 
         {/* Current Assets */}
         <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
@@ -441,7 +461,7 @@ export default async function UserDetailPage({ params }) {
           )}
         </section>
 
-        <AccessorySection userId={id} canWrite={canWrite} />
+        <AccessorySection userId={id} canWrite={canWrite} offboardingActive={Boolean(offboarding && !offboarding.closed_at)} />
       </div>
     </main>
   );

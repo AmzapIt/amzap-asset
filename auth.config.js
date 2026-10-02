@@ -26,6 +26,7 @@ export const authConfig = {
 
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      const isApiRequest = nextUrl.pathname.startsWith("/api/");
 
       const isLoginPage = nextUrl.pathname.startsWith("/login");
       const isPasswordChangePage = nextUrl.pathname.startsWith(
@@ -43,6 +44,12 @@ export const authConfig = {
         !isPasswordChangePage &&
         !isPasswordChangeApi
       ) {
+        if (isApiRequest) {
+          return Response.json(
+            { success: false, error: "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งานต่อ" },
+            { status: 403 },
+          );
+        }
         return Response.redirect(new URL("/account/password", nextUrl));
       }
 
@@ -55,6 +62,13 @@ export const authConfig = {
       // หน้า login เปิดได้โดยไม่ต้อง login
       if (isLoginPage) {
         return true;
+      }
+
+      if (isApiRequest && !isLoggedIn) {
+        return Response.json(
+          { success: false, error: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่" },
+          { status: 401 },
+        );
       }
 
       // หน้าอื่นต้อง login ก่อน

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { filenameFromContentDisposition } from "@/lib/export-filename";
-import { formatUserDisplayName } from "@/lib/user-display";
+import EmployeePicker from "@/app/components/EmployeePicker";
 
 const HANDOVER_KINDS = [
   "พนักงานใหม่",
@@ -221,24 +221,13 @@ export default function ExportPanel({ accessories, assets, users, view }) {
             </select>
           </label>
 
-          <label className="text-sm font-medium">
-            ผู้ครอบครองปัจจุบัน
-            <select
-              className="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-50 p-3 outline-none focus:border-blue-500"
-              value={holder}
-              onChange={(event) =>
-                changeReportFilter(setHolder, event.target.value)
-              }
-            >
-              <option value="">ทุกคน</option>
-              <option value="unassigned">ยังไม่มีผู้ครอบครอง</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.employee_code} — {formatUserDisplayName(user)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <EmployeePicker
+            label="ผู้ครอบครองปัจจุบัน"
+            users={[{ id: "unassigned", full_name: "ยังไม่มีผู้ครอบครอง" }, ...users]}
+            value={holder}
+            onChange={(id) => changeReportFilter(setHolder, id)}
+            emptyLabel="ทุกคน"
+          />
         </div>
 
         <p className="text-sm text-slate-500">
@@ -347,22 +336,13 @@ export default function ExportPanel({ accessories, assets, users, view }) {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-medium">
-            ผู้รับมอบ
-            <select
-              className="mt-1 block w-full rounded-lg border border-slate-200 p-3"
-              value={recipient}
-              onChange={(event) => changeRecipient(event.target.value)}
-            >
-              <option value="">เลือกพนักงาน</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.employee_code} — {formatUserDisplayName(user)}
-                  {user.status === 0 ? " (Inactive)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          <EmployeePicker
+            label="ผู้รับมอบ"
+            users={users}
+            value={recipient}
+            onChange={changeRecipient}
+            required
+          />
 
           <label className="text-sm font-medium">
             ประเภทการรับมอบ

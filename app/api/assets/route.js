@@ -1,6 +1,8 @@
 import { validateAssetLookups } from "@/lib/master-data";
 import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import { auth } from "@/auth";
+import { getItStockLocation } from "@/lib/it-stock";
 import {
   parseAssetAdditional,
   saveAssetAdditional,
@@ -114,59 +116,14 @@ export async function POST(request) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 400 });
   }
-  // ==================================================
-  // Asset Owner จากหน้า Add
-  //
-  // HTML select ส่ง User ID เป็น String เช่น "27"
-  // หากไม่ได้เลือก จะส่ง "" ให้บันทึกเป็น NULL
-  //
-  // เก็บ ID เป็น String สำหรับส่งเข้า parameter ของ SQL
-  // PostgreSQL จะรับค่าเข้าคอลัมน์ asset_owner_id
-  // ไม่ใช้ชื่อพนักงานเป็นตัวอ้างอิง เพราะชื่ออาจซ้ำหรือเปลี่ยนได้
-  // ==================================================
-  // รับเฉพาะ String หรือไม่มีค่า ตามรูปแบบที่หน้า Add ส่งมา
-  // ป้องกัน Object, Array หรือชนิดข้อมูลอื่นถูกแปลงเป็น NULL เงียบ ๆ
-  if (body.assetOwner != null && typeof body.assetOwner !== "string") {
+
+  if ((body.status && body.status !== "In Stock") || body.assetOwner || body.location) {
     return Response.json(
-      {
-        success: false,
-        error: "รูปแบบ Asset Owner ไม่ถูกต้อง",
-      },
+      { error: "เครื่องใหม่ต้องรับเข้าคลัง IT เป็น In Stock ก่อน และยังไม่ระบุผู้ครอบครอง" },
       { status: 400 },
     );
   }
-
-  // อ่าน User ID จาก dropdown เช่น "27" หรือแปลงค่าว่างเป็น null
-  // ประกาศก่อนตรวจสอบและก่อนส่งเข้า SQL เพื่อป้องกัน ReferenceError
-  const assetOwner = text(body.assetOwner);
-
-  // เมื่อเลือก Owner ต้องเป็น ID จำนวนเต็มบวกเท่านั้น
-  // หากเป็น NULL ให้ผ่านได้ เพราะ Asset สามารถไม่มี Owner
-  if (
-    assetOwner !== null &&
-    (!/^[1-9]\d{0,18}$/.test(assetOwner) ||
-      BigInt(assetOwner) > 9223372036854775807n)
-  ) {
-    return Response.json(
-      {
-        success: false,
-        error: "Asset Owner ต้องเป็น User ID จำนวนเต็มบวก",
-      },
-      { status: 400 },
-    );
-  }
-  const status = text(body.status) || "In Stock";
-
-  // รายการสถานะที่ Database อนุญาต
-  const allowedStatuses = [
-    "In Stock",
-    "In Use",
-    "Repair",
-    "Spare",
-    "Retired",
-    "Disposed",
-    "Lost",
-  ];
+  const session = await auth();
 
   // ตรวจสอบข้อมูลที่จำเป็น
   if (!type || !assetName) {
@@ -176,9 +133,6 @@ export async function POST(request) {
     );
   }
 
-  if (!allowedStatuses.includes(status)) {
-    return Response.json({ error: "สถานะไม่ถูกต้อง" }, { status: 400 });
-  }
 
   // 3. เตรียมข้อมูลวันที่และราคา
   const receivedDate = text(body.receivedDate);
@@ -222,34 +176,6 @@ export async function POST(request) {
 
   // 4. เริ่มทำงานกับ PostgreSQL
   try {
-    // ==================================================
-    // ตรวจ Owner กับข้อมูลจริงก่อนสร้าง Asset
-    //
-    // รายชื่อในหน้า Add อาจถูกโหลดไว้นานแล้ว
-    // จึงตรวจซ้ำว่าพนักงานยังอยู่และ Active
-    // ใช้ $1 แยกค่าจาก SQL ไม่ต่อข้อความจากผู้ใช้ลงในคำสั่ง
-    // ==================================================
-    if (assetOwner !== null) {
-      const ownerResult = await query(
-        `SELECT id
-     FROM public."user"
-     WHERE id = $1
-       AND is_active = true
-     LIMIT 1`,
-        [assetOwner],
-      );
-
-      if (ownerResult.rows.length === 0) {
-        return Response.json(
-          {
-            success: false,
-            error: "ไม่พบพนักงานที่เลือก หรือพนักงานไม่ได้อยู่ในสถานะ Active",
-          },
-          { status: 400 },
-        );
-      }
-    }
-
     try { await validateAssetLookups(body); } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
 
     // หา ID ของประเภทจากชื่อที่ Frontend ส่งมา
@@ -299,14 +225,14 @@ export async function POST(request) {
       ["asset_type_id", assetTypeId],
       ["registration_site_id", registrationSiteId],
       ["received_date", receivedDate],
-      ["asset_owner_id", assetOwner],
+      ["asset_owner_id", null],
       ["asset_name", assetName],
       ["brand", text(body.brand)],
       ["model", text(body.model)],
       ["serial_number", text(body.serialNumber)],
       ["computer_name", text(body.computerName)],
       ["description", text(body.description)],
-      ["status", status],
+      ["status", "In Stock"],
       ["purchase_date", purchaseDate],
       ["purchase_price", purchasePrice],
       ["currency", "THB"],
@@ -318,7 +244,7 @@ export async function POST(request) {
       ["cost_center", text(body.costCenter)],
       ["notes", text(body.notes)],
       ["owning_department_id", text(body.department)],
-      ["location_id", text(body.location)],
+      ["location_id", null],
       ["vendor_id", text(body.vendor)],
     ];
 
@@ -329,6 +255,8 @@ export async function POST(request) {
     const client = await getDbPool().connect();
     try {
       await client.query("BEGIN");
+      const itStock = await getItStockLocation(client);
+      fields.find(([column]) => column === "location_id")[1] = itStock.id;
       // Running Number ใช้ร่วมกันตาม Asset Type ทุกโรงงาน จึงล็อกตาม Type
       // ภายใน Transaction ก่อนตรวจเลขซ้ำ ป้องกันสอง request เลือกเลขเดียวกัน
       // พร้อมกันแล้วผ่านการตรวจทั้งคู่
@@ -359,6 +287,12 @@ export async function POST(request) {
       );
 
       await saveAssetAdditional(client, result.rows[0].id, additional);
+      await client.query(
+        `INSERT INTO public.asset_stock_receipts
+         (asset_id,receipt_type,receipt_date,asset_condition,reason,received_by_account_id)
+         VALUES ($1,'new',(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date,'ready',$2,$3)`,
+        [result.rows[0].id, "รับเครื่องใหม่เข้าคลัง IT", String(session.user.id)],
+      );
       await client.query("COMMIT");
 
     // 6. PostgreSQL INSERT สำเร็จ

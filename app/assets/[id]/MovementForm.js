@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatUserDisplayName } from "@/lib/user-display";
+import EmployeePicker from "@/app/components/EmployeePicker";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -14,6 +14,8 @@ export default function MovementForm({
   currentLocationId,
   currentDepartmentId,
   currentOwnerId,
+  assetStatus,
+  itStockLocationId,
   locations,
   departments,
   users,
@@ -30,6 +32,11 @@ export default function MovementForm({
     idValue(currentDepartmentId),
   );
   const [toOwnerId, setToOwnerId] = useState(idValue(currentOwnerId));
+  const movementLocations = locations.filter((location) =>
+    !(assetStatus === "In Use" &&
+      String(location.id) === String(itStockLocationId) &&
+      String(currentLocationId) !== String(itStockLocationId)),
+  );
 
   if (!canWrite) {
     return (
@@ -102,6 +109,8 @@ export default function MovementForm({
         <h3 className="font-semibold text-slate-900">บันทึก Asset Movement</h3>
         <p className="mt-1 text-sm text-slate-600">
           เปลี่ยนสถานที่ หน่วยงานเจ้าของ หรือ Asset Owner พร้อมเก็บค่าก่อน–หลัง
+          ใช้ส่วนนี้แก้ข้อมูลพิเศษเท่านั้น การรับคืนหรือเบิกออกจากคลัง IT ให้ใช้
+          <a href="#asset-action" className="ml-1 font-medium text-blue-700 underline">ดำเนินการ Asset ด้านบน</a>
         </p>
       </div>
 
@@ -114,8 +123,15 @@ export default function MovementForm({
             className={inputClass}
           >
             <option value="">ไม่ระบุ Location</option>
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
+            {movementLocations.map((location) => (
+              <option
+                key={location.id}
+                value={location.id}
+                disabled={
+                  (assetStatus === "In Use" && String(location.id) === String(itStockLocationId)) ||
+                  (assetStatus === "In Stock" && String(currentLocationId) === String(itStockLocationId) && String(location.id) !== String(itStockLocationId))
+                }
+              >
                 {[location.name, location.building, location.floor, location.room]
                   .filter(Boolean)
                   .join(" / ")}
@@ -142,27 +158,18 @@ export default function MovementForm({
           </select>
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Asset Owner
-          <select
+        <div>
+          <EmployeePicker
+            label="Asset Owner"
+            users={users}
             value={toOwnerId}
-            onChange={(event) => setToOwnerId(event.target.value)}
-            className={inputClass}
-          >
-            <option value="">ไม่มี Asset Owner</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.employee_code ? `${user.employee_code} — ` : ""}
-                {formatUserDisplayName(user)}
-                {user.department_name ? ` (${user.department_name})` : ""}
-                {!user.is_active ? " (Inactive)" : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setToOwnerId}
+            emptyLabel="ไม่มี Asset Owner"
+          />
           <span className="mt-1 block text-xs font-normal text-slate-500">
             Owner เป็นผู้รับผิดชอบ Asset ไม่ใช่ผู้ถือครองจาก Assignment
           </span>
-        </label>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

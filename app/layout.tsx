@@ -46,7 +46,7 @@ export default async function RootLayout({
 
         {/* เนื้อหาของหน้าปัจจุบัน */}
         <div
-          className={`min-w-0 flex-1 ${session?.user ? "pt-16 lg:pt-0" : ""}`}
+          className={`app-content min-w-0 flex-1 ${session?.user ? "pt-16 lg:pt-0" : ""}`}
         >
           {children}
         </div>

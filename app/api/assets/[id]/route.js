@@ -1,6 +1,7 @@
 import { validateAssetLookups } from "@/lib/master-data";
 import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import { getItStockLocation } from "@/lib/it-stock";
 import {
   parseAssetAdditional,
   saveAssetAdditional,
@@ -249,6 +250,44 @@ export async function PATCH(request, { params }) {
     // ==================================================
     try {
       await client.query("BEGIN");
+      const existing = (await client.query(
+        "SELECT status,location_id FROM public.assets WHERE id=$1 FOR UPDATE",
+        [id],
+      )).rows[0];
+      if (!existing) {
+        await client.query("ROLLBACK");
+        return Response.json({ error: "Asset not found" }, { status: 404 });
+      }
+      if (body.status !== existing.status) {
+        if (existing.status === "Repair" && body.status === "In Stock") {
+          await client.query("ROLLBACK");
+          return Response.json(
+            { error: "กรุณาบันทึกซ่อมเสร็จ / พร้อมเบิกจากหน้า Asset Detail เพื่อเก็บผลการซ่อม" },
+            { status: 409 },
+          );
+        }
+        const openAssignment = await client.query(
+          "SELECT 1 FROM public.asset_assignments WHERE asset_id=$1 AND returned_date IS NULL LIMIT 1",
+          [id],
+        );
+        if (existing.status === "In Use" || openAssignment.rowCount || body.status === "In Use") {
+          await client.query("ROLLBACK");
+          return Response.json(
+            { error: "เปลี่ยนสถานะการครอบครองผ่านการรับคืนหรือมอบหมายในหน้า Asset Detail" },
+            { status: 409 },
+          );
+        }
+        if (body.status === "In Stock") {
+          const itStock = await getItStockLocation(client);
+          if (String(existing.location_id) !== String(itStock.id)) {
+            await client.query("ROLLBACK");
+            return Response.json(
+              { error: "ต้องย้าย Asset เข้าคลัง IT ก่อนเปลี่ยนเป็น In Stock" },
+              { status: 409 },
+            );
+          }
+        }
+      }
       const result = await client.query(
       `
         UPDATE public.assets

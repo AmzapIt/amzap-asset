@@ -8,6 +8,7 @@ import {
 function createPool({
   asset = {
     id: "10",
+    status: "Spare",
     location_id: "1",
     owning_department_id: "2",
     asset_owner_id: "3",
@@ -15,6 +16,7 @@ function createPool({
   today = "2026-09-26",
   latestMovementDate = null,
   activeTargets = true,
+  currentAssignedTo = null,
 } = {}) {
   const calls = [];
   const client = {
@@ -37,6 +39,17 @@ function createPool({
           rows: [{ movement_date: latestMovementDate }],
           rowCount: 1,
         };
+      }
+      if (normalized.startsWith("SELECT location.id")) {
+        return { rows: [{ id: "9", name: "IT Stock" }], rowCount: 1 };
+      }
+      if (normalized.startsWith("SELECT 1 FROM public.asset_assignments")) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (normalized.startsWith("SELECT assigned_to FROM public.asset_assignments")) {
+        return currentAssignedTo
+          ? { rows: [{ assigned_to: currentAssignedTo }], rowCount: 1 }
+          : { rows: [], rowCount: 0 };
       }
       if (normalized.startsWith("SELECT id FROM public.")) {
         return activeTargets
@@ -162,4 +175,55 @@ test("movement rejects inactive new master data", async () => {
   );
 
   assert.ok(fake.calls.some((call) => call.sql === "ROLLBACK"));
+});
+
+test("an In Use asset cannot be moved into IT stock without a return receipt", async () => {
+  const fake = createPool({ asset: {
+    id: "10", status: "In Use", location_id: "1",
+    owning_department_id: "2", asset_owner_id: "3",
+  } });
+  await assert.rejects(
+    moveAsset("10", movement({ toLocationId: "9" }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409,
+  );
+  assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
+});
+
+test("In Stock cannot leave IT stock without an assignment", async () => {
+  const fake = createPool({ asset: {
+    id: "10", status: "In Stock", location_id: "9",
+    owning_department_id: "2", asset_owner_id: "3",
+  } });
+  await assert.rejects(
+    moveAsset("10", movement({ expectedLocationId: "9" }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409,
+  );
+  assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
+});
+
+test("stock cannot receive an owner through Movement", async () => {
+  const fake = createPool({ asset: {
+    id: "10", status: "In Stock", location_id: "9",
+    owning_department_id: "2", asset_owner_id: null,
+  } });
+  await assert.rejects(
+    moveAsset("10", movement({
+      toLocationId: "9", toDepartmentId: "2", toOwnerId: "5",
+      expectedLocationId: "9", expectedOwnerId: null,
+    }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409,
+  );
+  assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
+});
+
+test("Movement cannot contradict an open Assignment owner", async () => {
+  const fake = createPool({
+    asset: { id: "10", status: "In Use", location_id: "1", owning_department_id: "2", asset_owner_id: "3" },
+    currentAssignedTo: "3",
+  });
+  await assert.rejects(
+    moveAsset("10", movement({ toLocationId: "1", toDepartmentId: "2" }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409,
+  );
+  assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
 });

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import EmployeePicker from "@/app/components/EmployeePicker";
 
 const roles = ["Admin", "IT Staff", "Read-only"];
 
@@ -15,12 +16,6 @@ const emptyForm = {
   password: "",
   confirmPassword: "",
 };
-
-function employeeLabel(employee) {
-  const nickname = employee.nickname ? ` (${employee.nickname})` : "";
-  const code = employee.employee_code ? `${employee.employee_code} — ` : "";
-  return `${code}${employee.full_name}${nickname}`;
-}
 
 function formatDate(value) {
   if (!value) return "-";
@@ -284,23 +279,15 @@ export default function AccountManager({
             </select>
           </label>
 
-          <label className="space-y-1.5 text-sm font-medium text-slate-700 md:col-span-2">
-            <span>Linked Employee</span>
-            <select
-              value={form.userId}
-              onChange={(event) => setField("userId", event.target.value)}
-              className={inputClass}
-            >
-              <option value="">ไม่ผูกกับพนักงาน</option>
-              {selectableEmployees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employeeLabel(employee)}
-                  {!employee.is_active ? " [Inactive]" : ""}
-                  {employee.location_name ? ` — ${employee.location_name}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          <EmployeePicker
+            key={editingId ?? "new"}
+            label="Linked Employee"
+            users={selectableEmployees}
+            value={form.userId}
+            onChange={(id) => setField("userId", id)}
+            emptyLabel="ไม่ผูกกับพนักงาน"
+            className="md:col-span-2"
+          />
 
           <label className="flex items-center gap-3 self-end rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
             <input

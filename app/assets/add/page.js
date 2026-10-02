@@ -9,7 +9,6 @@ import {
   emptyAdditionalForm,
 } from "@/lib/asset-additional";
 import { buildAssetCodePreview } from "@/lib/asset-code";
-import { formatUserDisplayName } from "@/lib/user-display";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -20,16 +19,7 @@ import { useRouter } from "next/navigation";
 // ชื่อประเภทต้องตรงกับตาราง asset_types ใน PostgreSQL
 // Prefix ใช้แสดงตัวอย่างเท่านั้น รหัสจริงให้ Database สร้าง
 
-// สถานะต้องตรงกับ CHECK constraint ของตาราง assets
-const statuses = [
-  "In Stock",
-  "In Use",
-  "Repair",
-  "Spare",
-  "Retired",
-  "Disposed",
-  "Lost",
-];
+const intakeLookups = ["department", "vendor"];
 
 // ==================================================
 // 2. ค่าเริ่มต้นของ Form
@@ -53,7 +43,6 @@ const initialForm = {
   notes: "",
 
   // Ownership & Location (Assignment is created from Asset Detail)
-  assetOwner: "",
   department: "",
   location: "",
 
@@ -114,7 +103,6 @@ const generalFields = [
   { name: "serialNumber", label: "Serial Number" },
   { name: "computerName", label: "Computer Name" },
   { name: "description", label: "Description", type: "textarea" },
-  { name: "status", label: "Status", options: statuses },
   { name: "notes", label: "Notes", type: "textarea" },
 ];
 
@@ -122,9 +110,8 @@ const generalFields = [
 const collapsibleGroups = [
   {
     title: "Ownership & Location",
-    description: "ผู้รับผิดชอบหลักและสถานที่เริ่มต้น (มอบหมายผู้ครอบครองหลังสร้าง Asset)",
+    description: "เครื่องใหม่จะเข้าคลัง IT โดยอัตโนมัติ และมอบหมายผู้ครอบครองภายหลัง",
     fields: [
-      { name: "assetOwner", label: "Asset Owner / ผู้รับผิดชอบ" },
       { name: "department", label: "Department" },
       { name: "location", label: "Location" },
     ],
@@ -364,7 +351,6 @@ const supportedFields = [
   "vendor",
   "type",
   "receivedDate",
-  "assetOwner",
   "assetName",
   "brand",
   "model",
@@ -406,20 +392,6 @@ export default function AddAssetPage() {
   // ==================================================
   const [form, setForm] = useState(initialForm);
 
-  // ==================================================
-  // รายชื่อพนักงานสำหรับ Asset Owner
-  // ==================================================
-
-  // เก็บรายชื่อพนักงานที่ Active
-  // ข้อมูลมาจาก GET /api/users/active
-  const [activeUsers, setActiveUsers] = useState([]);
-
-  // ใช้บอกว่า Dropdown กำลังโหลดรายชื่ออยู่
-  const [loadingUsers, setLoadingUsers] = useState(true);
-
-  // เก็บ Error ถ้าโหลดรายชื่อพนักงานไม่สำเร็จ
-  const [usersError, setUsersError] = useState("");
-
   // เก็บรูปไว้ชั่วคราวใน Browser แล้วอัปโหลดหลัง API สร้าง Asset สำเร็จ
   // เพราะชื่อไฟล์และแถว asset_documents ต้องอ้างอิง Asset ID ที่สร้างแล้ว
   const [photo, setPhoto] = useState(null);
@@ -429,16 +401,6 @@ export default function AddAssetPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ==================================================
-  // โหลดรายชื่อพนักงาน Active
-  //
-  // ทำงานตอนเปิดหน้า Add Asset ครั้งแรก
-  //
-  // API จะดึง:
-  // SELECT id, full_name, nickname, is_active
-  // FROM public."user"
-  // WHERE is_active = true
-  // ==================================================
   // ==================================================
   // โหลด Asset Types ที่ Active จาก Master Data
   //
@@ -519,50 +481,6 @@ export default function AddAssetPage() {
     }
 
     loadAssetTypes();
-
-    return () => controller.abort();
-  }, []);
-
-  // ==================================================
-  // โหลดรายชื่อพนักงาน Active
-  //
-  // ข้อมูลมาจาก:
-  // GET /api/users/active
-  //
-  // ใช้สำหรับ Asset Owner
-  // ==================================================
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadActiveUsers() {
-      try {
-        setLoadingUsers(true);
-        setUsersError("");
-
-        const response = await fetch("/api/users/active", {
-          signal: controller.signal,
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || "โหลดรายชื่อพนักงานไม่สำเร็จ");
-        }
-
-        // users ที่ API ส่งกลับมาเป็น Active Users
-        setActiveUsers(data.users || []);
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          console.error("Load Asset Owner users error:", error);
-
-          setUsersError(error.message || "โหลดรายชื่อพนักงานไม่สำเร็จ");
-        }
-      } finally {
-        setLoadingUsers(false);
-      }
-    }
-
-    loadActiveUsers();
 
     return () => controller.abort();
   }, []);
@@ -747,9 +665,14 @@ export default function AddAssetPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1200px]">
-        <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">Add Asset</h1>
+        <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">รับเครื่องใหม่เข้าคลัง IT</h1>
 
         <p className="mt-2 text-gray-500">ลงทะเบียนทรัพย์สิน IT</p>
+
+        <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          รับเครื่องใหม่เข้าคลัง IT เป็นสถานะ In Stock ก่อนเสมอ ยังไม่มีพนักงานถือครอง
+          หลังบันทึกแล้วจึงมอบหมายจากหน้า Asset Detail ส่วน Asset Code จะไม่เปลี่ยนเมื่อย้าย Location
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           {/* ==========================================
@@ -925,91 +848,18 @@ export default function AddAssetPage() {
               {/* รวม dropdown Master Data ไว้ใน Assignment & Location โดยใช้ state และ API เดิม */}
               {group.title === "Ownership & Location" && (
                 <div className="mb-5">
-                  <AssetLookups form={form} onChange={handleChange} />
+                  <AssetLookups form={form} onChange={handleChange} fields={intakeLookups} />
                 </div>
               )}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {group.fields
                   // Field ที่มี types จะแสดงเฉพาะประเภทนั้น
                   .filter(
-                    (field) => !field.types || field.types.includes(form.type),
+                    (field) =>
+                      field.name !== "location" &&
+                      (!field.types || field.types.includes(form.type)),
                   )
                   .map((field) => {
-                    // ==================================================
-                    // Asset Owner ใช้ Dropdown รายชื่อพนักงาน
-                    //
-                    // ไม่ใช้ FormField ปกติ เพราะเราต้องการ
-                    // รายชื่อแบบ Dynamic จาก Database
-                    // ==================================================
-                    if (field.name === "assetOwner") {
-                      return (
-                        <div key={field.name}>
-                          <label
-                            htmlFor="assetOwner"
-                            className="mb-2 block font-medium"
-                          >
-                            Asset Owner / ผู้รับผิดชอบ
-                          </label>
-
-                          <select
-                            id="assetOwner"
-                            // ต้องตรงกับ initialForm.assetOwner
-                            name="assetOwner"
-                            // ค่าที่เลือกคือ User ID
-                            value={form.assetOwner}
-                            // ใช้ handleChange เดิม
-                            // เมื่อเลือกแล้ว:
-                            // form.assetOwner = user.id
-                            onChange={handleChange}
-                            // ระหว่างโหลดรายชื่อ
-                            // ปิด Dropdown ชั่วคราว
-                            disabled={loadingUsers}
-                            className={inputClass}
-                          >
-                            {/* ================================
-                          ค่าเริ่มต้นของ Dropdown
-                      ================================= */}
-                            <option value="">
-                              {loadingUsers
-                                ? "กำลังโหลดรายชื่อพนักงาน..."
-                                : "-- เลือก Asset Owner --"}
-                            </option>
-
-                            {/* ================================
-                          แสดงรายชื่อพนักงาน Active
-
-                          สิ่งที่ผู้ใช้เห็น:
-                          user.full_name และ nickname (ถ้ามี)
-
-                          สิ่งที่ Form เก็บ:
-                          user.id
-                      ================================= */}
-                            {/* แสดงชื่อและชื่อเล่นเพื่อช่วยแยกพนักงานตอนเลือก
-    เช่น ผู้ใช้เห็น "วัจน์กร ถือนิล (เดย์)" แต่ form.assetOwner เก็บ "27"
-    nickname เป็นข้อความสำหรับแสดงเท่านั้นและไม่ถูกบันทึกลง Asset
-    ใช้ String ให้ตรงกับค่าที่ HTML select ส่งผ่าน onChange */}
-                            {activeUsers.map((user) => (
-                              <option key={user.id} value={String(user.id)}>
-                                {formatUserDisplayName(user)}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-xs text-slate-500">
-                            ผู้ครอบครองจริงให้จัดการผ่าน Assignment ในหน้า Asset Detail หลังสร้าง Asset
-                          </p>
-
-                          {/* ================================
-                        แสดง Error ถ้าโหลดรายชื่อไม่ได้
-                    ================================= */}
-                          {usersError && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {usersError}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-
                     // ==================================================
                     // Field อื่นยังใช้ FormField เดิมทั้งหมด
                     // ==================================================

@@ -13,6 +13,7 @@ import {
   MapPin,
   Menu,
   Package,
+  Printer,
   Settings,
   ShieldCheck,
   Store,
@@ -59,6 +60,9 @@ export default function Sidebar({ user }) {
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/assets", label: "Asset List", icon: Package },
+    ...(["Admin", "IT Staff"].includes(user?.role)
+      ? [{ href: "/labels", label: "Print Asset Labels", icon: Printer }]
+      : []),
     { href: "/accessories", label: "Accessories / Stock", icon: Package },
     { href: "/users", label: "User Management", icon: Users },
   ];

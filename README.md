@@ -4,13 +4,14 @@
 
 ## เริ่มอ่านเมื่อย้ายเครื่อง
 
-1. [HANDOFF.md](HANDOFF.md) — สิ่งที่ทำแล้ว งานค้าง ผลทดสอบ สถานะฐานข้อมูล และขั้นตอนเริ่มงานบนเครื่องใหม่
-2. [PROJECT_BACKLOG.md](PROJECT_BACKLOG.md) — คิวงานที่ยังต้องทำ/ตรวจและกติกาปัจจุบัน
-3. [AGENTS.md](AGENTS.md) — ข้อกำหนดสำหรับแก้โค้ด Next.js รุ่นที่ติดตั้ง
-4. [คู่มือ Accessories / Stock](docs/accessory-stock.md)
-5. [ตั้งค่า Google Drive สำหรับรูป Asset](docs/google-drive-photo-setup.md)
+1. [LATEST_CHANGES.md](LATEST_CHANGES.md) — สรุปโค้ดล่าสุดและวิธีดึงไปใช้อีกเครื่องแบบสั้น
+2. [HANDOFF.md](HANDOFF.md) — รายละเอียดงานก่อนหน้าและการตั้งค่าเครื่องใหม่
+3. [PROJECT_BACKLOG.md](PROJECT_BACKLOG.md) — คิวงานที่ยังต้องทำ/ตรวจ
+4. [AGENTS.md](AGENTS.md) — ข้อกำหนดสำหรับแก้โค้ด Next.js รุ่นที่ติดตั้ง
+5. [คู่มือ Accessories / Stock](docs/accessory-stock.md)
+6. [ตั้งค่า Google Drive สำหรับรูป Asset](docs/google-drive-photo-setup.md)
 
-สถานะที่บันทึกล่าสุด: 29 กันยายน 2026; โค้ดที่ตรวจผ่านอยู่ใน Commit `22de93e` และเอกสารส่งต่ออัปเดตต่อจาก Commit นี้
+สถานะโค้ดล่าสุด: 2 ตุลาคม 2026 ดู [LATEST_CHANGES.md](LATEST_CHANGES.md); รายละเอียดใน HANDOFF.md ด้านล่างเป็นภาพรวมรอบก่อนหน้า
 
 ## เปิดระบบบนเครื่องใหม่
 

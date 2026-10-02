@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { compareNaturalText } from "@/lib/asset-sort";
 
 const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
 const DEFAULT_SORT_CONFIG = {
@@ -37,12 +38,6 @@ const statusColors = {
   Disposed: "bg-gray-200 text-gray-700",
   Lost: "bg-red-100 text-red-800",
 };
-
-const sortText = (left, right) =>
-  String(left).localeCompare(String(right), undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
 
 function getOptionCounts(assets, key) {
   return assets.reduce((counts, asset) => {
@@ -248,12 +243,12 @@ export default function AssetTable({ assets }) {
     );
     const additionalStatuses = [...statusCounts.keys()]
       .filter((status) => !statusColors[status])
-      .sort(sortText);
+      .sort(compareNaturalText);
 
     return {
-      types: [...typeCounts.keys()].sort(sortText),
+      types: [...typeCounts.keys()].sort(compareNaturalText),
       statuses: [...knownStatuses, ...additionalStatuses],
-      locations: [...locationCounts.keys()].sort(sortText),
+      locations: [...locationCounts.keys()].sort(compareNaturalText),
       typeCounts,
       statusCounts,
       locationCounts,
@@ -397,7 +392,7 @@ export default function AssetTable({ assets }) {
       valueB = valueB ?? "";
 
       // ==================================================
-      // localeCompare + numeric
+      // Natural order without a machine-dependent locale
       //
       // ทำให้:
       // 001
@@ -406,14 +401,7 @@ export default function AssetTable({ assets }) {
       //
       // เรียงถูกต้อง
       // ==================================================
-      const result = String(valueA).localeCompare(
-        String(valueB),
-        undefined,
-        {
-          numeric: true,
-          sensitivity: "base",
-        }
-      );
+      const result = compareNaturalText(valueA, valueB);
 
       return sortConfig.direction === "asc"
         ? result

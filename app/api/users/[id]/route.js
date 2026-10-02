@@ -157,6 +157,19 @@ export async function PATCH(request, { params }) {
     const validActivityValues = [true, false, "true", "false"];
     const isActive = body.is_active === true || body.is_active === "true";
 
+    if (isActive) {
+      const openOffboarding = await query(
+        "SELECT 1 FROM public.employee_offboardings WHERE user_id=$1 AND closed_at IS NULL",
+        [id],
+      );
+      if (openOffboarding.rowCount) {
+        return Response.json(
+          { error: "กรุณาปิดเคสตรวจคืนก่อนเปิดใช้งานพนักงานอีกครั้ง" },
+          { status: 409 },
+        );
+      }
+    }
+
     // =====================================================
     // Validation
     // =====================================================

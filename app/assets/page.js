@@ -65,7 +65,7 @@ export default async function AssetsPage() {
               href="/assets/add"
               className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50"
             >
-              + Add Asset
+              + รับเครื่องใหม่เข้าคลัง IT
             </Link>
           </div>
         </header>

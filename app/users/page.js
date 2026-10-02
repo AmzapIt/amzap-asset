@@ -1,12 +1,13 @@
 import { query } from "@/lib/db";
 import UserTable from "./UserTable";
 import Link from "next/link";
+import { getOffboardingSummaries } from "@/lib/offboarding";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  const result = await query(`
+  const [result, offboardingSummaries] = await Promise.all([query(`
     WITH current_assignments AS (
       SELECT DISTINCT ON (assignment.asset_id)
         assignment.asset_id,
@@ -27,7 +28,14 @@ export default async function UsersPage() {
             SELECT 1
             FROM public.asset_assignments assignment_history
             WHERE assignment_history.asset_id = asset.id
-          )
+          ) AND asset.status = 'In Use'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM public.employee_offboarding_items item
+              JOIN public.employee_offboardings offboarding ON offboarding.id=item.offboarding_id
+              WHERE item.asset_id=asset.id AND item.resolution='not_held'
+                AND offboarding.user_id=asset.asset_owner_id
+            )
             THEN asset.asset_owner_id
           ELSE NULL
         END AS user_id
@@ -65,9 +73,18 @@ export default async function UsersPage() {
     LEFT JOIN asset_counts
       ON asset_counts.user_id = u.id
     ORDER BY u.full_name ASC
-  `);
+  `), getOffboardingSummaries()]);
 
-  const users = result.rows;
+  const users = result.rows.map((user) => ({
+    ...user,
+    ...(offboardingSummaries.get(String(user.id)) ?? {
+      offboarding_id: null,
+      pending_items: 0,
+      pending_quantity: 0,
+      review_items: 0,
+      closed_at: null,
+    }),
+  }));
   const activeUsers = users.filter((user) => user.is_active === true).length;
   const inactiveUsers = users.length - activeUsers;
   // Location ID 1 และ 2 ถูกกำหนดจาก migration 012 ให้เป็นโรงงาน 1 และ 2

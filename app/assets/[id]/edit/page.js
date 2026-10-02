@@ -92,6 +92,7 @@ export default function EditAssetPage() {
   // - code_year
   // ==================================================
   const [assetCode, setAssetCode] = useState("");
+  const [originalStatus, setOriginalStatus] = useState("");
   const [assetType, setAssetType] = useState("");
   const [registrationSite, setRegistrationSite] = useState("");
   const [previousAssetCode, setPreviousAssetCode] = useState("");
@@ -148,6 +149,7 @@ export default function EditAssetPage() {
         }
 
         const asset = assetData.asset;
+        setOriginalStatus(asset.status || "");
 
         // ==================================================
         // เอาข้อมูล Asset จาก Database ใส่ใน Form
@@ -479,14 +481,25 @@ export default function EditAssetPage() {
                   name="status"
                   value={form.status}
                   onChange={handleChange}
+                  disabled={form.status === "In Use"}
                   className={inputClass}
                 >
-                  {statuses.map((status) => (
+                  {statuses.filter((status) =>
+                    (status !== "In Use" || form.status === "In Use") &&
+                    !(originalStatus === "Repair" && status === "In Stock")
+                  ).map((status) => (
                     <option key={status} value={status}>
                       {status}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  สถานะ In Use เปลี่ยนผ่านการมอบหมาย/รับคืนในหน้า Asset Detail เท่านั้น
+                  {form.status === "In Use" ? " รับคืนเข้าคลัง IT ก่อนแก้สถานะอื่น" : ""}
+                  {originalStatus === "Repair" && <>
+                    {" "}เมื่อตรวจซ่อมเสร็จให้ใช้ <Link href={`/assets/${id}#asset-action`} className="text-blue-700 underline">ซ่อมเสร็จ / พร้อมเบิก</Link> บนหน้า Asset Detail
+                  </>}
+                </p>
               </div>
 
               {/* Brand */}

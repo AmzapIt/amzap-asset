@@ -359,6 +359,10 @@ export default function EditUserPage() {
 
                 <option value="false">Inactive</option>
               </select>
+              <p className="mt-1 text-xs text-amber-800">
+                ถ้าพนักงานลาออก ให้เริ่มขั้นตอนลาออกในหน้า User Detail เพื่อเก็บรายการตรวจคืน
+                การเลือก Inactive ที่นี่เป็นเพียงการปิดใช้งานทั่วไป
+              </p>
             </div>
           </div>
 

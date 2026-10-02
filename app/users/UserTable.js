@@ -8,6 +8,26 @@ function getCurrentAssetCount(user) {
   return Number.isFinite(count) ? count : 0;
 }
 
+function OffboardingBadge({ user }) {
+  if (!user.offboarding_id) {
+    return <Link href={`/users/${user.id}#offboarding`} className="text-xs text-blue-700 underline">
+      ลาออก / ตรวจรายการคืน
+    </Link>;
+  }
+  const pending = Number(user.pending_items) || 0;
+  const label = user.closed_at
+    ? "คืนครบ · ปิดเคส"
+    : pending
+      ? `ค้าง ${pending} รายการ / ${Number(user.pending_quantity) || 0} ชิ้น`
+      : "ตรวจครบ · รอปิดเคส";
+  return <Link
+    href={`/users/${user.id}#offboarding`}
+    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+      pending ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+    }`}
+  >{label}</Link>;
+}
+
 export default function UserTable({ users }) {
   // ==================================================
   // State
@@ -23,6 +43,9 @@ export default function UserTable({ users }) {
   // Filter สถานะ
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Filter Location ของพนักงาน
+  const [locationFilter, setLocationFilter] = useState("all");
+
   // Filter การครอบครอง Asset
   const [assetFilter, setAssetFilter] = useState("all");
 
@@ -32,7 +55,35 @@ export default function UserTable({ users }) {
   // ==================================================
   // Search + Filter
   // ==================================================
-  const filteredUsers = useMemo(() => {
+  const locationOptions = useMemo(() => {
+    const locations = new Map();
+
+    userList.forEach((user) => {
+      if (user.location_id != null && user.location_name) {
+        const id = String(user.location_id);
+        const current = locations.get(id);
+
+        locations.set(id, {
+          id,
+          name: user.location_name,
+          count: (current?.count ?? 0) + 1,
+        });
+      }
+    });
+
+    return {
+      locations: [...locations.values()].sort((left, right) =>
+        left.name.localeCompare(right.name, "th", { sensitivity: "base" }),
+      ),
+      amzapCount: userList.filter((user) =>
+        ["1", "2"].includes(String(user.location_id)),
+      ).length,
+      unlocatedCount: userList.filter((user) => user.location_id == null)
+        .length,
+    };
+  }, [userList]);
+
+  const usersBeforeAssetFilter = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
     return userList.filter((user) => {
@@ -59,26 +110,55 @@ export default function UserTable({ users }) {
         (statusFilter === "active" && isActive) ||
         (statusFilter === "inactive" && !isActive);
 
+      const userLocationId =
+        user.location_id == null ? "" : String(user.location_id);
+      const matchLocation =
+        locationFilter === "all" ||
+        (locationFilter === "__amzap__" &&
+          ["1", "2"].includes(userLocationId)) ||
+        (locationFilter === "__none__" && !userLocationId) ||
+        userLocationId === locationFilter;
+
+      return matchSearch && matchStatus && matchLocation;
+    });
+  }, [userList, search, statusFilter, locationFilter]);
+
+  const filteredUsers = useMemo(() => {
+    return usersBeforeAssetFilter.filter((user) => {
       const hasCurrentAssets = getCurrentAssetCount(user) > 0;
       const matchAsset =
         assetFilter === "all" ||
         (assetFilter === "assigned" && hasCurrentAssets) ||
         (assetFilter === "unassigned" && !hasCurrentAssets);
 
-      return matchSearch && matchStatus && matchAsset;
+      return matchAsset;
     });
-  }, [userList, search, statusFilter, assetFilter]);
+  }, [usersBeforeAssetFilter, assetFilter]);
 
   const assetSummary = useMemo(() => {
-    const assigned = userList.filter(
+    const assigned = usersBeforeAssetFilter.filter(
       (user) => getCurrentAssetCount(user) > 0,
     ).length;
 
     return {
       assigned,
-      unassigned: userList.length - assigned,
+      unassigned: usersBeforeAssetFilter.length - assigned,
     };
-  }, [userList]);
+  }, [usersBeforeAssetFilter]);
+
+  const activeFilterCount = [
+    search.trim(),
+    statusFilter !== "all",
+    locationFilter !== "all",
+    assetFilter !== "all",
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setLocationFilter("all");
+    setAssetFilter("all");
+  }
 
   // ==================================================
   // เปลี่ยนสถานะ User
@@ -147,53 +227,121 @@ export default function UserTable({ users }) {
   // ==================================================
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm md:flex-row">
+      <div className="grid gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(320px,1fr)_repeat(3,minmax(0,14rem))]">
 
         {/* Search */}
-        <input
-          type="text"
-          placeholder="ค้นหาชื่อ, ชื่อเล่น, รหัสพนักงาน, ตำแหน่ง, แผนก, Location, Email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-        />
+        <label className="space-y-1.5 md:col-span-2 xl:col-span-1">
+          <span className="block text-xs font-medium text-slate-500">
+            ค้นหาพนักงาน
+          </span>
+          <input
+            type="search"
+            placeholder="ชื่อ, ชื่อเล่น, รหัส, แผนก..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
 
         {/* Filter Status */}
-        <select
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value)
-          }
-          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 md:w-48"
-        >
-          <option value="all">
-            ทุกสถานะ
-          </option>
+        <label className="space-y-1.5">
+          <span className="block text-xs font-medium text-slate-500">
+            สถานะพนักงาน
+          </span>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="all">ทุกสถานะ</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
 
-          <option value="active">
-            Active
-          </option>
-
-          <option value="inactive">
-            Inactive
-          </option>
-        </select>
+        {/* Filter Location ของพนักงาน */}
+        <label className="space-y-1.5">
+          <span className="block text-xs font-medium text-slate-500">
+            Location
+          </span>
+          <select
+            value={locationFilter}
+            onChange={(event) => setLocationFilter(event.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="all">ทุก Location ({userList.length})</option>
+            <option value="__amzap__">
+              AMZAP ทั้งหมด ({locationOptions.amzapCount})
+            </option>
+            {locationOptions.locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name} ({location.count})
+              </option>
+            ))}
+            {locationOptions.unlocatedCount > 0 && (
+              <option value="__none__">
+                ยังไม่ระบุ Location ({locationOptions.unlocatedCount})
+              </option>
+            )}
+          </select>
+        </label>
 
         {/* Filter การครอบครอง Asset */}
-        <select
-          value={assetFilter}
-          onChange={(event) => setAssetFilter(event.target.value)}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 md:w-56"
-        >
-          <option value="all">ทุกสถานะ Asset</option>
-          <option value="assigned">
-            มี Asset แล้ว ({assetSummary.assigned})
-          </option>
-          <option value="unassigned">
-            ยังไม่มี Asset ({assetSummary.unassigned})
-          </option>
-        </select>
+        <label className="space-y-1.5">
+          <span className="block text-xs font-medium text-slate-500">
+            การครอบครอง Asset
+          </span>
+          <select
+            value={assetFilter}
+            onChange={(event) => setAssetFilter(event.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="all">ทุกสถานะ Asset</option>
+            <option value="assigned">
+              มี Asset แล้ว ({assetSummary.assigned})
+            </option>
+            <option value="unassigned">
+              ยังไม่มี Asset ({assetSummary.unassigned})
+            </option>
+          </select>
+        </label>
 
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3 md:col-span-2 xl:col-span-4">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setAssetFilter("assigned")}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                assetFilter === "assigned"
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              มี Asset {assetSummary.assigned} คน
+            </button>
+            <button
+              type="button"
+              onClick={() => setAssetFilter("unassigned")}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                assetFilter === "unassigned"
+                  ? "border-amber-600 bg-amber-600 text-white"
+                  : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              }`}
+            >
+              ยังไม่มี Asset {assetSummary.unassigned} คน
+            </button>
+          </div>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+            >
+              ล้าง Filter ทั้งหมด ({activeFilterCount})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ================= RESULT COUNT ================= */}
@@ -282,6 +430,10 @@ export default function UserTable({ users }) {
                         </span>
                       </dd>
                     </div>
+                    <div className="col-span-2">
+                      <dt className="text-xs text-slate-500">รายการตรวจคืน</dt>
+                      <dd className="mt-1"><OffboardingBadge user={user} /></dd>
+                    </div>
                   </dl>
                 </article>
               );
@@ -291,7 +443,7 @@ export default function UserTable({ users }) {
 
         <div className="hidden overflow-x-auto md:block">
 
-          <table className="min-w-[1120px] text-sm">
+          <table className="min-w-[1240px] text-sm">
 
             {/* Header */}
             <thead className="bg-slate-50 text-left">
@@ -327,6 +479,10 @@ export default function UserTable({ users }) {
                 </th>
 
                 <th className="px-4 py-3 font-semibold text-slate-600">
+                  รายการตรวจคืน
+                </th>
+
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   Status
                 </th>
 
@@ -343,7 +499,7 @@ export default function UserTable({ users }) {
                 <tr>
 
                   <td
-                    colSpan="8"
+                    colSpan="9"
                     className="px-4 py-10 text-center text-gray-500"
                   >
                     ไม่พบข้อมูล
@@ -427,6 +583,10 @@ export default function UserTable({ users }) {
                       </td>
 
                       {/* ================= STATUS DROPDOWN ================= */}
+                      <td className="px-4 py-3">
+                        <OffboardingBadge user={user} />
+                      </td>
+
                       <td className="px-4 py-3">
 
                         <select

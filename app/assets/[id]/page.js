@@ -213,6 +213,8 @@ async function getAssetDetail(id) {
     auditLogs,
     maintenance,
     movements,
+    stockReceipts,
+    legacyHolderExclusions,
   ] = await Promise.all([
     readOptional(
       "asset_assignments",
@@ -280,6 +282,29 @@ async function getAssetDetail(id) {
        LIMIT 100`,
       [id],
     ),
+    readOptional(
+      "asset_stock_receipts",
+      `SELECT receipt.id,receipt.receipt_type,receipt.receipt_date::text AS receipt_date,
+              receipt.asset_condition,receipt.reason,receipt.created_at,
+              returned_by.full_name AS returned_by_name,returned_by.nickname AS returned_by_nickname,
+              account.display_name AS received_by_name
+       FROM public.asset_stock_receipts receipt
+       LEFT JOIN public."user" returned_by ON returned_by.id=receipt.returned_by_user_id
+       LEFT JOIN public.app_accounts account ON account.id=receipt.received_by_account_id
+       WHERE receipt.asset_id=$1
+       ORDER BY receipt.receipt_date DESC,receipt.id DESC`,
+      [id],
+    ),
+    readOptional(
+      "employee_offboarding_items",
+      `SELECT item.id
+       FROM public.employee_offboarding_items item
+       JOIN public.employee_offboardings offboarding ON offboarding.id=item.offboarding_id
+       WHERE item.asset_id=$1 AND item.resolution='not_held'
+         AND offboarding.user_id=$2
+       LIMIT 1`,
+      [id, asset.asset_owner_id],
+    ),
   ]);
 
   // รายการที่ยังไม่ได้คืน = ผู้ครอบครองปัจจุบัน
@@ -320,6 +345,8 @@ async function getAssetDetail(id) {
     auditLogs,
     maintenance,
     movements,
+    stockReceipts,
+    legacyHolderExcluded: Boolean(legacyHolderExclusions?.length),
     peopleMap,
     locationMap,
     departmentMap,
@@ -379,22 +406,24 @@ export default async function AssetDetailPage({ params }) {
     auditLogs,
     maintenance,
     movements,
+    stockReceipts,
+    legacyHolderExcluded,
     peopleMap,
     locationMap,
     departmentMap,
     vendorMap,
   } = data;
 
-  const [activeUsers, availableLocations, availableDepartments, databaseDate] = await Promise.all([
+  const [activeUsers, availableLocations, availableDepartments, databaseDate, itStockSettings] = await Promise.all([
     query(
-      `SELECT u.id,u.employee_code,u.full_name,u.nickname,u.is_active,
+      `SELECT u.id,u.employee_code,u.full_name,u.nickname,u.is_active,u.location_id,
               d.name AS department_name,l.name AS location_name
        FROM public."user" u
        LEFT JOIN public.departments d ON d.id=u.department_id
        LEFT JOIN public.locations l ON l.id=u.location_id
-       WHERE u.is_active=true OR u.id=$1
+       WHERE $2::boolean OR u.is_active=true OR u.id=$1
        ORDER BY u.full_name,u.id`,
-      [asset.asset_owner_id],
+      [asset.asset_owner_id, !currentAssignment && asset.status === "In Use"],
     ),
     query(
       `SELECT id,name,building,floor,room,is_active
@@ -411,6 +440,7 @@ export default async function AssetDetailPage({ params }) {
       [asset.owning_department_id],
     ),
     query("SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text AS today"),
+    query("SELECT it_stock_location_id FROM public.asset_inventory_settings WHERE singleton=true"),
   ]);
 
   // Helper แปลง ID เป็นชื่อสำหรับแสดงผล โดยชื่อเล่นไม่ถูกใช้เป็นค่าบันทึก
@@ -457,12 +487,12 @@ export default async function AssetDetailPage({ params }) {
   const hasAssignmentHistory = (assignments?.length ?? 0) > 0;
   const currentHolderName = currentAssignment
     ? personName(currentAssignment.assigned_to)
-    : !hasAssignmentHistory && asset.asset_owner_id != null
+    : !hasAssignmentHistory && !legacyHolderExcluded && asset.status === "In Use" && asset.asset_owner_id != null
       ? ownerName
       : null;
   const holderSource = currentAssignment
     ? "Assignment"
-    : !hasAssignmentHistory && asset.asset_owner_id != null
+    : !hasAssignmentHistory && !legacyHolderExcluded && asset.status === "In Use" && asset.asset_owner_id != null
       ? "Asset Owner (ข้อมูลเดิม)"
       : null;
 
@@ -532,6 +562,29 @@ export default async function AssetDetailPage({ params }) {
             </div>
           </div>
         </div>
+        {canWrite && (
+          <section id="asset-action" className="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="text-xl font-semibold text-slate-900">ดำเนินการ Asset</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              สถานะ {asset.status} · ผู้ครอบครอง {currentHolderName || "ไม่มี"} · Location {locationName(currentLocationId) || "ไม่ระบุ"}
+            </p>
+            <AssignmentForm
+              key={[currentAssignment?.id ?? "none", asset.status, asset.location_id ?? "none"].join("-")}
+              assetId={String(asset.id)}
+              assetStatus={asset.status}
+              assetLocationId={asset.location_id}
+              itStockLocationId={itStockSettings.rows[0]?.it_stock_location_id ?? null}
+              currentId={currentAssignment ? String(currentAssignment.id) : null}
+              currentAssignedDate={currentAssignment?.assigned_date
+                ? String(currentAssignment.assigned_date).slice(0, 10)
+                : undefined}
+              users={activeUsers.rows}
+              locations={availableLocations.rows}
+              today={databaseDate.rows[0].today}
+              canWrite={canWrite}
+            />
+          </section>
+        )}
         {/* ================= GENERAL ================= */}
         <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-6 text-lg font-semibold">General Information</h2>
@@ -567,25 +620,7 @@ export default async function AssetDetailPage({ params }) {
         </section>
 
         {/* ================= ASSIGNMENT ================= */}
-        <DetailSection title="Assignment / Current Holder">
-          <AssignmentForm
-            key={currentAssignment?.id ?? "none"}
-            assetId={String(asset.id)}
-            assetStatus={asset.status}
-            currentId={
-              currentAssignment ? String(currentAssignment.id) : null
-            }
-            currentAssigneeId={currentAssignment?.assigned_to ?? null}
-            currentAssignedDate={
-              currentAssignment?.assigned_date
-                ? String(currentAssignment.assigned_date).slice(0, 10)
-                : undefined
-            }
-            users={activeUsers.rows}
-            locations={availableLocations.rows}
-            today={databaseDate.rows[0].today}
-            canWrite={canWrite}
-          />
+        <DetailSection title="ผู้ครอบครองและประวัติการมอบหมาย">
           <InfoGrid
             rows={[
               ["Asset Owner", ownerName],
@@ -629,8 +664,32 @@ export default async function AssetDetailPage({ params }) {
           )}
         </DetailSection>
 
+        <DetailSection title="ประวัติรับเข้าคลัง IT">
+          {!stockReceipts?.length ? (
+            <p className="text-sm text-slate-500">ยังไม่มีประวัติรับเข้าคลัง IT ในระบบ</p>
+          ) : (
+            <div className="space-y-3">
+              {stockReceipts.map((receipt) => (
+                <div key={receipt.id} className="rounded-lg border p-4">
+                  <InfoGrid rows={[
+                    ["รายการ", receipt.receipt_type === "new" ? "รับเครื่องใหม่" : "รับคืนจากพนักงาน"],
+                    ["วันที่รับ", formatDate(receipt.receipt_date)],
+                    ["ผู้ส่งคืน", formatUserDisplayName({
+                      full_name: receipt.returned_by_name,
+                      nickname: receipt.returned_by_nickname,
+                    })],
+                    ["สภาพ", receipt.asset_condition === "ready" ? "พร้อมใช้" : "รอซ่อม"],
+                    ["เหตุผล", receipt.reason],
+                    ["IT ผู้รับ", receipt.received_by_name],
+                  ]} />
+                </div>
+              ))}
+            </div>
+          )}
+        </DetailSection>
+
         {/* Movement changes asset master data; Assignment history remains intact. */}
-        <DetailSection title="Asset Movement">
+        <DetailSection title="แก้ไขข้อมูลพิเศษ / Asset Movement">
           <MovementForm
             key={[
               asset.location_id ?? "none",
@@ -641,6 +700,8 @@ export default async function AssetDetailPage({ params }) {
             currentLocationId={asset.location_id}
             currentDepartmentId={asset.owning_department_id}
             currentOwnerId={asset.asset_owner_id}
+            assetStatus={asset.status}
+            itStockLocationId={itStockSettings.rows[0]?.it_stock_location_id ?? null}
             locations={availableLocations.rows}
             departments={availableDepartments.rows}
             users={activeUsers.rows}
@@ -886,6 +947,12 @@ export default async function AssetDetailPage({ params }) {
                   <p className="mt-1 text-sm text-gray-500">
                     {formatDate(log.created_at, true)}
                   </p>
+                  {log.action === "REPAIR_READY" && log.new_values?.repair_result && (
+                    <p className="mt-1 text-sm text-slate-700">
+                      ผลการซ่อม / ตรวจเช็ก: {log.new_values.repair_result}
+                      {log.new_values.date ? ` · วันที่ ${formatDate(log.new_values.date)}` : ""}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

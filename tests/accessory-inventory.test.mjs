@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
-import { AccessoryError,accessoryId,accessoryQuantity,accessoryText,accessoryDate,receiveAccessories,issueAccessories,changeAccessoryHolding } from "../lib/accessory-inventory.js";
+import { AccessoryError,accessoryId,accessoryQuantity,accessoryText,accessoryDate,receiveAccessories,issueAccessories,changeAccessoryHolding,disposeStock } from "../lib/accessory-inventory.js";
 import { accessoryMovementFilters,getAccessoryMovements } from "../lib/accessory-read.js";
 
 test("accessory quantities and IDs reject coercion, decimals, unsafe and out-of-range values",()=>{
@@ -53,6 +53,38 @@ test("insufficient warehouse stock rolls back before creating an employee issue 
   assert.equal(pool.calls.some(s=>s.startsWith("INSERT") || s.startsWith("UPDATE")),false);
   assert.equal(pool.calls.at(-2),"ROLLBACK");
 });
+test("stock withdrawal requires a reason before changing the balance",async()=>{
+  const pool=fakePool(sql=>{
+    if(sql.startsWith("SELECT fingerprint")) return {rows:[]};
+    if(sql.startsWith("SELECT id::text,accessory_type_id")) return {rows:[{id:"1",accessory_type_id:"1",available_quantity:5,version:0,serial_number:null}]};
+    return {rows:[]};
+  });
+  await assert.rejects(
+    disposeStock("1",{request_id:randomUUID(),expected_version:0,quantity:1,event_date:"2024-01-01",reason:""},"1",pool),
+    error=>error instanceof AccessoryError && error.message.includes("เหตุผลการเบิกออก"),
+  );
+  assert.equal(pool.calls.some(sql=>sql.startsWith("UPDATE public.accessory_stock_items")),false);
+  assert.equal(pool.calls.at(-2),"ROLLBACK");
+});
+test("stock withdrawal decreases stock and records its reason",async()=>{
+  let movementParams;
+  const pool=fakePool((sql,params)=>{
+    if(sql.startsWith("SELECT fingerprint")) return {rows:[]};
+    if(sql.startsWith("SELECT id::text,accessory_type_id")) return {rows:[{id:"1",accessory_type_id:"1",available_quantity:5,version:0,serial_number:null}]};
+    if(sql.startsWith("UPDATE public.accessory_stock_items")) return {rows:[{available_quantity:3,version:1}]};
+    if(sql.startsWith("INSERT INTO public.accessory_stock_movements")) movementParams=params;
+    return {rows:[]};
+  });
+  assert.deepEqual(
+    await disposeStock("1",{request_id:randomUUID(),expected_version:0,quantity:2,event_date:"2024-01-01",reason:"ใช้ในงานติดตั้ง",notes:"ชั้น 2"},"1",pool),
+    {stock_item_id:"1",available_quantity:3},
+  );
+  assert.equal(movementParams[3],"dispose");
+  assert.equal(movementParams[4],2);
+  assert.equal(movementParams[5],-2);
+  assert.equal(movementParams[6],3);
+  assert.equal(movementParams[10],"ใช้ในงานติดตั้ง");
+});
 test("a stale holding version cannot return or transfer the same quantity again",async()=>{
   const pool=fakePool(sql=>{
     if(sql.startsWith("SELECT *,id::text")) return {rows:[{id:"1",user_id:"1",stock_item_id:"1",quantity:3,returned_quantity:1,transferred_quantity:0,disposed_quantity:0,version:2}]};
@@ -60,6 +92,28 @@ test("a stale holding version cannot return or transfer the same quantity again"
   });
   await assert.rejects(changeAccessoryHolding("1","1","return",{request_id:randomUUID(),expected_version:1,quantity:1},"1",pool),error=>error.status===409);
   assert.equal(pool.calls.some(s=>s.startsWith("INSERT") || s.startsWith("UPDATE")),false);
+});
+
+test("resignation checklist blocks transfer before stock or holdings change",async()=>{
+  const pool=fakePool(sql=>{
+    if(sql.startsWith("SELECT fingerprint")) return {rows:[]};
+    if(sql.startsWith("SELECT *,id::text")) return {rows:[{
+      id:"1",user_id:"1",stock_item_id:"1",quantity:2,
+      returned_quantity:0,transferred_quantity:0,disposed_quantity:0,
+      returned_date:null,version:0,issued_date:"2026-09-01",
+    }]};
+    if(sql.startsWith("SELECT 1 FROM public.employee_offboardings")) return {rows:[{one:1}],rowCount:1};
+    return {rows:[]};
+  });
+  await assert.rejects(
+    changeAccessoryHolding("1","1","transfer",{
+      request_id:randomUUID(),expected_version:0,quantity:1,
+      to_user_id:"2",event_date:"2026-09-01",
+    },"1",pool),
+    error=>error instanceof AccessoryError && error.status===409,
+  );
+  assert.equal(pool.calls.some(sql=>sql.startsWith("UPDATE public.accessory_stock_items")),false);
+  assert.equal(pool.calls.at(-2),"ROLLBACK");
 });
 
 test("history API filters retain stock, employee and cursor when loading the next page",async()=>{

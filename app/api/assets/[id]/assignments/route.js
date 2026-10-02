@@ -4,6 +4,7 @@ import {
 } from "@/lib/assignments";
 
 import { requireWrite } from "@/lib/access";
+import { auth } from "@/auth";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,8 @@ export async function POST(request, { params }) {
   // lib/assignments.js
   // =====================================================
   try {
-    const assignment = await changeAssignment(id, body);
+    const session = await auth();
+    const assignment = await changeAssignment(id, body, String(session.user.id));
 
     return Response.json({
       success: true,
