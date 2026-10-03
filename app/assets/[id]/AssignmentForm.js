@@ -191,7 +191,7 @@ export default function AssignmentForm({
               <option value="">เลือกพนักงาน</option>
               {activeUsers.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {[user.employee_code, formatUserDisplayName(user)].filter(Boolean).join(" — ")}
+                  {formatUserDisplayName(user)}
                 </option>
               ))}
             </select>
