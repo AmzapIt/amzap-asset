@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { readApiResponse } from "@/lib/client-api";
 import EmployeePicker from "@/app/components/EmployeePicker";
+import { formatUserDisplayName } from "@/lib/user-display";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -24,6 +25,7 @@ export default function AssignmentForm({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [condition, setCondition] = useState("ready");
+  const [issueEmployeeId, setIssueEmployeeId] = useState("");
   const [issueLocationId, setIssueLocationId] = useState("");
   const legacyReturn = !currentId && assetStatus === "In Use";
   const returning = Boolean(currentId) || legacyReturn;
@@ -62,7 +64,7 @@ export default function AssignmentForm({
     const fields = Object.fromEntries(new FormData(event.currentTarget));
     const employeeField = legacyReturn ? "returnedByUserId" : action === "assign" ? "assignedTo" : null;
     if (employeeField && !fields[employeeField]) {
-      setMessage("กรุณาค้นหาและเลือกพนักงานจากรายการก่อนบันทึก");
+      setMessage("กรุณาเลือกพนักงานก่อนบันทึก");
       return;
     }
     if (!window.confirm(returning
@@ -169,18 +171,31 @@ export default function AssignmentForm({
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          <EmployeePicker
-            name="assignedTo"
-            label="พนักงาน"
-            users={activeUsers}
-            required
-            onSelect={(user) => {
+          <label className="block text-sm font-medium">
+            พนักงาน <span className="text-red-600">*</span>
+            <select
+              required
+              name="assignedTo"
+              value={issueEmployeeId}
+              onChange={(event) => {
+                const selectedId = event.target.value;
+                const user = activeUsers.find((item) => String(item.id) === selectedId);
+                setIssueEmployeeId(selectedId);
                 const userLocationId = user?.location_id == null ? "" : String(user.location_id);
                 setIssueLocationId(destinationLocations.some((location) => String(location.id) === userLocationId)
                   ? userLocationId
                   : "");
-            }}
-          />
+              }}
+              className={inputClass}
+            >
+              <option value="">เลือกพนักงาน</option>
+              {activeUsers.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {[user.employee_code, formatUserDisplayName(user)].filter(Boolean).join(" — ")}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block text-sm font-medium">
             Location ปลายทาง <span className="text-red-600">*</span>
             <select required name="locationId" className={inputClass} value={issueLocationId} onChange={(event) => setIssueLocationId(event.target.value)}>

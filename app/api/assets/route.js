@@ -173,6 +173,12 @@ export async function POST(request) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 400 });
   }
+  if (additional.maintenance?.sentAt) {
+    return Response.json(
+      { error: "กรุณาสร้าง Asset และรับเข้าคลัง IT ก่อนบันทึกการส่งซ่อม" },
+      { status: 400 },
+    );
+  }
 
   // 4. เริ่มทำงานกับ PostgreSQL
   try {

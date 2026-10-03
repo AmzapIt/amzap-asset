@@ -768,6 +768,7 @@ export default function EditAssetPage() {
             onChange={handleChange}
             existingDocuments={existingDocuments}
             existingMaintenance={existingMaintenance}
+            allowRepairDispatch
           />
 
           <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">

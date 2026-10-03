@@ -121,6 +121,8 @@ export async function GET(request, { params }) {
           `SELECT id, maintenance_type, description, status,
                   (reported_at AT TIME ZONE 'Asia/Bangkok')::date::text AS reported_at,
                   (completed_at AT TIME ZONE 'Asia/Bangkok')::date::text AS completed_at,
+                  sent_at::text AS sent_at, sent_to,
+                  expected_return_at::text AS expected_return_at,
                   vendor_id, cost, notes, created_at
              FROM public.asset_maintenance WHERE asset_id=$1 ORDER BY id DESC`,
           [id],
@@ -262,6 +264,13 @@ export async function PATCH(request, { params }) {
       if (!existing) {
         await client.query("ROLLBACK");
         return Response.json({ error: "Asset not found" }, { status: 404 });
+      }
+      if (additional.maintenance?.sentAt && body.status !== "Repair") {
+        await client.query("ROLLBACK");
+        return Response.json(
+          { error: "เมื่อลงบันทึกส่งซ่อม ต้องเปลี่ยน Asset Status เป็น Repair ด้วย" },
+          { status: 409 },
+        );
       }
       let eventReason;
       try {

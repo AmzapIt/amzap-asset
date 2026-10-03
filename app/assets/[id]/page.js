@@ -923,6 +923,9 @@ export default async function AssetDetailPage({ params }) {
                       ["รายละเอียด", item.description],
                       ["สถานะ", item.status],
                       ["วันที่แจ้ง", formatDate(item.reported_at, true)],
+                      ["วันที่ส่งซ่อม", formatDate(item.sent_at)],
+                      ["ร้าน / ผู้รับซ่อม", item.sent_to],
+                      ["กำหนดรับคืน", formatDate(item.expected_return_at)],
                       ["วันที่เสร็จ", formatDate(item.completed_at, true)],
                       ["ค่าใช้จ่าย", formatMoney(item.cost)],
                     ]}

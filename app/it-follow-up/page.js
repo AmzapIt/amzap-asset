@@ -112,6 +112,12 @@ export default async function ItFollowUpPage() {
                 <div>
                   <p className="font-semibold">{item.asset_code} · {item.asset_name || 'ไม่ระบุชื่อ'}</p>
                   <p className="mt-1 text-sm text-slate-600">{item.maintenance_type || 'งานซ่อม'} · {item.status} · แจ้ง {date(item.reported_date)} · ผ่านมา {item.age_days} วัน</p>
+                  {(item.sent_date || item.sent_to || item.expected_return_date) && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      ส่งซ่อม {date(item.sent_date)}{item.sent_to ? ` · ${item.sent_to}` : ''}
+                      {item.expected_return_date ? ` · กำหนดรับคืน ${date(item.expected_return_date)}` : ''}
+                    </p>
+                  )}
                   {item.description && <p className="mt-1 text-sm text-slate-500">{item.description}</p>}
                 </div>
                 <div className="flex flex-wrap gap-4">{assetLink(item.asset_id)}{assetLink(`${item.asset_id}/edit`, 'อัปเดตงานซ่อม')}</div>
