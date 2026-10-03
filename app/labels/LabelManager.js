@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
 
@@ -36,10 +36,24 @@ export default function LabelManager({ initialAssets }) {
   const [selected, setSelected] = useState([]);
   const [prepared, setPrepared] = useState(null);
   const [openedPrint, setOpenedPrint] = useState(false);
+  const [printConfirmationOpen, setPrintConfirmationOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const existingRequestId = useRef(null);
+  const afterPrintListener = useRef(null);
+
+  useEffect(() => () => {
+    if (afterPrintListener.current) {
+      window.removeEventListener("afterprint", afterPrintListener.current);
+    }
+  }, []);
+
+  function clearPrintListener() {
+    if (!afterPrintListener.current) return;
+    window.removeEventListener("afterprint", afterPrintListener.current);
+    afterPrintListener.current = null;
+  }
 
   const types = useMemo(() => [...new Set(assets.map((asset) => asset.asset_type).filter(Boolean))].sort(), [assets]);
   const statuses = useMemo(() => [...new Set(assets.map((asset) => asset.status).filter(Boolean))].sort(), [assets]);
@@ -56,10 +70,12 @@ export default function LabelManager({ initialAssets }) {
   }, [assets, search, type, status, location, printFilter]);
 
   function changeSelection(next) {
+    clearPrintListener();
     existingRequestId.current = null;
     setSelected(next);
     setPrepared(null);
     setOpenedPrint(false);
+    setPrintConfirmationOpen(false);
     setError("");
     setMessage("");
   }
@@ -95,6 +111,7 @@ export default function LabelManager({ initialAssets }) {
       })));
       setPrepared({ requestId: crypto.randomUUID(), labels });
       setOpenedPrint(false);
+      setPrintConfirmationOpen(false);
     } catch (caught) {
       console.error("Prepare Asset labels error:", caught);
       setError("สร้าง QR ไม่สำเร็จ กรุณาลองอีกครั้ง");
@@ -104,8 +121,43 @@ export default function LabelManager({ initialAssets }) {
   }
 
   function openPrintDialog() {
+    if (!prepared || busy || openedPrint) return;
+    setError("");
+    setMessage("");
+    setPrintConfirmationOpen(false);
+    clearPrintListener();
+    const listener = () => {
+      clearPrintListener();
+      setPrintConfirmationOpen(true);
+    };
+    afterPrintListener.current = listener;
+    window.addEventListener("afterprint", listener, { once: true });
     setOpenedPrint(true);
-    window.requestAnimationFrame(() => window.print());
+    window.requestAnimationFrame(() => {
+      try {
+        window.print();
+      } catch (caught) {
+        console.error("Open Asset label print dialog error:", caught);
+        clearPrintListener();
+        setOpenedPrint(false);
+        setError("เปิดหน้าพิมพ์ไม่สำเร็จ กรุณาลองอีกครั้ง");
+      }
+    });
+  }
+
+  function cancelPrint() {
+    clearPrintListener();
+    setPrintConfirmationOpen(false);
+    setOpenedPrint(false);
+    setError("");
+    setMessage("ยังไม่บันทึกประวัติการพิมพ์ สามารถเปิดหน้าพิมพ์อีกครั้งได้");
+  }
+
+  function cancelPrepared() {
+    clearPrintListener();
+    setPrepared(null);
+    setOpenedPrint(false);
+    setPrintConfirmationOpen(false);
   }
 
   async function confirmPrinted() {
@@ -128,9 +180,12 @@ export default function LabelManager({ initialAssets }) {
         ? { ...asset, ...updated.get(asset.id) }
         : asset));
       setMessage(`บันทึกการพิมพ์ ${prepared.labels.length} Asset แล้ว`);
+      clearPrintListener();
+      setPrintFilter("all");
       setSelected([]);
       setPrepared(null);
       setOpenedPrint(false);
+      setPrintConfirmationOpen(false);
     } catch (caught) {
       setError(caught.message);
     } finally {
@@ -166,6 +221,8 @@ export default function LabelManager({ initialAssets }) {
       setSelected([]);
       setPrepared(null);
       setOpenedPrint(false);
+      setPrintConfirmationOpen(false);
+      clearPrintListener();
       existingRequestId.current = null;
     } catch (caught) {
       setError(caught.message);
@@ -272,11 +329,22 @@ export default function LabelManager({ initialAssets }) {
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <button type="button" onClick={openPrintDialog} disabled={busy || openedPrint} className="min-h-11 rounded-lg bg-slate-900 px-5 font-semibold text-white hover:bg-slate-700 disabled:opacity-50">{openedPrint ? "เปิดหน้าพิมพ์แล้ว" : "เปิดหน้าพิมพ์"}</button>
-            {openedPrint && <button type="button" onClick={confirmPrinted} disabled={busy} className="min-h-11 rounded-lg bg-emerald-600 px-5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">{busy ? "กำลังบันทึก..." : "พิมพ์แล้ว · บันทึกประวัติ"}</button>}
-            <button type="button" onClick={() => { setPrepared(null); setOpenedPrint(false); }} disabled={busy} className="min-h-11 rounded-lg border border-slate-300 px-5 font-medium hover:bg-slate-50 disabled:opacity-50">ยกเลิกชุดนี้</button>
+            {openedPrint && !printConfirmationOpen && <button type="button" onClick={() => { clearPrintListener(); setPrintConfirmationOpen(true); }} disabled={busy} className="min-h-11 rounded-lg border border-emerald-300 px-5 font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-50">ยืนยันผลการพิมพ์</button>}
+            <button type="button" onClick={cancelPrepared} disabled={busy} className="min-h-11 rounded-lg border border-slate-300 px-5 font-medium hover:bg-slate-50 disabled:opacity-50">ยกเลิกชุดนี้</button>
           </div>
-          {openedPrint && <p className="mt-3 text-sm text-amber-800">หากยกเลิกหน้าต่างพิมพ์ ให้กด “ยกเลิกชุดนี้” ระบบจะยังไม่นับครั้งพิมพ์</p>}
+          {openedPrint && <p className="mt-3 text-sm text-amber-800">เมื่อปิดหน้าพิมพ์ ระบบจะถามผลการพิมพ์ หากหน้าต่างยืนยันไม่ขึ้นให้กด “ยืนยันผลการพิมพ์”</p>}
         </section>}
+        {printConfirmationOpen && prepared && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="label-print-confirm-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="label-print-confirm-title" className="text-lg font-semibold text-slate-900">พิมพ์สติ๊กเกอร์สำเร็จหรือไม่?</h2>
+            <p className="mt-2 text-sm text-slate-600">ตรวจสติ๊กเกอร์ {prepared.labels.length} Asset ก่อนยืนยัน ระบบจะเพิ่มประวัติและจำนวนครั้งพิมพ์ทันที เฉพาะรายการที่พิมพ์สำเร็จ</p>
+            {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={cancelPrint} disabled={busy} className="min-h-11 rounded-lg border border-slate-300 px-4 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">ยังไม่ได้พิมพ์ / ยกเลิก</button>
+              <button type="button" onClick={confirmPrinted} disabled={busy} className="min-h-11 rounded-lg bg-emerald-600 px-4 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">{busy ? "กำลังบันทึก..." : "พิมพ์สำเร็จ · บันทึกประวัติ"}</button>
+            </div>
+          </section>
+        </div>}
         {message && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-emerald-800">{message}</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
       </div>
