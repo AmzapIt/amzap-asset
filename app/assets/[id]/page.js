@@ -1,5 +1,6 @@
 import AssignmentForm from "./AssignmentForm";
 import MovementForm from "./MovementForm";
+import AssetActivity from "../AssetActivity";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -618,6 +619,8 @@ export default async function AssetDetailPage({ params }) {
             ]}
           />
         </section>
+
+        <AssetActivity assetId={String(asset.id)} canWrite={canWrite} />
 
         {/* ================= ASSIGNMENT ================= */}
         <DetailSection title="ผู้ครอบครองและประวัติการมอบหมาย">

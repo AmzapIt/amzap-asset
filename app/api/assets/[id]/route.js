@@ -1,6 +1,8 @@
 import { validateAssetLookups } from "@/lib/master-data";
 import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import { auth } from "@/auth";
+import { parseAssetDisposalReason, recordAssetEdit } from "@/lib/asset-history";
 import { getItStockLocation } from "@/lib/it-stock";
 import {
   parseAssetAdditional,
@@ -240,6 +242,7 @@ export async function PATCH(request, { params }) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
+    const session = await auth();
     const client = await getDbPool().connect();
 
     // ==================================================
@@ -251,12 +254,21 @@ export async function PATCH(request, { params }) {
     try {
       await client.query("BEGIN");
       const existing = (await client.query(
-        "SELECT status,location_id FROM public.assets WHERE id=$1 FOR UPDATE",
+        `SELECT *,received_date::text AS received_date,purchase_date::text AS purchase_date,
+          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end
+          FROM public.assets WHERE id=$1 FOR UPDATE`,
         [id],
       )).rows[0];
       if (!existing) {
         await client.query("ROLLBACK");
         return Response.json({ error: "Asset not found" }, { status: 404 });
+      }
+      let eventReason;
+      try {
+        eventReason = parseAssetDisposalReason(body.status, existing.status, body.disposalReason);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        return Response.json({ error: error.message }, { status: error.status || 400 });
       }
       if (body.status !== existing.status) {
         if (existing.status === "Repair" && body.status === "In Stock") {
@@ -312,7 +324,8 @@ export async function PATCH(request, { params }) {
           vendor_id = CASE WHEN $19 THEN $20::bigint ELSE vendor_id END,
           updated_at = NOW()
         WHERE id = $18
-        RETURNING *
+        RETURNING *,received_date::text AS received_date,purchase_date::text AS purchase_date,
+          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end
       `,
       [
         body.assetName?.trim() || null,
@@ -354,7 +367,8 @@ export async function PATCH(request, { params }) {
       );
       }
 
-      await saveAssetAdditional(client, id, additional);
+      await saveAssetAdditional(client, id, additional, String(session.user.id));
+      await recordAssetEdit(client, id, String(session.user.id), existing, result.rows[0], eventReason);
       await client.query("COMMIT");
 
     // ==================================================

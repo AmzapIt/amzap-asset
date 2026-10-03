@@ -286,7 +286,7 @@ export async function POST(request) {
         fields.map(([, value]) => value),
       );
 
-      await saveAssetAdditional(client, result.rows[0].id, additional);
+      await saveAssetAdditional(client, result.rows[0].id, additional, String(session.user.id));
       await client.query(
         `INSERT INTO public.asset_stock_receipts
          (asset_id,receipt_type,receipt_date,asset_condition,reason,received_by_account_id)

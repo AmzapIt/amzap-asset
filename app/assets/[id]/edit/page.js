@@ -58,6 +58,7 @@ export default function EditAssetPage() {
     computerName: "",
     description: "",
     status: "",
+    disposalReason: "",
     receivedDate: "",
 
     // เก็บ User ID ของ Asset Owner
@@ -165,6 +166,7 @@ export default function EditAssetPage() {
           computerName: asset.computer_name || "",
           description: asset.description || "",
           status: asset.status || "",
+          disposalReason: "",
 
           // เก็บ Asset Owner เดิม
           // Database เป็นตัวเลข แต่ select ใช้ String
@@ -500,6 +502,23 @@ export default function EditAssetPage() {
                     {" "}เมื่อตรวจซ่อมเสร็จให้ใช้ <Link href={`/assets/${id}#asset-action`} className="text-blue-700 underline">ซ่อมเสร็จ / พร้อมเบิก</Link> บนหน้า Asset Detail
                   </>}
                 </p>
+                {form.status === "Disposed" && originalStatus !== "Disposed" && (
+                  <div className="mt-4">
+                    <label htmlFor="disposalReason" className="mb-2 block font-medium">
+                      เหตุผลการจำหน่าย <span className="text-red-600">*</span>
+                    </label>
+                    <textarea
+                      id="disposalReason"
+                      name="disposalReason"
+                      value={form.disposalReason}
+                      onChange={handleChange}
+                      required
+                      maxLength={1000}
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Brand */}

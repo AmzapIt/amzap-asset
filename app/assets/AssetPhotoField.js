@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const TARGET_PHOTO_BYTES = 1.5 * 1024 * 1024;
@@ -116,6 +116,8 @@ export default function AssetPhotoField({
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const inputRef = useRef(null);
+  const galleryRef = useRef(null);
+  const inputId = useId();
   const selectionIdRef = useRef(0);
 
   // React 19 เรียก cleanup ของ callback ref เมื่อเปลี่ยนรูปหรือถอด Preview
@@ -163,7 +165,7 @@ export default function AssetPhotoField({
 
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <label className="block font-medium text-slate-800" htmlFor="assetPhoto">
+      <label className="block font-medium text-slate-800" htmlFor={inputId}>
         รูป Asset
       </label>
       <p className="mt-1 text-sm text-slate-500">
@@ -173,15 +175,23 @@ export default function AssetPhotoField({
 
       <input
         ref={inputRef}
-        id="assetPhoto"
+        id={inputId}
         type="file"
         accept="image/*"
         capture="environment"
         disabled={disabled || processing}
         onChange={selectPhoto}
         aria-busy={processing}
-        className="mt-3 block w-full rounded-lg border border-slate-200 bg-white p-3 text-sm disabled:opacity-50"
+        className="sr-only"
       />
+      <input ref={galleryRef} type="file" accept="image/*" disabled={disabled || processing}
+        onChange={selectPhoto} aria-label="เลือกจากคลังรูป" className="sr-only" />
+      <div className="mt-3 flex flex-wrap gap-3">
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={disabled || processing}
+          className="min-h-12 rounded-xl bg-slate-900 px-5 font-semibold text-white disabled:opacity-50">ถ่ายรูป</button>
+        <button type="button" onClick={() => galleryRef.current?.click()} disabled={disabled || processing}
+          className="min-h-12 rounded-xl border border-slate-300 bg-white px-5 font-medium disabled:opacity-50">เลือกจากคลังรูป</button>
+      </div>
 
       {processing && (
         <p role="status" className="mt-2 text-sm text-blue-700">
@@ -206,6 +216,7 @@ export default function AssetPhotoField({
               onClick={() => {
                 selectionIdRef.current += 1;
                 if (inputRef.current) inputRef.current.value = "";
+                if (galleryRef.current) galleryRef.current.value = "";
                 onChange(null);
               }}
               className="mt-2 font-medium text-red-600 hover:underline disabled:opacity-50"

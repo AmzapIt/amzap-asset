@@ -1,4 +1,5 @@
 import { requireWrite } from "@/lib/access";
+import { auth } from "@/auth";
 import { getDbPool, query } from "@/lib/db";
 import {
   deleteGoogleDriveFile,
@@ -45,6 +46,8 @@ function hasValidImageSignature(buffer, mimeType) {
 export async function POST(request, { params }) {
   const denied = await requireWrite(request);
   if (denied) return denied;
+
+  const session = await auth();
 
   const { id } = await params;
 
@@ -129,9 +132,9 @@ export async function POST(request, { params }) {
       const documentResult = await client.query(
         `INSERT INTO public.asset_documents (
            asset_id, document_type, file_name, storage_path,
-           mime_type, file_size_bytes, is_primary_photo
+           mime_type, file_size_bytes, is_primary_photo, uploaded_by_account_id
          )
-         VALUES ($1, 'Asset Photo', $2, $3, $4, $5, true)
+         VALUES ($1, 'Asset Photo', $2, $3, $4, $5, true, $6)
          RETURNING id::text, file_name, storage_path, mime_type,
                    file_size_bytes, is_primary_photo, created_at`,
         [
@@ -140,6 +143,7 @@ export async function POST(request, { params }) {
           driveFile.webViewLink,
           driveFile.mimeType,
           driveFile.size,
+          session.user.id,
         ],
       );
 

@@ -7,11 +7,14 @@ const REPORT_TABS = [
     view: "handover",
     label: "ใบรับมอบ Asset/Accessory",
   },
+  { href: "/reports/custody", view: "custody", label: "ผู้ถือครองและเบิก–คืน" },
+  { href: "/reports/offboarding", view: "offboarding", label: "ลาออก · คืนของค้าง" },
 ];
 
-// Layout กลางของหน้า Export ช่วยให้หัวข้อและเมนูย่อยของทั้งสองหน้าเหมือนกัน
-// แต่ข้อมูลและฟอร์มของแต่ละหน้าจะโหลดแยก route เพื่อลดงานที่ไม่จำเป็น
-export default function ReportsShell({ children, description, title, view }) {
+// Layout กลางของหน้ารายงานรวมเมนูย่อย ขณะที่แต่ละ route โหลดเฉพาะข้อมูลที่ใช้
+export default function ReportsShell({ children, description, title, view, canViewOperational = false }) {
+  const tabs = REPORT_TABS.filter((tab) =>
+    canViewOperational || !["custody", "offboarding"].includes(tab.view));
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -24,10 +27,10 @@ export default function ReportsShell({ children, description, title, view }) {
         </header>
 
         <nav
-          aria-label="เมนูย่อย Export"
+          aria-label="เมนูรายงาน"
           className="grid grid-cols-1 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:flex sm:flex-wrap"
         >
-          {REPORT_TABS.map((tab) => {
+          {tabs.map((tab) => {
             const isActive = view === tab.view;
 
             return (

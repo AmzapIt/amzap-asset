@@ -14,6 +14,9 @@ import {
   Menu,
   Package,
   Printer,
+  ScanLine,
+  ClipboardCheck,
+  ClipboardList,
   Settings,
   ShieldCheck,
   Store,
@@ -60,6 +63,11 @@ export default function Sidebar({ user }) {
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/assets", label: "Asset List", icon: Package },
+    { href: "/scan", label: "สแกน QR / เพิ่มรูป", icon: ScanLine },
+    { href: "/asset-counts", label: "ตรวจนับ Asset", icon: ClipboardCheck },
+    ...(["Admin", "IT Staff"].includes(user?.role)
+      ? [{ href: "/it-follow-up", label: "งาน IT ต้องติดตาม", icon: ClipboardList }]
+      : []),
     ...(["Admin", "IT Staff"].includes(user?.role)
       ? [{ href: "/labels", label: "Print Asset Labels", icon: Printer }]
       : []),
@@ -74,6 +82,12 @@ export default function Sidebar({ user }) {
       view: "handover",
       label: "ใบรับมอบ Asset/Accessory",
     },
+    ...(["Admin", "IT Staff"].includes(user?.role)
+      ? [
+          { href: "/reports/custody", view: "custody", label: "ผู้ถือครองและเบิก–คืน" },
+          { href: "/reports/offboarding", view: "offboarding", label: "ลาออก · คืนของค้าง" },
+        ]
+      : []),
   ];
 
   // Hiding links improves navigation, but it is not a security boundary.
@@ -89,7 +103,7 @@ export default function Sidebar({ user }) {
 
   const compactItems = [
     ...navItems,
-    { href: "/reports/assets", label: "Export / ใบรับมอบ", icon: Download },
+    { href: "/reports/assets", label: "Reports / Export", icon: Download },
   ];
 
   function isActive(href) {
@@ -207,7 +221,7 @@ export default function Sidebar({ user }) {
 
               <details open={pathname.startsWith("/reports")}>
                 <summary className="flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
-                  Export / ใบรับมอบ
+                  Reports / Export
                 </summary>
                 <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
                   {reportItems.map((item) => (
@@ -365,7 +379,7 @@ export default function Sidebar({ user }) {
                     : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                 }`}
               >
-                Export / ใบรับมอบ
+                Reports / Export
               </summary>
 
               <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
