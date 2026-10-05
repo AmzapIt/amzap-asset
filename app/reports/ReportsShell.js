@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const REPORT_TABS = [
   { href: "/reports/assets", view: "assets", label: "Export Asset" },
+  { href: "/reports/requisitions", view: "requisitions", label: "ใบขอเบิก / เปลี่ยนทดแทน-คืน" },
   {
     href: "/reports/handover",
     view: "handover",

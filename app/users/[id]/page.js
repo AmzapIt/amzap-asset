@@ -200,6 +200,12 @@ export default async function UserDetailPage({ params }) {
             >
               {isActive ? "Active" : "Inactive"}
             </span>
+            {canWrite && isActive && (
+              <Link href={`/reports/requisitions?userId=${id}`}
+                className="rounded-lg bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800">
+                สร้างใบขอเบิก / เปลี่ยนอุปกรณ์
+              </Link>
+            )}
             {canManageUsers && (
               <div className="flex flex-wrap gap-2">
                 <Link

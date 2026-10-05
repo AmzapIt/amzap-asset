@@ -54,7 +54,7 @@ export default function AccessoryActionForm({ mode, stock, holding, userId, offb
         if (!employeeId) throw new Error("กรุณาเลือกพนักงาน");
         url=`/api/users/${employeeId}/accessories`;
       } else if (mode==="transfer" && !form.to_user_id) {
-        throw new Error("กรุณาเลือกพนักงานผู้รับโอนจากผลค้นหา");
+        throw new Error("กรุณาเลือกพนักงานผู้รับโอน");
       } else if (mode==="editStock" || mode==="disposeStock") {
         url=`/api/accessories/${stock.id}${mode==="disposeStock"?"/dispose":""}`;
         method=mode==="editStock" ? "PATCH" : "POST";

@@ -77,6 +77,7 @@ export default function Sidebar({ user }) {
 
   const reportItems = [
     { href: "/reports/assets", view: "assets", label: "Export Asset" },
+    { href: "/reports/requisitions", view: "requisitions", label: "ใบขอเบิก / เปลี่ยนอุปกรณ์" },
     {
       href: "/reports/handover",
       view: "handover",
