@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { compareNaturalText } from "@/lib/asset-sort";
+import AssetNote from "./AssetNote";
 
 const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
 const DEFAULT_SORT_CONFIG = {
@@ -688,8 +689,8 @@ export default function AssetTable({ assets }) {
       {/* Card view อ่านง่ายกว่า Table บนมือถือและแตะเปิด Detail ได้ทั้งใบ */}
       <div className="divide-y divide-slate-100 md:hidden">
         {sortedAssets.map((asset) => (
+          <div key={asset.id} className="relative">
           <Link
-            key={asset.id}
             href={`/assets/${asset.id}`}
             className="block p-4 transition active:bg-blue-50"
           >
@@ -732,12 +733,14 @@ export default function AssetTable({ assets }) {
                 <dt className="text-xs text-slate-500">Location</dt>
                 <dd className="mt-0.5 break-words text-slate-700">{asset.location || "-"}</dd>
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2 pr-12">
                 <dt className="text-xs text-slate-500">วันที่รับเข้า</dt>
                 <dd className="mt-0.5 text-slate-700">{asset.received_date || "-"}</dd>
               </div>
             </dl>
           </Link>
+          <AssetNote notes={asset.notes} assetCode={asset.asset_code} className="absolute bottom-4 right-4" />
+          </div>
         ))}
       </div>
 
@@ -826,6 +829,7 @@ export default function AssetTable({ assets }) {
               >
                 {/* รหัสทรัพย์สิน */}
                 <td className="whitespace-nowrap px-5 py-5 font-semibold text-slate-900">
+                  <div className="flex items-center gap-2">
                   {/* ลิงก์จริงรองรับคีย์บอร์ดและเปิดแท็บใหม่ได้
                       แม้ทั้งแถวจะคลิกได้ */}
                   <Link
@@ -837,6 +841,8 @@ export default function AssetTable({ assets }) {
                   >
                     {asset.asset_code}
                   </Link>
+                  <AssetNote notes={asset.notes} assetCode={asset.asset_code} />
+                  </div>
                 </td>
 
                 {/* สถานะรูปตรวจจาก asset_documents โดยไม่โหลดไฟล์จาก Google Drive */}
