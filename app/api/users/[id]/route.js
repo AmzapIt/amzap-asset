@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
+import { inventorySchema } from "@/lib/inventory-schema";
 
 export const runtime = "nodejs";
 
@@ -386,6 +387,15 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    const schema = await inventorySchema({ query });
+    const licenseDependency = schema.licenses
+      ? `(SELECT COUNT(*)::int FROM public.license_seat_assignments license
+            WHERE license.user_id=u.id) AS license_assignments`
+      : '0::int AS license_assignments';
+    const consumableDependency = schema.consumables
+      ? `(SELECT COUNT(*)::int FROM public.consumable_movements consumable
+            WHERE consumable.user_id=u.id) AS consumable_movements`
+      : '0::int AS consumable_movements';
     const dependencyResult = await query(
       `
         SELECT
@@ -402,6 +412,8 @@ export async function DELETE(request, { params }) {
             WHERE ea.user_id = u.id) AS accessories,
           (SELECT COUNT(*)::int FROM public.accessory_stock_movements am
             WHERE am.from_user_id=u.id OR am.to_user_id=u.id) AS accessory_movements,
+          ${licenseDependency},
+          ${consumableDependency},
           (SELECT COUNT(*)::int FROM public.asset_audit_logs al
             WHERE al.changed_by = u.id) AS audit_logs,
           (SELECT COUNT(*)::int FROM public.asset_documents ad
@@ -430,6 +442,8 @@ export async function DELETE(request, { params }) {
       movements: Number(user.movements),
       accessories: Number(user.accessories),
       accessory_movements: Number(user.accessory_movements),
+      license_assignments: Number(user.license_assignments),
+      consumable_movements: Number(user.consumable_movements),
       audit_logs: Number(user.audit_logs),
       documents: Number(user.documents),
       login_accounts: Number(user.login_accounts),

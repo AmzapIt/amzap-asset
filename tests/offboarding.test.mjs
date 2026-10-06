@@ -8,12 +8,15 @@ import {
   startOffboarding,
 } from "../lib/offboarding.js";
 
-function fakePool({ existing = null, active = true, pending = 0, review = true } = {}) {
+function fakePool({ existing = null, active = true, pending = 0, licenses = 0, licenseSchema = true, review = true } = {}) {
   const calls = [];
   const client = {
     async query(sql, values = []) {
       calls.push({ sql: String(sql), values });
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return { rows: [], rowCount: 0 };
+      if (sql.includes('to_regclass')) {
+        return { rows: [{ licenses: licenseSchema, consumables: licenseSchema }] };
+      }
       if (sql.startsWith("SELECT pg_advisory_xact_lock")) return { rows: [], rowCount: 1 };
       if (sql.includes('FROM public."user" WHERE id=$1 FOR UPDATE')) {
         return { rows: [{ id: "2", is_active: active }], rowCount: 1 };
@@ -29,6 +32,11 @@ function fakePool({ existing = null, active = true, pending = 0, review = true }
       }
       if (sql.startsWith("SELECT received_quantity")) {
         return { rows: [{ received_quantity: 0 }], rowCount: 1 };
+      }
+      if (sql.includes('FROM public.license_seat_assignments')) {
+        return sql.includes('count(*)::int AS count')
+          ? { rows: [{ count: licenses }], rowCount: 1 }
+          : { rows: Array.from({ length: licenses }, (_, index) => ({ id: String(index + 1), license_name: 'QA License' })) };
       }
       if (sql.includes("count(*)::int AS count")) {
         return { rows: [{ count: pending }], rowCount: 1 };
@@ -93,13 +101,25 @@ test("case cannot be closed until every item is received or reviewed", async () 
   const clear = fakePool({ existing: true, pending: 0 });
   await closeOffboarding("2", "7", clear);
   assert.ok(clear.calls.some((call) => call.sql.includes("SET closed_at=now()")));
+  const licensePending = fakePool({ existing: true, licenses: 1 });
+  await assert.rejects(closeOffboarding("2", "7", licensePending),
+    (error) => error instanceof OffboardingError && error.status === 409);
+  const withoutLicenseTables = fakePool({ existing: true, licenseSchema: false });
+  await closeOffboarding("2", "7", withoutLicenseTables);
+  assert.ok(!withoutLicenseTables.calls.some((call) => call.sql.includes('FROM public.license_seat_assignments')));
 });
 
 test("overview computes pending items and quantity separately", async () => {
   const pool = {
     async query(sql) {
+      if (sql.includes('to_regclass')) {
+        return { rows: [{ licenses: true, consumables: true }] };
+      }
       if (sql.includes("FROM public.employee_offboardings")) {
         return { rows: [{ id: "10", user_id: "2", closed_at: null }] };
+      }
+      if (sql.includes('FROM public.license_seat_assignments')) {
+        return { rows: [{ id: '9', license_name: 'Office' }] };
       }
       return { rows: [
         { id: "1", pending_quantity: 1, requires_review: true },
@@ -109,7 +129,25 @@ test("overview computes pending items and quantity separately", async () => {
     },
   };
   const overview = await getOffboardingOverview("2", pool);
-  assert.equal(overview.pendingItems, 2);
-  assert.equal(overview.pendingQuantity, 4);
+  assert.equal(overview.pendingItems, 3);
+  assert.equal(overview.pendingQuantity, 5);
+  assert.equal(overview.licenseAssignments[0].license_name, 'Office');
   assert.equal(overview.reviewItems, 1);
+});
+
+test("overview skips license assignments when migration has not run", async () => {
+  const calls = [];
+  const overview = await getOffboardingOverview("2", {
+    async query(sql) {
+      calls.push(sql);
+      if (sql.includes('to_regclass')) return { rows: [{ licenses: false, consumables: false }] };
+      if (sql.includes('FROM public.employee_offboardings')) {
+        return { rows: [{ id: "10", user_id: "2", closed_at: null }] };
+      }
+      return { rows: [{ id: "1", pending_quantity: 1, requires_review: false }] };
+    },
+  });
+  assert.deepEqual(overview.licenseAssignments, []);
+  assert.equal(overview.pendingItems, 1);
+  assert.ok(!calls.some((sql) => sql.includes('FROM public.license_seat_assignments')));
 });

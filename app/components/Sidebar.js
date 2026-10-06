@@ -72,6 +72,8 @@ export default function Sidebar({ user }) {
       ? [{ href: "/labels", label: "Print Asset Labels", icon: Printer }]
       : []),
     { href: "/accessories", label: "Accessories / Stock", icon: Package },
+    { href: "/consumables", label: "Consumables", icon: Package },
+    { href: "/licenses", label: "Licenses", icon: KeyRound },
     { href: "/users", label: "User Management", icon: Users },
   ];
 

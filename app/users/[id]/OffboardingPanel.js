@@ -69,7 +69,7 @@ export default function OffboardingPanel({
         <div>
           <h2 className="text-xl font-semibold text-slate-900">รายการตรวจคืนเมื่อพนักงานลาออก</h2>
           <p className="mt-1 text-sm text-slate-600">
-            กดรับคืนในรายการ Asset / Accessories ตามของที่ IT ได้รับจริงเท่านั้น
+            กดรับคืน Asset / Accessories ตามของที่ IT ได้รับจริง และคืนสิทธิ์ License ที่ผูกกับพนักงาน
             การเริ่มขั้นตอนนี้ไม่เพิ่มยอดคลัง
           </p>
         </div>
@@ -210,6 +210,19 @@ export default function OffboardingPanel({
                   )}
                 </div>
               ))}
+            </div>
+          )}
+          {overview.licenseAssignments?.length > 0 && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h3 className="font-semibold text-amber-950">License ที่ต้องคืนสิทธิ์ ({overview.licenseAssignments.length})</h3>
+              <ul className="mt-2 space-y-2 text-sm text-amber-900">
+                {overview.licenseAssignments.map((license) => (
+                  <li key={license.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{license.license_name} · จ่ายเมื่อ {license.assigned_date}</span>
+                    <Link className="font-medium text-blue-700 underline" href="/licenses">เปิด Licenses เพื่อคืนสิทธิ์</Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </>

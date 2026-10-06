@@ -13,6 +13,9 @@ test('IT follow-up loads open returns, offboarding, waiting repairs and overdue 
   let values;
   const result = await getItFollowUp({
     query: async (statement, parameters) => {
+      if (statement.includes('to_regclass')) {
+        return { rows: [{ licenses: true, consumables: true }] };
+      }
       sql = statement;
       values = parameters;
       return { rows: [data] };
@@ -24,7 +27,23 @@ test('IT follow-up loads open returns, offboarding, waiting repairs and overdue 
   assert.deepEqual(values, [7]);
   assert.match(sql, /closed_at IS NULL/);
   assert.match(sql, /progress\.pending_quantity>0/);
+  assert.match(sql, /license_seat_assignments/);
   assert.match(sql, /asset\.status='Repair'/);
   assert.match(sql, /maintenance\.status IN \('Open','In Progress'\)/);
   assert.match(sql, /maintenance\.created_at>=receipt\.created_at/);
+});
+
+test('IT follow-up loads without license tables', async () => {
+  const statements = [];
+  await getItFollowUp({
+    query: async (statement) => {
+      statements.push(statement);
+      if (statement.includes('to_regclass')) {
+        return { rows: [{ licenses: false, consumables: false }] };
+      }
+      return { rows: [{ offboarding: [], unprocessed_returns: [], waiting_repair: [], long_repairs: [] }] };
+    },
+  });
+  assert.match(statements[1], /SELECT NULL::bigint AS user_id,0::int AS quantity WHERE false/);
+  assert.doesNotMatch(statements[1], /FROM public\.license_seat_assignments/);
 });
