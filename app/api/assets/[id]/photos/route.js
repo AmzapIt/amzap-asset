@@ -171,14 +171,18 @@ export async function POST(request, { params }) {
     console.error("Asset photo upload failed", error);
     const configurationError =
       error.message === "Google Drive upload is not configured";
+    const authorizationExpired =
+      error.message === "Google Drive authorization expired";
 
     return Response.json(
       {
         error: configurationError
           ? "ยังไม่ได้ตั้งค่า Google Drive สำหรับอัปโหลดรูป"
-          : "ไม่สามารถอัปโหลดรูป Asset ได้",
+          : authorizationExpired
+            ? "สิทธิ์ Google Drive หมดอายุหรือถูกยกเลิก กรุณาให้ผู้ดูแลระบบเชื่อมต่อใหม่"
+            : "ไม่สามารถอัปโหลดรูป Asset ได้",
       },
-      { status: configurationError ? 503 : 500 },
+      { status: configurationError || authorizationExpired ? 503 : 500 },
     );
   }
 }

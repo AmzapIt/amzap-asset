@@ -40,7 +40,7 @@ https://developers.google.com/oauthplayground
 2. เปิด Settings รูปเฟือง
 3. เลือก `Use your own OAuth credentials`
 4. ใส่ Client ID และ Client Secret
-5. ใช้ Scope ด้านล่าง แล้วกด Authorize APIs:
+5. เลือก Access type เป็น `Offline` และใช้ Scope ด้านล่าง แล้วกด Authorize APIs:
 
 ```text
 https://www.googleapis.com/auth/drive
@@ -51,7 +51,9 @@ Account แยกสำหรับระบบนี้เท่านั้น
 
 6. Login ด้วยบัญชี Google Drive ที่เตรียมไว้
 7. กด `Exchange authorization code for tokens`
-8. คัดลอก Refresh Token ไปเก็บใน Environment Variable
+8. คัดลอกค่าจากช่อง **Refresh token** ไปเก็บใน Environment Variable อย่าใช้ค่าจากช่อง Access token เพราะ Access token หมดอายุเร็ว
+
+หากกำลังเปลี่ยน Token ที่หมดอายุ ให้ใช้ Client ID/Client Secret ของโปรเจกต์เดิมและบัญชี Google ที่ใช้เก็บรูป หาก Step 2 ไม่แสดง Refresh token ให้ตรวจว่าเลือก Offline และอนุญาตผ่านหน้าขอความยินยอมใหม่
 
 ## 4. ตั้งค่า Local
 
@@ -69,10 +71,18 @@ GOOGLE_DRIVE_FOLDER_ID=ใส่_folder_id
 หลังแก้ `.env.local` ต้องปิดและเปิด `npm run dev` ใหม่ เพราะ Next.js อ่านค่า
 Environment Variables ตอนเริ่ม Server
 
-## 5. ตั้งค่า Production ภายหลัง
+## 5. ใส่ Refresh Token ใน Vercel (เว็บใช้งานจริง)
 
-เพิ่ม Environment Variables ชุดเดียวกันใน Vercel Project Settings โดยเลือก
-เฉพาะ Environment ที่ต้องการ แล้ว Redeploy หลังตั้งค่าครบ
+1. เข้า Vercel Dashboard → โปรเจกต์ `amzap-asset` → **Settings** → **Environment Variables** (บางหน้าจออยู่ใต้เมนู **Environments**)
+2. ถ้ามี `GOOGLE_DRIVE_REFRESH_TOKEN` อยู่แล้ว ให้เปิดแก้ค่าของ Production; ถ้ายังไม่มี ให้กดเพิ่ม Environment Variable แล้วเลือกชนิด **Secret**
+3. ช่อง **Key/Name** ใส่ `GOOGLE_DRIVE_REFRESH_TOKEN` ช่อง **Value** วางค่า **Refresh token** จาก Step 2 ของ OAuth Playground โดยไม่มีเครื่องหมายคำพูดหรือช่องว่างเกิน
+4. เลือก Environment **Production** แล้วกด **Save** ตรวจว่ามี `GOOGLE_DRIVE_CLIENT_ID` และ `GOOGLE_DRIVE_CLIENT_SECRET` ใน Production ด้วย โดยค่าทั้งสามต้องเป็นชุดเดียวกัน `GOOGLE_DRIVE_FOLDER_ID` ใช้เมื่อจะเก็บรูปใน Folder เฉพาะ
+5. ไปที่ **Deployments** แล้ว **Redeploy** Production Deployment ล่าสุด การ Save ค่า Environment อย่างเดียวยังไม่ทำให้ Deployment เดิมรับค่าใหม่
+6. หลัง Redeploy สำเร็จ ให้เข้าเว็บด้วยบัญชี Admin/IT Staff เปิด Asset เดิมแล้วลองเพิ่มรูป 1 รูป ตรวจหน้า Asset Detail → Documents & History ว่ามีชื่อไฟล์ใหม่และป้าย “รูปหลัก” ถ้าข้อมูล Asset บันทึกสำเร็จแล้วแต่รูปพลาด **อย่าสร้าง Asset ใหม่ซ้ำ**
+
+ระบบต้องการ **Refresh token** ไม่ใช่ Access token และต้องใส่ใน Environment ของ Server เท่านั้น ไม่ต้องใส่ใน Database, หน้าเว็บ หรือโค้ด หากทดสอบบน Local ให้แก้ `GOOGLE_DRIVE_REFRESH_TOKEN` ใน `.env.local` แล้วปิด/เปิด `npm run dev` ใหม่แทนการแก้ Vercel
+
+อ้างอิงหน้าจอและพฤติกรรม Redeploy: [Vercel Environment Variables](https://vercel.com/docs/environment-variables/managing-environment-variables), [Google OAuth Playground](https://developers.google.com/oauthplayground/)
 
 ข้อควรระวัง:
 
@@ -83,3 +93,14 @@ Environment Variables ตอนเริ่ม Server
   แล้วแปลง/ย่อเป็น JPG ใน Browser อัตโนมัติ โดยตั้งเป้าไม่เกิน 1.5 MB
   และยังคงเพดานไฟล์ที่ส่งเข้า Server ไม่เกิน 4 MB
 - หากยกเลิกสิทธิ์ OAuth หรือเปลี่ยนรหัสผ่านจน Token ใช้ไม่ได้ ต้องสร้าง Refresh Token ใหม่
+
+## เมื่ออัปโหลดไม่ได้เพราะสิทธิ์หมดอายุ
+
+ถ้า Google ตอบ `invalid_grant` หรือ `Token has been expired or revoked` ให้สร้าง Refresh Token
+ใหม่ตามขั้นตอนที่ 3 ด้วย Client ID และ Client Secret ของโปรเจกต์เดิม แล้วอัปเดต
+`GOOGLE_DRIVE_REFRESH_TOKEN` ใน `.env.local` หรือ Environment Variables ของ Vercel
+จากนั้นรีสตาร์ตแอปหรือ Redeploy ห้ามส่ง Token ในแชตหรือ Commit ลง Git
+
+ถ้า OAuth consent screen เป็น External และยังอยู่ในสถานะ Testing, Google อาจออก
+Refresh Token ที่หมดอายุใน 7 วันสำหรับ Scope ของ Drive ดูรายละเอียดที่
+https://developers.google.com/identity/protocols/oauth2#expiration
