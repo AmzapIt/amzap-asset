@@ -39,6 +39,8 @@ yarn-error.log*
 
 # Downloaded machine-specific configuration; keep outside commits.
 /env.download
+/.server-settings.json
+/.server-settings.json.*.tmp
 
 # vercel
 .vercel

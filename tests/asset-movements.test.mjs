@@ -16,7 +16,6 @@ function createPool({
   today = "2026-09-26",
   latestMovementDate = null,
   activeTargets = true,
-  currentAssignedTo = null,
 } = {}) {
   const calls = [];
   const client = {
@@ -45,11 +44,6 @@ function createPool({
       }
       if (normalized.startsWith("SELECT 1 FROM public.asset_assignments")) {
         return { rows: [], rowCount: 0 };
-      }
-      if (normalized.startsWith("SELECT assigned_to FROM public.asset_assignments")) {
-        return currentAssignedTo
-          ? { rows: [{ assigned_to: currentAssignedTo }], rowCount: 1 }
-          : { rows: [], rowCount: 0 };
       }
       if (normalized.startsWith("SELECT id FROM public.")) {
         return activeTargets
@@ -97,7 +91,7 @@ function movement(overrides = {}) {
     notes: "ตรวจรับเรียบร้อย",
     toLocationId: "2",
     toDepartmentId: "4",
-    toOwnerId: "5",
+    toOwnerId: "3",
     expectedLocationId: "1",
     expectedDepartmentId: "2",
     expectedOwnerId: "3",
@@ -111,7 +105,7 @@ test("movement updates the asset and stores before/after history", async () => {
 
   assert.equal(result.asset.location_id, "2");
   assert.equal(result.asset.owning_department_id, "4");
-  assert.equal(result.asset.asset_owner_id, "5");
+  assert.equal(result.asset.asset_owner_id, "3");
   assert.equal(result.movement.id, "99");
   assert.ok(fake.calls.some((call) => call.sql === "COMMIT"));
   assert.ok(!fake.calls.some((call) => call.sql === "ROLLBACK"));
@@ -120,7 +114,7 @@ test("movement updates the asset and stores before/after history", async () => {
     call.sql.startsWith("INSERT INTO public.asset_movements"),
   );
   assert.deepEqual(insert.values, [
-    "10", "2026-09-26", "1", "2", "2", "4", "3", "5",
+    "10", "2026-09-26", "1", "2", "2", "4", "3", "3",
     "ย้ายไปโรงงาน 2", "ตรวจรับเรียบร้อย", "7",
   ]);
   assert.equal(fake.client.released, true);
@@ -160,7 +154,7 @@ test("movement requires at least one changed value", async () => {
       "7",
       fake.pool,
     ),
-    /Choose at least one/,
+    /Choose a new Department or Location/,
   );
 
   assert.ok(fake.calls.some((call) => call.sql === "ROLLBACK"));
@@ -219,11 +213,19 @@ test("stock cannot receive an owner through Movement", async () => {
 test("Movement cannot contradict an open Assignment owner", async () => {
   const fake = createPool({
     asset: { id: "10", status: "In Use", location_id: "1", owning_department_id: "2", asset_owner_id: "3" },
-    currentAssignedTo: "3",
   });
   await assert.rejects(
-    moveAsset("10", movement({ toLocationId: "1", toDepartmentId: "2" }), "7", fake.pool),
-    (error) => error instanceof AssetMovementError && error.status === 409,
+    moveAsset("10", movement({ toLocationId: "1", toDepartmentId: "2", toOwnerId: "5" }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409 && error.message.includes("รับคืน"),
+  );
+  assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
+});
+
+test("Movement cannot change a legacy Asset Owner without an Assignment", async () => {
+  const fake = createPool();
+  await assert.rejects(
+    moveAsset("10", movement({ toOwnerId: "5" }), "7", fake.pool),
+    (error) => error instanceof AssetMovementError && error.status === 409 && error.message.includes("เบิกใหม่"),
   );
   assert.ok(!fake.calls.some((call) => call.sql.startsWith("UPDATE public.assets")));
 });

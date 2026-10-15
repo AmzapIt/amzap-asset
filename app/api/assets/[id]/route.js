@@ -62,7 +62,8 @@ export async function GET(request, { params }) {
           registration_site.name AS registration_site_name,
           u.full_name AS asset_owner_name,
           u.nickname AS asset_owner_nickname,
-          u.is_active AS asset_owner_is_active
+          u.is_active AS asset_owner_is_active,
+          owner_location.name AS asset_owner_location_name
         FROM public.assets a
         LEFT JOIN public.asset_types t
           ON t.id = a.asset_type_id
@@ -70,6 +71,8 @@ export async function GET(request, { params }) {
           ON registration_site.id = a.registration_site_id
         LEFT JOIN public."user" u
           ON u.id = a.asset_owner_id
+        LEFT JOIN public.locations owner_location
+          ON owner_location.id = u.location_id
         WHERE a.id = $1
         LIMIT 1
       `,

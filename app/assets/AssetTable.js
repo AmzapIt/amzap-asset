@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { compareNaturalText } from "@/lib/asset-sort";
 import AssetNote from "./AssetNote";
+import AssetPhotoPreview from "./AssetPhotoPreview";
 
 const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
 const DEFAULT_SORT_CONFIG = {
@@ -66,27 +67,6 @@ function toSortableDate(value) {
   const [day, month, year] = parts;
 
   return `${year}-${month}-${day}`;
-}
-
-function PhotoStatus({ hasPhoto }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
-        hasPhoto
-          ? "bg-emerald-100 text-emerald-800"
-          : "bg-slate-100 text-slate-500"
-      }`}
-      aria-label={hasPhoto ? "มีรูป Asset แล้ว" : "ยังไม่มีรูป Asset"}
-    >
-      <span
-        aria-hidden="true"
-        className={`h-2 w-2 rounded-full ${
-          hasPhoto ? "bg-emerald-500" : "bg-slate-400"
-        }`}
-      />
-      {hasPhoto ? "มีรูป" : "ยังไม่มีรูป"}
-    </span>
-  );
 }
 
 function SortableHeader({
@@ -157,6 +137,35 @@ export default function AssetTable({ assets }) {
 
   // ใช้เปลี่ยนหน้าเมื่อผู้ใช้คลิกแถว
   const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  const lastRefreshAt = useRef(0);
+
+  function refreshAssets() {
+    lastRefreshAt.current = Date.now();
+    startRefresh(() => router.refresh());
+  }
+
+  // เมื่อกลับมาเปิดแท็บเดิม ให้ขอข้อมูลล่าสุด โดยไม่ยิงซ้ำถี่ ๆ ตอนสลับหน้าต่าง
+  useEffect(() => {
+    lastRefreshAt.current = Date.now();
+
+    function refreshOnReturn() {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastRefreshAt.current >= 15000
+      ) {
+        lastRefreshAt.current = Date.now();
+        startRefresh(() => router.refresh());
+      }
+    }
+
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [router]);
 
   // จำ Search / Filter / Sort ภายใน Browser tab เดิม เมื่อออกไปหน้าอื่นแล้วกลับมา
   useEffect(() => {
@@ -474,15 +483,25 @@ export default function AssetTable({ assets }) {
             </p>
           </div>
 
-          {activeFilterCount > 0 && (
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <button
               type="button"
-              onClick={resetFilters}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-blue-500 sm:w-auto"
+              onClick={refreshAssets}
+              disabled={isRefreshing}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-wait disabled:opacity-60"
             >
-              ล้าง Filter ทั้งหมด ({activeFilterCount})
+              {isRefreshing ? "กำลังรีเฟรช..." : "รีเฟรชข้อมูล"}
             </button>
-          )}
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-blue-500"
+              >
+                ล้าง Filter ทั้งหมด ({activeFilterCount})
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -702,9 +721,6 @@ export default function AssetTable({ assets }) {
                 <p className="mt-1 break-words font-mono text-sm font-medium text-slate-800">
                   {asset.serial_number || "-"}
                 </p>
-                <div className="mt-2">
-                  <PhotoStatus hasPhoto={asset.has_photo} />
-                </div>
               </div>
               <span
                 className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -739,6 +755,9 @@ export default function AssetTable({ assets }) {
               </div>
             </dl>
           </Link>
+          <div className="px-4 pb-4" onClick={(event) => event.stopPropagation()}>
+            <AssetPhotoPreview key={asset.photo_id ?? "no-photo"} assetId={asset.id} assetCode={asset.asset_code} photoId={asset.photo_id} />
+          </div>
           <AssetNote notes={asset.notes} assetCode={asset.asset_code} className="absolute bottom-4 right-4" />
           </div>
         ))}
@@ -845,9 +864,8 @@ export default function AssetTable({ assets }) {
                   </div>
                 </td>
 
-                {/* สถานะรูปตรวจจาก asset_documents โดยไม่โหลดไฟล์จาก Google Drive */}
                 <td className="px-5 py-5">
-                  <PhotoStatus hasPhoto={asset.has_photo} />
+                  <AssetPhotoPreview key={asset.photo_id ?? "no-photo"} assetId={asset.id} assetCode={asset.asset_code} photoId={asset.photo_id} />
                 </td>
 
                 {/* ประเภท */}

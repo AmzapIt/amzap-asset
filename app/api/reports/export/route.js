@@ -1,7 +1,7 @@
 import { getCurrentAccessories,getReportAssets,getRecipient } from "@/lib/asset-report";
 import { assetWorkbook,assetPdf,handoverPdf } from "@/lib/export-files";
 import { handoverFilename } from "@/lib/export-filename";
-import { findHandoverConflict } from "@/lib/report-validation";
+import { canSelectHandoverRecipient, findHandoverConflict } from "@/lib/report-validation";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 
@@ -44,6 +44,7 @@ export async function POST(request) {
     if(body.format==="handover"){
       const recipient=await getRecipient(body.recipientId);
       if(!recipient)return Response.json({error:"ไม่พบพนักงาน"},{status:404});
+      if(!canSelectHandoverRecipient(recipient,form.kind))return Response.json({error:"เอกสารรับมอบหรือเบิกใหม่ต้องเลือกพนักงาน Active"},{status:400});
 
       // ใบคืนต้องอ้างอิงเฉพาะ Asset ที่พนักงานคนนี้ถืออยู่จริง ส่วนใบรับมอบ
       // อนุญาต Asset ว่างหรือ Asset ที่คนเดิมถืออยู่ แต่ไม่ยอมให้เลือกของคนอื่น

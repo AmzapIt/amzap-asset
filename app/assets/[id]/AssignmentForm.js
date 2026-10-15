@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { readApiResponse } from "@/lib/client-api";
 import EmployeePicker from "@/app/components/EmployeePicker";
-import { formatUserDisplayName } from "@/lib/user-display";
+import { formatEmployeeOptionLabel, orderEmployeesByCompany } from "@/lib/user-display";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -189,9 +189,9 @@ export default function AssignmentForm({
               className={inputClass}
             >
               <option value="">เลือกพนักงาน</option>
-              {activeUsers.map((user) => (
+              {orderEmployeesByCompany(activeUsers).map((user) => (
                 <option key={user.id} value={user.id}>
-                  {formatUserDisplayName(user)}
+                  {formatEmployeeOptionLabel(user, { showCode: false })}
                 </option>
               ))}
             </select>

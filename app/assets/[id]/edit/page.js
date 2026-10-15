@@ -8,7 +8,7 @@ import {
   additionalFromApi,
   emptyAdditionalForm,
 } from "@/lib/asset-additional";
-import { formatUserDisplayName } from "@/lib/user-display";
+import { formatEmployeeOptionLabel, orderEmployeesByCompany } from "@/lib/user-display";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -232,6 +232,7 @@ export default function EditAssetPage() {
                 asset.asset_owner_name || `Owner ID ${asset.asset_owner_id}`,
               nickname: asset.asset_owner_nickname || null,
               is_active: asset.asset_owner_is_active,
+              location_name: asset.asset_owner_location_name || null,
             });
           } else {
             setCurrentOwner(null);
@@ -598,14 +599,14 @@ export default function EditAssetPage() {
                   {/* Owner เดิมที่ไม่อยู่ใน Active Users: ใช้ชื่อจาก GET Asset และคง ID เดิมไว้เมื่อบันทึก */}
                   {currentOwner && (
                     <option value={String(currentOwner.id)}>
-                      {formatUserDisplayName(currentOwner)} (Inactive)
+                      {formatEmployeeOptionLabel(currentOwner, { showCode: false })} (Inactive)
                     </option>
                   )}
 
                   {/* select ใช้ String เช่นเดียวกับ form.assetOwner เพื่อให้เลือก Owner เดิมได้ตรงกัน */}
-                  {users.map((user) => (
+                  {orderEmployeesByCompany(users).map((user) => (
                     <option key={user.id} value={String(user.id)}>
-                      {formatUserDisplayName(user)}
+                      {formatEmployeeOptionLabel(user, { showCode: false })}
                     </option>
                   ))}
                 </select>

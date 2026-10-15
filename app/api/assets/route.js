@@ -263,7 +263,8 @@ export async function POST(request) {
       await client.query("BEGIN");
       const itStock = await getItStockLocation(client);
       fields.find(([column]) => column === "location_id")[1] = itStock.id;
-      // Running Number ใช้ร่วมกันตาม Asset Type ทุกโรงงาน จึงล็อกตาม Type
+      // F1/F2 ใช้เลขร่วมกันตาม Asset Type ส่วน M1 แยกชุดเลข
+      // ล็อกตาม Type เพื่อกันคำขอพร้อมกันใช้เลขเดียวกันในแต่ละชุด
       // ภายใน Transaction ก่อนตรวจเลขซ้ำ ป้องกันสอง request เลือกเลขเดียวกัน
       // พร้อมกันแล้วผ่านการตรวจทั้งคู่
       await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [
@@ -275,9 +276,12 @@ export async function POST(request) {
          FROM public.assets
          WHERE asset_type_id = $1
            AND right(asset_code, 3) = $2
-           AND asset_code ~ '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
+           AND asset_code ~ CASE
+             WHEN $3 = 'M1' THEN '^M1-[A-Z0-9]{2,10}-[0-9]{3}$'
+             ELSE '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
+           END
          LIMIT 1`,
-        [assetTypeId, assetCodeNumber],
+        [assetTypeId, assetCodeNumber, registrationSiteResult.rows[0].site_code],
       );
 
       if (duplicateRunningNumber.rowCount) {

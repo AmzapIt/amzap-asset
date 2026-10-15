@@ -3,8 +3,15 @@ import { auth } from "@/auth";
 import { getDbPool, query } from "@/lib/db";
 import {
   deleteGoogleDriveFile,
+  ensureGoogleDriveLinkSharing,
   uploadAssetPhotoToGoogleDrive,
 } from "@/lib/google-drive";
+import {
+  assetPhotoStorageMode,
+  LocalPhotoStorageError,
+  removeLocalAssetPhoto,
+  saveLocalAssetPhoto,
+} from "@/lib/local-asset-photos";
 
 export const runtime = "nodejs";
 
@@ -102,13 +109,23 @@ export async function POST(request, { params }) {
   const extension = PHOTO_TYPES.get(photo.type);
   const fileName = `${asset.asset_code}-${Date.now()}.${extension}`;
   let driveFile;
+  let localFile;
 
   try {
-    driveFile = await uploadAssetPhotoToGoogleDrive({
-      buffer,
-      fileName,
-      mimeType: photo.type,
-    });
+    const storageMode = assetPhotoStorageMode();
+    if (storageMode === "local") {
+      localFile = await saveLocalAssetPhoto({ assetId: id, buffer, mimeType: photo.type });
+    } else {
+      driveFile = await uploadAssetPhotoToGoogleDrive({
+        buffer,
+        fileName,
+        mimeType: photo.type,
+      });
+      await ensureGoogleDriveLinkSharing(driveFile.id);
+    }
+    const storedPhoto = localFile
+      ? { name: fileName, webViewLink: localFile.storagePath, mimeType: photo.type, size: buffer.length }
+      : driveFile;
 
     const client = await getDbPool().connect();
     try {
@@ -139,10 +156,10 @@ export async function POST(request, { params }) {
                    file_size_bytes, is_primary_photo, created_at`,
         [
           id,
-          driveFile.name,
-          driveFile.webViewLink,
-          driveFile.mimeType,
-          driveFile.size,
+          storedPhoto.name,
+          storedPhoto.webViewLink,
+          storedPhoto.mimeType,
+          storedPhoto.size,
           session.user.id,
         ],
       );
@@ -160,6 +177,13 @@ export async function POST(request, { params }) {
       client.release();
     }
   } catch (error) {
+    if (localFile?.fileName) {
+      try {
+        await removeLocalAssetPhoto(id, localFile.fileName);
+      } catch (cleanupError) {
+        console.error("Local Asset photo cleanup failed", cleanupError);
+      }
+    }
     if (driveFile?.id) {
       try {
         await deleteGoogleDriveFile(driveFile.id);
@@ -173,16 +197,23 @@ export async function POST(request, { params }) {
       error.message === "Google Drive upload is not configured";
     const authorizationExpired =
       error.message === "Google Drive authorization expired";
+    const wrongTokenType =
+      error.message === "Google Drive access token was used instead of a refresh token";
+    const localConfigurationError = error instanceof LocalPhotoStorageError;
 
     return Response.json(
       {
-        error: configurationError
+        error: localConfigurationError
+          ? "กรุณาตั้งค่าโฟลเดอร์เก็บรูปบน local server ให้ถูกต้อง"
+          : configurationError
           ? "ยังไม่ได้ตั้งค่า Google Drive สำหรับอัปโหลดรูป"
+          : wrongTokenType
+            ? "ตั้งค่า Access Token ในช่อง Refresh Token กรุณาคัดลอกค่า Refresh token จาก Google OAuth Playground"
           : authorizationExpired
-            ? "สิทธิ์ Google Drive หมดอายุหรือถูกยกเลิก กรุณาให้ผู้ดูแลระบบเชื่อมต่อใหม่"
+            ? "Refresh Token ของ Google Drive ไม่ถูกต้อง หมดอายุ หรือถูกยกเลิก กรุณาตรวจค่าอีกครั้ง"
             : "ไม่สามารถอัปโหลดรูป Asset ได้",
       },
-      { status: configurationError || authorizationExpired ? 503 : 500 },
+      { status: configurationError || authorizationExpired || wrongTokenType || localConfigurationError ? 503 : 500 },
     );
   }
 }

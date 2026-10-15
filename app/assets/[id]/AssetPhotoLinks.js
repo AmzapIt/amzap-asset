@@ -1,0 +1,64 @@
+"use client";
+
+import { useState } from "react";
+
+export default function AssetPhotoLinks({ photos }) {
+  const [copyStatus, setCopyStatus] = useState(null);
+
+  return (
+    <div className="mt-6 border-t border-slate-200 pt-5">
+      <h3 className="text-sm text-gray-500">ลิงก์รูป Asset</h3>
+      {photos.length === 0 ? (
+        <p className="mt-1 text-sm font-medium text-gray-800">-</p>
+      ) : (
+        <div className="mt-2 space-y-3">
+          {photos.map((photo, index) => (
+            <div key={photo.id} className="max-w-2xl rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-sm font-medium text-slate-700">
+                {photo.isPrimary ? "รูปหลัก" : `รูปที่ ${index + 1}`}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  aria-label={`ลิงก์${photo.isPrimary ? "รูปหลัก" : `รูปที่ ${index + 1}`}`}
+                  readOnly
+                  value={photo.url}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+                <a
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md border border-blue-300 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                >
+                  เปิด
+                </a>
+                <button
+                  type="button"
+                  onClick={async (event) => {
+                    try {
+                      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+                      await navigator.clipboard.writeText(new URL(photo.url, window.location.origin).href);
+                      setCopyStatus({ id: photo.id, message: "คัดลอกแล้ว" });
+                    } catch {
+                      const input = event.currentTarget.parentElement?.querySelector("input");
+                      input?.focus();
+                      input?.select();
+                      setCopyStatus({ id: photo.id, message: "เลือกลิงก์แล้ว กดคัดลอกได้เลย" });
+                    }
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  คัดลอก
+                </button>
+              </div>
+              {copyStatus?.id === photo.id && (
+                <p role="status" className="mt-1 text-xs text-slate-600">{copyStatus.message}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

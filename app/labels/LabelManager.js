@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
+import {
+  labelPreferenceStyle,
+  labelPreferenceSnapshot,
+  labelPreferenceServerSnapshot,
+  preferencesFromSnapshot,
+  subscribeLabelPreferences,
+} from "@/lib/label-preferences";
 
 const MAX_LABELS = 100;
 
@@ -27,6 +34,8 @@ function formatDate(value) {
 }
 
 export default function LabelManager({ initialAssets }) {
+  const preferenceSnapshot = useSyncExternalStore(subscribeLabelPreferences, labelPreferenceSnapshot, labelPreferenceServerSnapshot);
+  const labelPreferences = preferencesFromSnapshot(preferenceSnapshot);
   const [assets, setAssets] = useState(initialAssets);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
@@ -234,7 +243,7 @@ export default function LabelManager({ initialAssets }) {
   const selectedVisible = filtered.filter((asset) => selected.includes(asset.id)).length;
 
   return (
-    <>
+    <div style={labelPreferenceStyle(labelPreferences)}>
       <style>{`
         @media print {
           @page { size: 40mm 30mm; margin: 0; }
@@ -356,6 +365,6 @@ export default function LabelManager({ initialAssets }) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { masterConfig } from "@/lib/master-config";
@@ -168,6 +169,8 @@ export default function MasterPage() {
           + Add
         </button>
       </header>
+
+      <Link href="/settings?tab=master" className="mb-5 inline-flex min-h-10 items-center rounded-lg border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 hover:bg-blue-50">← กลับไป Settings / Master Data</Link>
 
       {/* =====================================================
           Message

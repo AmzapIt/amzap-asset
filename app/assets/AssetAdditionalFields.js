@@ -1,5 +1,7 @@
 "use client";
 
+import { isViewableAssetDocumentUrl } from "@/lib/asset-photo-links";
+
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
@@ -43,7 +45,7 @@ export default function AssetAdditionalFields({
       <div className="grid gap-5 md:grid-cols-2"><label className="block"><span className="mb-2 block font-medium">Encryption</span><select name="encryptionEnabled" value={form.encryptionEnabled ?? ""} onChange={onChange} className={inputClass}><option value="">ยังไม่ระบุ</option><option value="true">Enabled</option><option value="false">Disabled</option></select></label>{securityFields.map(([name, label, type]) => <Field key={name} name={name} label={label} type={type} form={form} onChange={onChange} />)}</div>
     </Section>}
     {sections.includes("documents") && <Section title="Documents" description="เพิ่มลิงก์ HTTPS ของเอกสารที่เก็บใน Google Drive หรือพื้นที่จัดเก็บที่ได้รับอนุญาต">
-      {existingDocuments.length > 0 && <div className="mb-5 space-y-2">{existingDocuments.map((doc) => doc.storage_path?.startsWith("https://") ? <a key={doc.id} href={doc.storage_path} target="_blank" rel="noreferrer" className="block rounded-lg border p-3 text-blue-700 hover:bg-blue-50">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</a> : <div key={doc.id} className="rounded-lg border p-3">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</div>)}</div>}
+      {existingDocuments.length > 0 && <div className="mb-5 space-y-2">{existingDocuments.map((doc) => isViewableAssetDocumentUrl(doc.storage_path) ? <a key={doc.id} href={doc.storage_path} target="_blank" rel="noreferrer" className="block rounded-lg border p-3 text-blue-700 hover:bg-blue-50">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</a> : <div key={doc.id} className="rounded-lg border p-3">{doc.file_name}{doc.document_type ? ` · ${doc.document_type}` : ""}</div>)}</div>}
       <div className="grid gap-5 md:grid-cols-2"><Field name="documentType" label="Document Type" form={form} onChange={onChange} /><Field name="documentName" label="Document Name" form={form} onChange={onChange} /><div className="md:col-span-2"><Field name="documentUrl" label="Document URL (HTTPS)" type="url" form={form} onChange={onChange} placeholder="https://drive.google.com/..." /></div></div>
       <p className="mt-3 text-xs text-slate-500">เว้นทั้งสามช่องว่างหากยังไม่มีเอกสาร ระบบยังไม่อัปโหลดไฟล์จากเครื่องในรอบนี้</p>
     </Section>}

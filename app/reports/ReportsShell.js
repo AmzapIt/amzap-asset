@@ -8,6 +8,7 @@ const REPORT_TABS = [
     view: "handover",
     label: "ใบรับมอบ Asset/Accessory",
   },
+  { href: "/reports/verifications", view: "verifications", label: "ตรวจยืนยันทรัพย์สินประจำรอบ" },
   { href: "/reports/custody", view: "custody", label: "ผู้ถือครองและเบิก–คืน" },
   { href: "/reports/offboarding", view: "offboarding", label: "ลาออก · คืนของค้าง" },
 ];

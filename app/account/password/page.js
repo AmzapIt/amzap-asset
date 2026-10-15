@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { query } from "@/lib/db";
 import ChangePasswordForm from "./ChangePasswordForm";
+import SettingsNav from "@/app/settings/SettingsNav";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function ChangePasswordPage() {
   // A JWT may outlive an account status change, so verify the account from
   // the database before rendering a security-sensitive form.
   const result = await query(
-    `SELECT email, display_name, is_active, must_change_password
+    `SELECT email, display_name, role, is_active, must_change_password
      FROM public.app_accounts
      WHERE id=$1
      LIMIT 1`,
@@ -36,6 +37,8 @@ export default async function ChangePasswordPage() {
             {account.display_name} · {account.email}
           </p>
         </header>
+
+        <SettingsNav view="password" admin={account.role === "Admin"} />
 
         <ChangePasswordForm
           mustChangePassword={account.must_change_password === true}

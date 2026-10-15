@@ -1,11 +1,13 @@
 import AssignmentForm from "./AssignmentForm";
 import MovementForm from "./MovementForm";
 import AssetActivity from "../AssetActivity";
+import AssetPhotoLinks from "./AssetPhotoLinks";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { query } from "@/lib/db";
 import { formatUserDisplayName } from "@/lib/user-display";
+import { isViewableAssetDocumentUrl } from "@/lib/asset-photo-links";
 
 // ใช้ Node.js เพราะหน้านี้เชื่อม PostgreSQL ผ่าน pg
 export const runtime = "nodejs";
@@ -415,6 +417,15 @@ export default async function AssetDetailPage({ params }) {
     vendorMap,
   } = data;
 
+  const photoLinks = (documents ?? [])
+    .filter((doc) => doc.document_type === "Asset Photo" && isViewableAssetDocumentUrl(doc.storage_path))
+    .sort((a, b) => Number(Boolean(b.is_primary_photo)) - Number(Boolean(a.is_primary_photo)))
+    .map((doc) => ({
+      id: String(doc.id),
+      url: doc.storage_path,
+      isPrimary: Boolean(doc.is_primary_photo),
+    }));
+
   const [activeUsers, availableLocations, availableDepartments, databaseDate, itStockSettings] = await Promise.all([
     query(
       `SELECT u.id,u.employee_code,u.full_name,u.nickname,u.is_active,u.location_id,
@@ -474,7 +485,7 @@ export default async function AssetDetailPage({ params }) {
       .join(" / ");
   }
 
-  // Owner และ assignee อ้างอิง public."user" แต่เป็นคนละบทบาท
+  // Asset Owner ของรายการใหม่จะตรงกับผู้ครอบครองใน Assignment
   const ownerName = asset.asset_owner_id == null
     ? "ไม่มี Asset Owner"
     : (formatUserDisplayName({
@@ -618,6 +629,7 @@ export default async function AssetDetailPage({ params }) {
               ["วันที่แก้ไขล่าสุด", formatDate(asset.updated_at, true)],
             ]}
           />
+          <AssetPhotoLinks photos={photoLinks} />
         </section>
 
         <AssetActivity assetId={String(asset.id)} canWrite={canWrite} />
@@ -703,11 +715,11 @@ export default async function AssetDetailPage({ params }) {
             currentLocationId={asset.location_id}
             currentDepartmentId={asset.owning_department_id}
             currentOwnerId={asset.asset_owner_id}
+            currentOwnerName={ownerName}
             assetStatus={asset.status}
             itStockLocationId={itStockSettings.rows[0]?.it_stock_location_id ?? null}
             locations={availableLocations.rows}
             departments={availableDepartments.rows}
-            users={activeUsers.rows}
             today={databaseDate.rows[0].today}
             canWrite={canWrite}
           />
@@ -883,7 +895,7 @@ export default async function AssetDetailPage({ params }) {
               {documents.map((doc) => (
                 <div key={doc.id} className="rounded-lg border p-3">
                   {typeof doc.storage_path === "string" &&
-                  doc.storage_path.startsWith("https://") ? (
+                  isViewableAssetDocumentUrl(doc.storage_path) ? (
                     <a
                       href={doc.storage_path}
                       target="_blank"

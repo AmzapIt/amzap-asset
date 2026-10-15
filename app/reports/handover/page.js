@@ -21,14 +21,16 @@ export default async function HandoverReportsPage() {
       getReportAssets(),
       query(`
         SELECT
-          id::text AS id,
-          employee_code,
-          full_name,
-          nickname,
-          is_active,
-          CASE WHEN is_active THEN 1 ELSE 0 END AS status
-        FROM public."user"
-        ORDER BY full_name
+          u.id::text AS id,
+          u.employee_code,
+          u.full_name,
+          u.nickname,
+          u.is_active,
+          l.name AS location_name,
+          CASE WHEN u.is_active THEN 1 ELSE 0 END AS status
+        FROM public."user" u
+        LEFT JOIN public.locations l ON l.id=u.location_id
+        ORDER BY u.full_name
       `),
       getCurrentAccessories(),
     ]);

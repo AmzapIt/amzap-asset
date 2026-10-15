@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AssetQrScanner from '@/app/components/AssetQrScanner';
 import QuickPhotoUpload from '@/app/assets/QuickPhotoUpload';
 import { readApiResponse } from '@/lib/client-api';
+import { isViewableAssetDocumentUrl } from '@/lib/asset-photo-links';
 
 export default function ScanAsset({ canWrite }) {
   const [asset,setAsset] = useState(null);
@@ -35,7 +36,7 @@ export default function ScanAsset({ canWrite }) {
         <div className="flex flex-wrap gap-3 text-sm font-semibold text-blue-700">
           <Link href={`/assets/${asset.id}`}>ดูรายละเอียดทั้งหมด →</Link>
           <Link href={`/assets/${asset.id}#asset-history`}>ประวัติ Asset →</Link>
-          {asset.photo?.storage_path?.startsWith('https://') && <a href={asset.photo.storage_path} target="_blank" rel="noreferrer">เปิดรูปหลัก ↗</a>}
+          {isViewableAssetDocumentUrl(asset.photo?.storage_path) && <a href={asset.photo.storage_path} target="_blank" rel="noreferrer">เปิดรูปหลัก ↗</a>}
         </div>
         {canWrite && <QuickPhotoUpload key={asset.id} assetId={asset.id} onPendingChange={setPhotoPending} onUploaded={(photo) => setAsset((current) => ({ ...current,photo,photo_count:current.photo_count+1 }))} />}
         <button type="button" disabled={photoPending} onClick={() => {setAsset(null);setError('');}} className="min-h-12 w-full rounded-xl border border-slate-300 px-5 font-semibold disabled:opacity-40">สแกนชิ้นถัดไป</button>

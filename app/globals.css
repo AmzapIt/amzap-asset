@@ -54,15 +54,17 @@ table {
 .asset-label strong {
   max-width: 38mm;
   overflow: hidden;
-  font: 700 9pt Arial, sans-serif;
+  font: 700 var(--label-code-size, 9pt) Arial, sans-serif;
   white-space: nowrap;
+  transform: translate(var(--label-offset-x, 0mm), var(--label-offset-y, 0mm));
 }
 
 .asset-label img {
   display: block;
-  width: 19mm;
-  height: 19mm;
+  width: var(--label-qr-size, 19mm);
+  height: var(--label-qr-size, 19mm);
   object-fit: contain;
+  transform: translate(var(--label-offset-x, 0mm), var(--label-offset-y, 0mm));
 }
 
 @media screen {

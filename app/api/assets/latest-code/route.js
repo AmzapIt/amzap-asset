@@ -12,10 +12,8 @@ function validBigintId(value) {
     BigInt(value) <= 9223372036854775807n
   );
 }
-// Return the highest running number for one Asset Type across every
-// registration site. F1/F2 identify the registration site, but NB/MON/etc.
-// share one running-number sequence. This read-only result does not reserve a
-// number; the create API and database still verify uniqueness when saving.
+// F1/F2 share a running number per Asset Type; M1 has a separate sequence.
+// This read-only result does not reserve a number. Creation checks again.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const registrationSiteId = searchParams.get("registrationSiteId");
@@ -38,7 +36,11 @@ export async function GET(request) {
             FROM public.assets asset
             WHERE asset.asset_type_id = asset_type.id
               AND right(asset.asset_code, 3) ~ '^[0-9]{3}$'
-              AND asset.asset_code ~ '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
+              AND asset.asset_code ~ CASE
+                WHEN registration_site.site_code = 'M1'
+                  THEN '^M1-[A-Z0-9]{2,10}-[0-9]{3}$'
+                ELSE '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
+              END
           ) AS latest_number
         FROM public.asset_registration_sites registration_site
         CROSS JOIN public.asset_types asset_type

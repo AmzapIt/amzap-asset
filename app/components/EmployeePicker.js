@@ -1,14 +1,10 @@
 "use client";
 
 import { useId, useState } from "react";
-import { formatUserDisplayName } from "@/lib/user-display";
+import { formatEmployeeOptionLabel, orderEmployeesByCompany } from "@/lib/user-display";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100";
-
-function employeeLabel(user) {
-  return [user.employee_code, formatUserDisplayName(user)].filter(Boolean).join(" — ");
-}
 
 // Preserve string IDs, controlled/uncontrolled callers, and native FormData.
 export default function EmployeePicker({
@@ -49,9 +45,9 @@ export default function EmployeePicker({
         {selectedId && !selectedUser && (
           <option value={selectedId} disabled>ไม่พบพนักงานในรายการ (ID: {selectedId})</option>
         )}
-        {users.map((user) => (
+        {orderEmployeesByCompany(users).map((user) => (
           <option key={user.id} value={String(user.id)}>
-            {employeeLabel(user)}{user.is_active === false ? " (Inactive)" : ""}
+            {formatEmployeeOptionLabel(user)}{user.is_active === false ? " (Inactive)" : ""}
           </option>
         ))}
       </select>

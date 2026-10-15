@@ -15,13 +15,15 @@ export async function GET() {
     // โดยให้เรียงชื่อตาม full_name
     const result = await query(`
       SELECT
-        id,
-        full_name,
-        nickname,
-        is_active
-      FROM public."user"
-      WHERE is_active = true
-      ORDER BY full_name ASC
+        u.id,
+        u.full_name,
+        u.nickname,
+        u.is_active,
+        l.name AS location_name
+      FROM public."user" u
+      LEFT JOIN public.locations l ON l.id = u.location_id
+      WHERE u.is_active = true
+      ORDER BY u.full_name ASC
     `);
 
     // ส่งข้อมูลกลับเป็น JSON

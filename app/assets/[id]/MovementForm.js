@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import EmployeePicker from "@/app/components/EmployeePicker";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -14,11 +13,11 @@ export default function MovementForm({
   currentLocationId,
   currentDepartmentId,
   currentOwnerId,
+  currentOwnerName,
   assetStatus,
   itStockLocationId,
   locations,
   departments,
-  users,
   today,
   canWrite,
 }) {
@@ -31,7 +30,6 @@ export default function MovementForm({
   const [toDepartmentId, setToDepartmentId] = useState(
     idValue(currentDepartmentId),
   );
-  const [toOwnerId, setToOwnerId] = useState(idValue(currentOwnerId));
   const movementLocations = locations.filter((location) =>
     !(assetStatus === "In Use" &&
       String(location.id) === String(itStockLocationId) &&
@@ -54,11 +52,10 @@ export default function MovementForm({
     const form = new FormData(event.currentTarget);
     const hasChange =
       toLocationId !== idValue(currentLocationId) ||
-      toDepartmentId !== idValue(currentDepartmentId) ||
-      toOwnerId !== idValue(currentOwnerId);
+      toDepartmentId !== idValue(currentDepartmentId);
 
     if (!hasChange) {
-      setMessage("กรุณาเปลี่ยน Owner, Department หรือ Location อย่างน้อย 1 รายการ");
+      setMessage("กรุณาเปลี่ยน Department หรือ Location อย่างน้อย 1 รายการ");
       return;
     }
 
@@ -77,7 +74,7 @@ export default function MovementForm({
           notes: form.get("notes"),
           toLocationId,
           toDepartmentId,
-          toOwnerId,
+          toOwnerId: idValue(currentOwnerId),
           // Expected values prevent an old browser tab from overwriting a
           // newer Movement saved by another user.
           expectedLocationId: idValue(currentLocationId),
@@ -108,8 +105,8 @@ export default function MovementForm({
       <div>
         <h3 className="font-semibold text-slate-900">บันทึก Asset Movement</h3>
         <p className="mt-1 text-sm text-slate-600">
-          เปลี่ยนสถานที่ หน่วยงานเจ้าของ หรือ Asset Owner พร้อมเก็บค่าก่อน–หลัง
-          ใช้ส่วนนี้แก้ข้อมูลพิเศษเท่านั้น การรับคืนหรือเบิกออกจากคลัง IT ให้ใช้
+          เปลี่ยนสถานที่หรือหน่วยงานเจ้าของพร้อมเก็บค่าก่อน–หลัง
+          หากต้องเปลี่ยนผู้ครอบครอง ให้รับคืนเข้าคลัง IT ก่อนแล้วจึงเบิกให้คนใหม่ผ่าน
           <a href="#asset-action" className="ml-1 font-medium text-blue-700 underline">ดำเนินการ Asset ด้านบน</a>
         </p>
       </div>
@@ -158,16 +155,13 @@ export default function MovementForm({
           </select>
         </label>
 
-        <div>
-          <EmployeePicker
-            label="Asset Owner"
-            users={users}
-            value={toOwnerId}
-            onChange={setToOwnerId}
-            emptyLabel="ไม่มี Asset Owner"
-          />
+        <div className="text-sm font-medium text-slate-700">
+          Asset Owner ปัจจุบัน
+          <p className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 font-normal text-slate-700">
+            {currentOwnerName}
+          </p>
           <span className="mt-1 block text-xs font-normal text-slate-500">
-            Owner เป็นผู้รับผิดชอบ Asset ไม่ใช่ผู้ถือครองจาก Assignment
+            เปลี่ยนตามผู้ครอบครองใน Assignment อัตโนมัติเมื่อรับคืนหรือเบิกใหม่
           </span>
         </div>
       </div>

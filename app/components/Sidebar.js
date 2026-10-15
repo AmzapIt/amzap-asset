@@ -4,13 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
-  Building2,
   ChevronLeft,
   ChevronRight,
   Download,
   KeyRound,
   LayoutDashboard,
-  MapPin,
   Menu,
   Package,
   Printer,
@@ -19,8 +17,6 @@ import {
   ClipboardList,
   Settings,
   ShieldCheck,
-  Store,
-  Tags,
   Users,
   X,
 } from "lucide-react";
@@ -52,14 +48,6 @@ export default function Sidebar({ user }) {
     };
   }, [isMobileOpen]);
 
-  const masterItems = [
-    { kind: "departments", label: "Departments", icon: Building2 },
-    { kind: "locations", label: "Locations", icon: MapPin },
-    { kind: "vendors", label: "Vendors", icon: Store },
-    { kind: "asset_types", label: "Asset Types", icon: Tags },
-    { kind: "accessory_types", label: "Accessory Types", icon: Tags },
-  ];
-
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/assets", label: "Asset List", icon: Package },
@@ -84,6 +72,7 @@ export default function Sidebar({ user }) {
       view: "handover",
       label: "ใบรับมอบ Asset/Accessory",
     },
+    { href: "/reports/verifications", view: "verifications", label: "ตรวจยืนยันทรัพย์สินประจำรอบ" },
     ...(["Admin", "IT Staff"].includes(user?.role)
       ? [
           { href: "/reports/custody", view: "custody", label: "ผู้ถือครองและเบิก–คืน" },
@@ -95,12 +84,13 @@ export default function Sidebar({ user }) {
   // Hiding links improves navigation, but it is not a security boundary.
   // The account page and every mutation verify the current role on the server.
   const settingsItems = [
+    { href: "/settings", label: "Settings / Master Data", icon: Settings },
     ...(user?.role === "Admin"
       ? [{ href: "/accounts", label: "System Accounts", icon: ShieldCheck }]
       : []),
     { href: "/account/password", label: "Change Password", icon: KeyRound },
   ];
-  const isSettingsActive = settingsItems.some((item) => isActive(item.href));
+  const isSettingsActive = pathname.startsWith("/master/") || settingsItems.some((item) => isActive(item.href));
   const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsActive);
 
   const compactItems = [
@@ -198,28 +188,6 @@ export default function Sidebar({ user }) {
                   {item.label}
                 </Link>
               ))}
-
-              <details open={pathname.startsWith("/master/")}>
-                <summary className="flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
-                  Master Data
-                </summary>
-                <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
-                  {masterItems.map((item) => (
-                    <Link
-                      key={item.kind}
-                      href={`/master/${item.kind}`}
-                      onClick={() => setIsMobileOpen(false)}
-                      className={`rounded-lg px-3 py-2.5 text-sm ${
-                        isActive(`/master/${item.kind}`)
-                          ? "bg-blue-50 font-semibold text-blue-700"
-                          : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </details>
 
               <details open={pathname.startsWith("/reports")}>
                 <summary className="flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
@@ -351,25 +319,6 @@ export default function Sidebar({ user }) {
                 {item.label}
               </Link>
             ))}
-
-            {/* Master Data */}
-            <details>
-              <summary className="cursor-pointer rounded-lg px-3 py-2.5 font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700">
-                Master Data
-              </summary>
-
-              <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-2">
-                {masterItems.map((item) => (
-                  <Link
-                    key={item.kind}
-                    href={`/master/${item.kind}`}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 capitalize transition ${isActive(`/master/${item.kind}`) ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"}`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </details>
 
             {/* Export และใบรับมอบเป็นคนละ Route จริง ส่วน /reports เดิม
                 จะ redirect ไปหน้า Export Asset เพื่อรักษาลิงก์เก่า */}

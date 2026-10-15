@@ -50,8 +50,14 @@ Scope นี้จำเป็นสำหรับการอัปโหล�
 Account แยกสำหรับระบบนี้เท่านั้น
 
 6. Login ด้วยบัญชี Google Drive ที่เตรียมไว้
+   6.1 ใส่ https://www.googleapis.com/auth/drive ในช่อง Input your own scopes
+   6.2 กด Authorize APIs
 7. กด `Exchange authorization code for tokens`
 8. คัดลอกค่าจากช่อง **Refresh token** ไปเก็บใน Environment Variable อย่าใช้ค่าจากช่อง Access token เพราะ Access token หมดอายุเร็ว
+
+   ตรวจชื่อช่องก่อนคัดลอก: ค่า Access token ของ Google มักเริ่มด้วย `ya29.`
+   หากนำค่านี้ไปใส่ `GOOGLE_DRIVE_REFRESH_TOKEN` ระบบจะขึ้น `invalid_grant`
+   แม้เพิ่งคัดลอกมาเมื่อไม่กี่ชั่วโมงก่อน
 
 หากกำลังเปลี่ยน Token ที่หมดอายุ ให้ใช้ Client ID/Client Secret ของโปรเจกต์เดิมและบัญชี Google ที่ใช้เก็บรูป หาก Step 2 ไม่แสดง Refresh token ให้ตรวจว่าเลือก Offline และอนุญาตผ่านหน้าขอความยินยอมใหม่
 
@@ -88,7 +94,9 @@ Environment Variables ตอนเริ่ม Server
 
 - ห้ามส่ง Client Secret หรือ Refresh Token ใน Chat
 - ห้าม Commit `.env.local`
-- ไฟล์ยังเป็น Private และระบบไม่ตั้งค่า Anyone with the link อัตโนมัติ
+- รูปใหม่ที่อัปโหลดผ่านระบบจะได้รับสิทธิ์ **Anyone with the link — Viewer** เป็นรายไฟล์
+  ระบบยังใช้ API ที่ต้องล็อกอินเพื่อแสดงรูปย่อในหน้า Asset ตามเดิม
+- ผู้ที่ได้ลิงก์ Drive สามารถเปิดรูปได้โดยไม่ต้องล็อกอินระบบ Asset อย่าแชร์ลิงก์นอกผู้ที่ควรเห็นรูป
 - ช่องถ่ายรูปบนมือถือรับรูปจากกล้องและคลังรูป รวมถึง HEIC/HEIF จาก iPhone
   แล้วแปลง/ย่อเป็น JPG ใน Browser อัตโนมัติ โดยตั้งเป้าไม่เกิน 1.5 MB
   และยังคงเพดานไฟล์ที่ส่งเข้า Server ไม่เกิน 4 MB
@@ -104,3 +112,26 @@ Environment Variables ตอนเริ่ม Server
 ถ้า OAuth consent screen เป็น External และยังอยู่ในสถานะ Testing, Google อาจออก
 Refresh Token ที่หมดอายุใน 7 วันสำหรับ Scope ของ Drive ดูรายละเอียดที่
 https://developers.google.com/identity/protocols/oauth2#expiration
+
+## แชร์รูปเก่าที่อยู่ใน Google Drive
+
+ลิงก์รูปเก่าอยู่ใน `asset_documents.storage_path` แล้ว จึงไม่ต้องคัดลอกลิงก์ใหม่
+ขั้นตอนนี้เพิ่มสิทธิ์ดูแบบ Anyone with the link ให้รูปเก่าเป็นรายไฟล์เท่านั้น
+ไม่เปลี่ยนสิทธิ์ทั้งโฟลเดอร์ ไม่แก้ข้อมูลใน DB และไม่แตะรูปที่เก็บบน local server
+
+1. ตั้ง `GOOGLE_DRIVE_REFRESH_TOKEN` ที่ถูกต้องและทดสอบการเชื่อมต่อใน Settings ก่อน
+2. ในโฟลเดอร์โปรเจกต์บนเครื่องที่เข้าถึงฐานข้อมูลและ Google Drive ได้ ให้ตรวจจำนวนแบบไม่แก้อะไร:
+
+   ```powershell
+   node --env-file=.env.local scripts/share-asset-photos.mjs
+   ```
+
+3. เมื่อตั้งใจเปิดสิทธิ์ให้รูปเก่าทั้งหมดแล้ว จึงรัน:
+
+   ```powershell
+   node --env-file=.env.local scripts/share-asset-photos.mjs --apply
+   ```
+
+สคริปต์ตรวจสิทธิ์ก่อนแชร์ จึงรันซ้ำเพื่อเก็บรายการที่พลาดได้ หากไฟล์ใดมีสิทธิ์สาธารณะ
+ที่กว้างกว่า Viewer อยู่แล้ว สคริปต์จะรายงานให้ตรวจเอง ไม่เปลี่ยนสิทธิ์นั้นโดยอัตโนมัติ
+หลังรันให้ตรวจยอด `failed: 0` และลองเปิดลิงก์รูปหนึ่งรายการในหน้าต่างไม่ระบุตัวตน

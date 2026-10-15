@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { query } from "@/lib/db";
 import AccountManager from "./AccountManager";
+import SettingsNav from "@/app/settings/SettingsNav";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,8 @@ export default async function AccountsPage() {
             จัดการบัญชี Login, สิทธิ์การใช้งาน และการเชื่อมบัญชีกับพนักงาน
           </p>
         </header>
+
+        <SettingsNav view="accounts" admin />
 
         <AccountManager
           initialAccounts={accountResult.rows}

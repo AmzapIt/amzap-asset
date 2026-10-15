@@ -10,6 +10,7 @@
 4. [AGENTS.md](AGENTS.md) — ข้อกำหนดสำหรับแก้โค้ด Next.js รุ่นที่ติดตั้ง
 5. [คู่มือ Accessories / Stock](docs/accessory-stock.md)
 6. [ตั้งค่า Google Drive สำหรับรูป Asset](docs/google-drive-photo-setup.md)
+7. [รหัสเอกสาร IT และเลขใบตรวจทรัพย์สิน](docs/it-document-numbering.md)
 
 สถานะโค้ดล่าสุด: 2 ตุลาคม 2026 ดู [LATEST_CHANGES.md](LATEST_CHANGES.md); รายละเอียดใน HANDOFF.md ด้านล่างเป็นภาพรวมรอบก่อนหน้า
 

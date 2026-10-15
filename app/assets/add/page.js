@@ -534,8 +534,7 @@ export default function AddAssetPage() {
           throw new Error(data.error || "ไม่สามารถตรวจรหัสล่าสุดได้");
         }
 
-        // API ส่งเฉพาะเลข Running รวมของ Asset Type ทุกโรงงาน เช่น 040
-        // เพราะ F1/F2 เป็นเพียง Site ที่ขึ้นทะเบียน ไม่ได้แยกชุดเลขอีกต่อไป
+        // F1/F2 ใช้เลขร่วมกัน แต่ M1 มีชุดเลขแยกตาม Asset Type
         setLatestAssetCodeNumber(data.latestNumber || null);
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -689,7 +688,7 @@ export default function AddAssetPage() {
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-              {/* Registration Site ต้องเลือกก่อน เพราะเป็น F1/F2 ในรหัสถาวร */}
+              {/* Registration Site ต้องเลือกก่อน เพราะเป็น F1/F2/M1 ในรหัสถาวร */}
               <div>
                 <label htmlFor="registrationSiteId" className="mb-2 block font-medium">
                   สถานที่ขึ้นทะเบียน <span className="text-red-600">*</span>

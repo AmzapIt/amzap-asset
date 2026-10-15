@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { findHandoverConflict } from "../lib/report-validation.js";
+import {
+  canSelectHandoverRecipient,
+  findHandoverConflict,
+} from "../lib/report-validation.js";
 
 test("return form accepts only assets currently held by the recipient", () => {
   const rows = [
@@ -34,4 +37,16 @@ test("handover form allows unassigned assets but rejects another holder", () => 
     findHandoverConflict(blockedRows, "10", "เปลี่ยนอุปกรณ์")?.asset_code,
     "F1-PHN-001",
   );
+});
+
+test("Inactive employees can return equipment but cannot receive a new handover", () => {
+  const inactive = { id: "10", is_active: false };
+  const active = { id: "20", is_active: true };
+
+  assert.equal(canSelectHandoverRecipient(inactive, "คืนอุปกรณ์"), true);
+  assert.equal(canSelectHandoverRecipient(inactive, "พนักงานใหม่"), false);
+  assert.equal(canSelectHandoverRecipient(inactive, "เปลี่ยนอุปกรณ์"), false);
+  assert.equal(canSelectHandoverRecipient(inactive, "รับเพิ่ม"), false);
+  assert.equal(canSelectHandoverRecipient(active, "รับเพิ่ม"), true);
+  assert.equal(canSelectHandoverRecipient(null, "คืนอุปกรณ์"), false);
 });

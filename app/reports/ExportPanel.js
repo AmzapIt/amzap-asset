@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { filenameFromContentDisposition } from "@/lib/export-filename";
+import { canSelectHandoverRecipient } from "@/lib/report-validation";
 import EmployeePicker from "@/app/components/EmployeePicker";
 
 const HANDOVER_KINDS = [
@@ -58,6 +59,11 @@ export default function ExportPanel({ accessories, assets, users, view }) {
   const statuses = useMemo(
     () => [...new Set(assets.map((asset) => asset.status).filter(Boolean))].sort(),
     [assets],
+  );
+
+  const recipientUsers = useMemo(
+    () => users.filter((user) => canSelectHandoverRecipient(user, form.kind)),
+    [users, form.kind],
   );
 
   const reportRows = useMemo(
@@ -163,6 +169,10 @@ export default function ExportPanel({ accessories, assets, users, view }) {
 
   function changeHandoverKind(kind) {
     setForm((current) => ({ ...current, kind }));
+    if (recipient && !users.some((user) =>
+      user.id === recipient && canSelectHandoverRecipient(user, kind))) {
+      setRecipient("");
+    }
     setHandoverSelected([]);
     setHandoverSearch("");
     setError("");
@@ -338,7 +348,7 @@ export default function ExportPanel({ accessories, assets, users, view }) {
         <div className="grid gap-4 md:grid-cols-2">
           <EmployeePicker
             label="ผู้รับมอบ"
-            users={users}
+            users={recipientUsers}
             value={recipient}
             onChange={changeRecipient}
             required
