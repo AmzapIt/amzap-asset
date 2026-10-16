@@ -629,7 +629,7 @@ export default async function AssetDetailPage({ params }) {
               ["วันที่แก้ไขล่าสุด", formatDate(asset.updated_at, true)],
             ]}
           />
-          <AssetPhotoLinks photos={photoLinks} />
+          <AssetPhotoLinks assetId={String(asset.id)} photos={photoLinks} canWrite={canWrite} />
         </section>
 
         <AssetActivity assetId={String(asset.id)} canWrite={canWrite} />

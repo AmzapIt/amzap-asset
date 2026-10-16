@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { isViewableAssetDocumentUrl } from "../lib/asset-photo-links.js";
+import { isViewableAssetDocumentUrl, shouldMakePrimaryPhoto } from "../lib/asset-photo-links.js";
 import { googleDriveFileIdFromUrl } from "../lib/google-drive.js";
 import {
   assetPhotoStorageMode,
@@ -15,6 +15,12 @@ import {
   removeLocalAssetPhoto,
   saveLocalAssetPhoto,
 } from "../lib/local-asset-photos.js";
+
+test("first photo is primary; later secondary uploads keep the existing primary", () => {
+  assert.equal(shouldMakePrimaryPhoto(false, false), true);
+  assert.equal(shouldMakePrimaryPhoto(false, true), false);
+  assert.equal(shouldMakePrimaryPhoto(true, true), true);
+});
 
 test("local photo storage is opt-in and requires an external absolute folder", () => {
   assert.equal(assetPhotoStorageMode(""), "google_drive");

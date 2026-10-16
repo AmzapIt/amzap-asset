@@ -645,7 +645,7 @@ export default function AddAssetPage() {
 
       window.alert(
         `บันทึกข้อมูลสำเร็จ\nAsset Code: ${assetCode}${
-          photo ? "\nUpload รูปไป Google Drive แล้ว" : ""
+          photo ? "\nเพิ่มรูปหลักแล้ว" : ""
         }`,
       );
 
@@ -830,6 +830,7 @@ export default function AddAssetPage() {
                 onChange={setPhoto}
                 onProcessingChange={setPhotoProcessing}
               />
+              <p className="mt-2 text-xs text-slate-500">รูปแรกจะเป็นรูปหลัก หากต้องการเพิ่มรูปรอง ให้เพิ่มจากหน้าแก้ไข Asset หลังบันทึก</p>
             </div>
           </section>
 

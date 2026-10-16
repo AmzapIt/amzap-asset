@@ -82,6 +82,9 @@ export default function EditAssetPage() {
   const [existingMaintenance, setExistingMaintenance] = useState([]);
   const [photo, setPhoto] = useState(null);
   const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [makePrimary, setMakePrimary] = useState(false);
+  const hasPrimaryPhoto = existingDocuments.some((document) =>
+    document.document_type === "Asset Photo" && document.is_primary_photo);
 
   // ==================================================
   // ข้อมูลที่ดูได้ แต่ห้ามแก้
@@ -323,6 +326,7 @@ export default function EditAssetPage() {
       if (photo) {
         const photoForm = new FormData();
         photoForm.append("photo", photo);
+        photoForm.append("makePrimary", String(!hasPrimaryPhoto || makePrimary));
         const photoResponse = await fetch(`/api/assets/${id}/photos`, {
           method: "POST",
           body: photoForm,
@@ -343,9 +347,7 @@ export default function EditAssetPage() {
 
       // แจ้งผลสำเร็จ
       window.alert(
-        photo
-          ? "แก้ไข Asset และ Upload รูปไป Google Drive สำเร็จ"
-          : "แก้ไข Asset สำเร็จ",
+        photo ? "แก้ไข Asset และเพิ่มรูปสำเร็จ" : "แก้ไข Asset สำเร็จ",
       );
 
       // ----------------------------------------------
@@ -775,7 +777,7 @@ export default function EditAssetPage() {
           <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-xl font-semibold">Asset Photo</h2>
             <p className="mt-1 mb-5 text-sm text-slate-500">
-              รูปล่าสุดจะเป็นรูปหลัก ส่วนรูปเดิมยังคงอยู่ในประวัติเอกสาร
+              เพิ่มรูปได้หลายครั้ง รูปเดิมยังคงอยู่ และเลือกรูปใหม่เป็นรูปรองได้
             </p>
             <AssetPhotoField
               disabled={saving || !ready}
@@ -783,6 +785,21 @@ export default function EditAssetPage() {
               onChange={setPhoto}
               onProcessingChange={setPhotoProcessing}
             />
+            <label className="mt-4 flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={!hasPrimaryPhoto || makePrimary}
+                onChange={(event) => setMakePrimary(event.target.checked)}
+                disabled={saving || !ready || !hasPrimaryPhoto}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              ตั้งรูปที่อัปโหลดเป็นรูปหลัก
+            </label>
+            <p className="mt-1 text-xs text-slate-500">
+              {hasPrimaryPhoto
+                ? "ไม่เลือก = เพิ่มเป็นรูปรอง โดยรูปหลักและรูปตัวอย่างเดิมไม่เปลี่ยน"
+                : "รูปแรกจะเป็นรูปหลักอัตโนมัติ"}
+            </p>
           </section>
 
           {/* ==================================================

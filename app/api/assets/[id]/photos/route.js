@@ -1,6 +1,7 @@
 import { requireWrite } from "@/lib/access";
 import { auth } from "@/auth";
 import { getDbPool, query } from "@/lib/db";
+import { shouldMakePrimaryPhoto } from "@/lib/asset-photo-links";
 import {
   deleteGoogleDriveFile,
   ensureGoogleDriveLinkSharing,
@@ -70,6 +71,7 @@ export async function POST(request, { params }) {
   }
 
   const photo = formData.get("photo");
+  const requestedPrimary = formData.get("makePrimary") !== "false";
 
   if (!photo || typeof photo.arrayBuffer !== "function") {
     return Response.json({ error: "กรุณาเลือกรูป Asset" }, { status: 400 });
@@ -138,20 +140,29 @@ export async function POST(request, { params }) {
         [`asset-photo:${id}`],
       );
 
-      // เก็บรูปเก่าไว้เป็นประวัติ แต่ให้รูปที่อัปโหลดล่าสุดเป็นรูปหลักเพียงรูปเดียว
-      await client.query(
-        `UPDATE public.asset_documents
-         SET is_primary_photo = false
-         WHERE asset_id = $1
-           AND is_primary_photo = true`,
+      const currentPrimary = await client.query(
+        `SELECT id FROM public.asset_documents
+         WHERE asset_id = $1 AND document_type = 'Asset Photo'
+           AND is_primary_photo = true LIMIT 1`,
         [id],
       );
+      // The first photo must be primary. Later uploads may be secondary.
+      const isPrimary = shouldMakePrimaryPhoto(requestedPrimary, currentPrimary.rows.length > 0);
+      if (isPrimary) {
+        await client.query(
+          `UPDATE public.asset_documents
+           SET is_primary_photo = false
+           WHERE asset_id = $1 AND document_type = 'Asset Photo'
+             AND is_primary_photo = true`,
+          [id],
+        );
+      }
       const documentResult = await client.query(
         `INSERT INTO public.asset_documents (
            asset_id, document_type, file_name, storage_path,
            mime_type, file_size_bytes, is_primary_photo, uploaded_by_account_id
          )
-         VALUES ($1, 'Asset Photo', $2, $3, $4, $5, true, $6)
+         VALUES ($1, 'Asset Photo', $2, $3, $4, $5, $6, $7)
          RETURNING id::text, file_name, storage_path, mime_type,
                    file_size_bytes, is_primary_photo, created_at`,
         [
@@ -160,6 +171,7 @@ export async function POST(request, { params }) {
           storedPhoto.webViewLink,
           storedPhoto.mimeType,
           storedPhoto.size,
+          isPrimary,
           session.user.id,
         ],
       );

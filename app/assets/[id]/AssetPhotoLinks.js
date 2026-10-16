@@ -1,13 +1,35 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function AssetPhotoLinks({ photos }) {
+export default function AssetPhotoLinks({ assetId, photos, canWrite }) {
+  const router = useRouter();
   const [copyStatus, setCopyStatus] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function removeLink(photo) {
+    const label = photo.isPrimary ? "รูปหลัก" : "รูปรอง";
+    if (!window.confirm(`ลบลิงก์${label}นี้ออกจาก Asset?\nไฟล์ต้นฉบับใน Google Drive หรือ local server จะไม่ถูกลบ`)) return;
+    setDeletingId(photo.id);
+    setDeleteError("");
+    try {
+      const response = await fetch(`/api/assets/${assetId}/photo-links/${photo.id}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "ลบลิงก์รูปไม่สำเร็จ");
+      router.refresh();
+    } catch (error) {
+      setDeleteError(error.message || "ลบลิงก์รูปไม่สำเร็จ");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="mt-6 border-t border-slate-200 pt-5">
       <h3 className="text-sm text-gray-500">ลิงก์รูป Asset</h3>
+      {deleteError && <p role="alert" className="mt-2 text-sm text-red-700">{deleteError}</p>}
       {photos.length === 0 ? (
         <p className="mt-1 text-sm font-medium text-gray-800">-</p>
       ) : (
@@ -51,6 +73,16 @@ export default function AssetPhotoLinks({ photos }) {
                 >
                   คัดลอก
                 </button>
+                {canWrite && (
+                  <button
+                    type="button"
+                    disabled={deletingId !== null}
+                    onClick={() => removeLink(photo)}
+                    className="rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {deletingId === photo.id ? "กำลังลบ..." : "ลบลิงก์"}
+                  </button>
+                )}
               </div>
               {copyStatus?.id === photo.id && (
                 <p role="status" className="mt-1 text-xs text-slate-600">{copyStatus.message}</p>
