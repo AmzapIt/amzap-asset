@@ -4,6 +4,7 @@ import {
   getReportAssets,
 } from "@/lib/asset-report";
 import ExportPanel from "../ExportPanel";
+import { getItSignerName } from "@/lib/document-settings";
 import ReportsShell, { ReportLoadError } from "../ReportsShell";
 
 export const runtime = "nodejs";
@@ -11,13 +12,14 @@ export const dynamic = "force-dynamic";
 
 // หน้าใบรับมอบต้องอ่าน Asset, พนักงาน และ Accessory ที่ยังไม่คืนพร้อมกัน
 // เพื่อแสดงของที่พนักงานถืออยู่จริงก่อนส่งคำขอสร้าง PDF ไปยัง Server
-export default async function HandoverReportsPage() {
+export default async function HandoverReportsPage({ searchParams }) {
   let accessories;
   let assets;
   let users;
+  let itSignerName = "";
 
   try {
-    [assets, users, accessories] = await Promise.all([
+    [assets, users, accessories, itSignerName] = await Promise.all([
       getReportAssets(),
       query(`
         SELECT
@@ -33,11 +35,17 @@ export default async function HandoverReportsPage() {
         ORDER BY u.full_name
       `),
       getCurrentAccessories(),
+      getItSignerName(),
     ]);
   } catch (error) {
     console.error("Handover reports load failed", error);
     return <ReportLoadError retryHref="/reports/handover" />;
   }
+
+  const params = await searchParams;
+  const userId = typeof params?.userId === "string" && users.rows.some((u) => u.id === params.userId && u.is_active) ? params.userId : "";
+  const ids = typeof params?.assetIds === "string" ? params.assetIds.split(",") : [];
+  const initialAssetIds = assets.filter((a) => a.current_holder_id === userId && ids.includes(a.id)).slice(0, 7).map((a) => a.id);
 
   return (
     <ReportsShell
@@ -49,6 +57,9 @@ export default async function HandoverReportsPage() {
         accessories={accessories}
         assets={assets}
         users={users.rows}
+        initialRecipient={userId}
+        initialAssetIds={initialAssetIds}
+        defaultDeliveredBy={itSignerName}
         view="handover"
       />
     </ReportsShell>

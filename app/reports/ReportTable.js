@@ -18,6 +18,10 @@ export default function ReportTable({
   linkTargetField,
   linkPrefix,
   linkSuffix = "",
+  // ลิงก์เสริมในคอลัมน์ "ทำต่อ" เปิดแท็บใหม่ เช่น PDF ใบคืนทรัพย์สิน
+  extraLinkLabel,
+  extraLinkPrefix,
+  extraLinkSuffix = "",
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
@@ -88,6 +92,10 @@ export default function ReportTable({
                 ))}
                 {linkField && <td className="whitespace-nowrap px-3 py-3 align-top">
                   <Link className="font-semibold text-blue-700 hover:underline" href={rowHref(row)}>{linkLabel}</Link>
+                  {extraLinkLabel && (
+                    <a className="mt-1 block font-semibold text-slate-700 hover:underline" target="_blank" rel="noopener"
+                      href={`${extraLinkPrefix}${row[linkTargetField]}${extraLinkSuffix}`}>{extraLinkLabel}</a>
+                  )}
                 </td>}
               </tr>
             ))}</tbody>

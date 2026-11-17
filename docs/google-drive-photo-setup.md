@@ -36,30 +36,43 @@ https://developers.google.com/oauthplayground
 
 ## 3. สร้าง Refresh Token
 
-1. เปิด `https://developers.google.com/oauthplayground`
-2. เปิด Settings รูปเฟือง
-3. เลือก `Use your own OAuth credentials`
-4. ใส่ Client ID และ Client Secret
-5. เลือก Access type เป็น `Offline` และใช้ Scope ด้านล่าง แล้วกด Authorize APIs:
+ทำบนเครื่องส่วนตัวที่เชื่อถือได้ และใช้ Client ID/Client Secret จาก OAuth
+Client ที่สร้างในข้อ 2 เท่านั้น:
+
+1. เปิด [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
+2. กดไอคอนรูปเฟือง **OAuth 2.0 configuration** มุมขวาบน
+3. เปิด **Use your own OAuth credentials** แล้วใส่ค่า **OAuth Client ID**
+   และ **OAuth Client secret** จาก Google Cloud Console โดยไม่ต้องใส่เครื่องหมายคำพูด
+4. ตั้ง **Access type** เป็น `Offline` เพื่อขอ Refresh Token แล้วปิดหน้าต่าง Settings
+   (ถ้ามีตัวเลือก **Force prompt** ให้เปิดเพื่อให้ Google แสดงหน้าขอสิทธิ์อีกครั้ง)
+5. ในแผง **Step 1 Select & authorize APIs** ให้เลื่อนลงไปที่
+   **Input your own scopes** แล้วใส่ Scope นี้:
 
 ```text
 https://www.googleapis.com/auth/drive
 ```
 
-Scope นี้จำเป็นสำหรับการอัปโหลดเข้า Folder ที่สร้างไว้เอง จึงควรใช้ Google
-Account แยกสำหรับระบบนี้เท่านั้น
+6. กด **Authorize APIs**. ถ้าหน้าจอถามให้เลือกบัญชี ให้เลือกบัญชี Google
+   ที่เป็นเจ้าของโฟลเดอร์รูป จากนั้นตรวจชื่อบัญชีและ Scope `Google Drive API`
+   แล้วกด **Continue / Allow** เพื่ออนุญาต
+7. เมื่อกลับมาที่ Playground ตรวจว่า **Step 2 Exchange authorization code
+   for tokens** มี Authorization code แล้วกดปุ่ม **Exchange authorization
+   code for tokens**
+8. ในผลลัพธ์ของ Step 2 คัดลอกค่าจากบรรทัด **Refresh token** เท่านั้น
+   อย่าคัดลอก **Access token**: Access token มักขึ้นต้นด้วย `ya29.` และหมดอายุ
+   เร็ว ส่วน Refresh token คือค่าที่ต้องใช้กับ `GOOGLE_DRIVE_REFRESH_TOKEN`
 
-6. Login ด้วยบัญชี Google Drive ที่เตรียมไว้
-   6.1 ใส่ https://www.googleapis.com/auth/drive ในช่อง Input your own scopes
-   6.2 กด Authorize APIs
-7. กด `Exchange authorization code for tokens`
-8. คัดลอกค่าจากช่อง **Refresh token** ไปเก็บใน Environment Variable อย่าใช้ค่าจากช่อง Access token เพราะ Access token หมดอายุเร็ว
+หาก Step 2 ไม่มีบรรทัด **Refresh token**: ตรวจว่าเปิด **Use your own OAuth
+credentials**, ตั้ง **Access type** เป็น `Offline` และใช้บัญชี/Client ที่ถูกต้อง
+ถ้าเคยอนุญาตแอปนี้แล้ว Google อาจไม่ออก Refresh token ซ้ำ ให้เปิด
+[การตั้งค่าบัญชี Google](https://myaccount.google.com/permissions), ลบสิทธิ์
+ของแอปที่เกี่ยวข้อง แล้วกลับมาทำขั้นตอนนี้ใหม่โดยเปิด **Force prompt** หากมี
+ตัวเลือกนี้ การลบสิทธิ์จะทำให้ Token เดิมของแอปนี้ใช้ไม่ได้ด้วย
 
-   ตรวจชื่อช่องก่อนคัดลอก: ค่า Access token ของ Google มักเริ่มด้วย `ya29.`
-   หากนำค่านี้ไปใส่ `GOOGLE_DRIVE_REFRESH_TOKEN` ระบบจะขึ้น `invalid_grant`
-   แม้เพิ่งคัดลอกมาเมื่อไม่กี่ชั่วโมงก่อน
-
-หากกำลังเปลี่ยน Token ที่หมดอายุ ให้ใช้ Client ID/Client Secret ของโปรเจกต์เดิมและบัญชี Google ที่ใช้เก็บรูป หาก Step 2 ไม่แสดง Refresh token ให้ตรวจว่าเลือก Offline และอนุญาตผ่านหน้าขอความยินยอมใหม่
+ถ้า Google แจ้งว่าแอปอยู่ในโหมดทดสอบ ให้เพิ่มบัญชีนี้เป็น Test user ตามข้อ 2
+Refresh Token ของ External app ที่ยังเป็นสถานะ Testing และใช้ Scope ของ Drive
+อาจหมดอายุภายใน 7 วัน หากต้องการใช้ต่อเนื่อง ให้ตรวจสถานะ Publishing ของ
+OAuth consent screen และข้อกำหนดการยืนยันแอปของ Google ก่อนใช้งานจริง
 
 ## 4. ตั้งค่า Local
 

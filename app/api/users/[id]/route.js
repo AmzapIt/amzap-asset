@@ -37,7 +37,9 @@ export async function GET(request, { params }) {
           u.id,
           u.employee_code,
           u.full_name,
+          u.full_name_en,
           u.nickname,
+          u.nickname_en,
           u.email,
           u.department_id,
           d.name AS department_name,
@@ -132,8 +134,16 @@ export async function PATCH(request, { params }) {
         ? body.full_name.trim()
         : "";
 
+    const fullNameEn =
+      typeof body.full_name_en === "string"
+        ? body.full_name_en.trim()
+        : "";
+
     const nickname =
       typeof body.nickname === "string" ? body.nickname.trim() : "";
+
+    const nicknameEn =
+      typeof body.nickname_en === "string" ? body.nickname_en.trim() : "";
 
     const email =
       typeof body.email === "string"
@@ -252,7 +262,14 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    if (nickname.length > 100) {
+    if (fullNameEn.length > 200) {
+      return Response.json(
+        { success: false, error: "Full Name (English) ต้องไม่เกิน 200 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
+    if (nickname.length > 100 || nicknameEn.length > 100) {
       return Response.json(
         { success: false, error: "Nickname ต้องไม่เกิน 100 ตัวอักษร" },
         { status: 400 },
@@ -296,13 +313,17 @@ export async function PATCH(request, { params }) {
           location_id = $5,
           position = $6,
           is_active = $7,
-          nickname = $8
-        WHERE id = $9
+          nickname = $8,
+          full_name_en = CASE WHEN $12 THEN $9 ELSE full_name_en END,
+          nickname_en = CASE WHEN $13 THEN $10 ELSE nickname_en END
+        WHERE id = $11
         RETURNING
           id,
           employee_code,
           full_name,
+          full_name_en,
           nickname,
+          nickname_en,
           email,
           department_id,
           location_id,
@@ -319,7 +340,11 @@ export async function PATCH(request, { params }) {
         position || null,
         isActive,
         nickname || null,
+        fullNameEn || null,
+        nicknameEn || null,
         id,
+        Object.hasOwn(body, "full_name_en"),
+        Object.hasOwn(body, "nickname_en"),
       ],
     );
 

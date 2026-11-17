@@ -33,7 +33,7 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-export default function LabelManager({ initialAssets }) {
+export default function LabelManager({ initialAssets, initialSelected = [] }) {
   const preferenceSnapshot = useSyncExternalStore(subscribeLabelPreferences, labelPreferenceSnapshot, labelPreferenceServerSnapshot);
   const labelPreferences = preferencesFromSnapshot(preferenceSnapshot);
   const [assets, setAssets] = useState(initialAssets);
@@ -42,7 +42,7 @@ export default function LabelManager({ initialAssets }) {
   const [status, setStatus] = useState("");
   const [location, setLocation] = useState("");
   const [printFilter, setPrintFilter] = useState("all");
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState(initialSelected);
   const [prepared, setPrepared] = useState(null);
   const [openedPrint, setOpenedPrint] = useState(false);
   const [printConfirmationOpen, setPrintConfirmationOpen] = useState(false);

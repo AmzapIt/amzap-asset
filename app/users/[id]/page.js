@@ -43,7 +43,9 @@ export default async function UserDetailPage({ params }) {
         u.id,
         u.employee_code,
         u.full_name,
+        u.full_name_en,
         u.nickname,
+        u.nickname_en,
         u.email,
         u.department_id,
         u.location_id,
@@ -237,15 +239,25 @@ export default async function UserDetailPage({ params }) {
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">Full Name</p>
+              <p className="text-sm text-gray-500">Full Name (Thai)</p>
 
               <p className="mt-1 font-medium">{display(user.full_name)}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">Nickname</p>
+              <p className="text-sm text-gray-500">Full Name (English)</p>
+              <p className="mt-1 font-medium">{display(user.full_name_en)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Nickname (Thai)</p>
 
               <p className="mt-1 font-medium">{display(user.nickname)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Nickname (English)</p>
+              <p className="mt-1 font-medium">{display(user.nickname_en)}</p>
             </div>
 
             <div>

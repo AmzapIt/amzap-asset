@@ -67,8 +67,10 @@ export async function POST(request) {
       }
       if (source === "existing") {
         const previous = await client.query(
-          `SELECT asset_id FROM public.asset_label_prints
-            WHERE asset_id=ANY($1::bigint[]) LIMIT 1`,
+          // นับเฉพาะประวัติของรหัสปัจจุบัน เครื่องที่เปลี่ยนรหัสแล้วยืนยันติดป้ายใหม่ได้
+          `SELECT p.asset_id FROM public.asset_label_prints p
+             JOIN public.assets asset ON asset.id=p.asset_id AND asset.asset_code=p.asset_code
+            WHERE p.asset_id=ANY($1::bigint[]) LIMIT 1`,
           [sortedIds],
         );
         if (previous.rowCount > 0) {
@@ -92,6 +94,7 @@ export async function POST(request) {
                       'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_printed_at
          FROM public.asset_label_prints p
          JOIN public.asset_label_print_batches b ON b.id=p.batch_id
+         JOIN public.assets asset ON asset.id=p.asset_id AND asset.asset_code=p.asset_code
         WHERE p.asset_id=ANY($1::bigint[])
         GROUP BY p.asset_id`,
       [sortedIds],

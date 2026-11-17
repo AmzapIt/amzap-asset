@@ -2,6 +2,7 @@ import { workflowAccount } from '@/lib/asset-workflow-api';
 import { AssetWorkflowError } from '@/lib/asset-scan';
 import { getVerificationPrintBatch, prepareVerificationPrintBatch } from '@/lib/asset-verifications';
 import { assetVerificationBatchPdf } from '@/lib/export-files';
+import { getItSignerName } from '@/lib/document-settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export async function POST(request, { params }) {
     if (!account.canWrite) throw new AssetWorkflowError('บัญชีนี้ดูข้อมูลได้อย่างเดียว', 403);
     const { round, records } = await prepareVerificationPrintBatch(
       (await params).id, await request.json(), account.id);
-    return pdfResponse(round, await assetVerificationBatchPdf(records));
+    return pdfResponse(round, await assetVerificationBatchPdf(records, await getItSignerName()));
   } catch (error) { return pdfError(error); }
 }
 
@@ -41,7 +42,7 @@ export async function GET(_request, { params }) {
   try {
     await workflowAccount();
     const { round, records } = await getVerificationPrintBatch((await params).id);
-    const buffer = await assetVerificationBatchPdf(records);
+    const buffer = await assetVerificationBatchPdf(records, await getItSignerName());
     return pdfResponse(round, buffer);
   } catch (error) { return pdfError(error); }
 }

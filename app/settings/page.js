@@ -6,6 +6,8 @@ import packageInfo from "@/package.json";
 import PhotoStorageSettings from "./PhotoStorageSettings";
 import StickerSettings from "./StickerSettings";
 import SettingsNav from "./SettingsNav";
+import DocumentSettings from "./DocumentSettings";
+import { getItSignerName } from "@/lib/document-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export default async function SettingsPage({ searchParams }) {
   const allowed = new Set(admin ? ["overview", "photos", "labels", "documents", "master"] : ["overview"]);
   const tab = typeof requested === "string" && allowed.has(requested) ? requested : "overview";
   const photoSettings = admin ? readServerSettings() : null;
+  const itSignerName = admin && tab === "documents" ? await getItSignerName().catch(() => "") : "";
   let databaseOnline = false;
   let inUseCount = null;
   try {
@@ -62,7 +65,7 @@ export default async function SettingsPage({ searchParams }) {
 
         {tab === "labels" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">การพิมพ์สติ๊กเกอร์</h2><div className="mt-5"><StickerSettings /></div></section>}
 
-        {tab === "documents" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">รูปแบบเอกสาร</h2><p className="mt-2 text-sm text-slate-600">เอกสารปัจจุบันใช้ชื่อบริษัท AMZAP Group และโลโก้จากไฟล์ resources/reports/logo.png ส่วนชื่อผู้เซ็นฝั่ง IT กรอกในฟอร์มเอกสารแต่ละครั้ง</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{[["ชื่อบริษัท", "AMZAP Group"], ["โลโก้", "โลโก้ AMZAP ที่มากับระบบ"], ["ผู้เซ็นฝั่ง IT", "กรอกในใบรับมอบ/ใบขอเบิก"]].map(([name, value]) => <div key={name} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">{name}</p><p className="mt-2 font-semibold">{value}</p></div>)}</div><p className="mt-5 text-sm text-amber-800">ส่วนนี้แสดงค่าที่ใช้อยู่จริง ยังไม่เปิดให้แก้ชื่อบริษัทหรือโลโก้จากหน้าเว็บ เพื่อไม่ให้เอกสารจาก local server และ Vercel ใช้คนละแบบโดยไม่ตั้งใจ</p><Link href="/reports/handover" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-blue-200 px-4 font-medium text-blue-700 hover:bg-blue-50">ไปหน้าเอกสาร</Link></section>}
+        {tab === "documents" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">รูปแบบเอกสาร</h2><p className="mt-2 text-sm text-slate-600">เอกสารปัจจุบันใช้ชื่อบริษัท AMZAP Group และโลโก้จากไฟล์ resources/reports/logo.png ส่วนชื่อผู้เซ็นฝั่ง IT ตั้งค่าได้ด้านล่าง</p><DocumentSettings initialName={itSignerName} /><div className="mt-5 grid gap-3 sm:grid-cols-2">{[["ชื่อบริษัท", "AMZAP Group"], ["โลโก้", "โลโก้ AMZAP ที่มากับระบบ"]].map(([name, value]) => <div key={name} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">{name}</p><p className="mt-2 font-semibold">{value}</p></div>)}</div><p className="mt-5 text-sm text-amber-800">ส่วนนี้แสดงค่าที่ใช้อยู่จริง ชื่อบริษัทและโลโก้ยังไม่เปิดให้แก้จากหน้าเว็บ เพื่อไม่ให้เอกสารจาก local server และ Vercel ใช้คนละแบบโดยไม่ตั้งใจ</p><Link href="/reports/handover" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-blue-200 px-4 font-medium text-blue-700 hover:bg-blue-50">ไปหน้าเอกสาร</Link></section>}
 
         {tab === "master" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">Master Data</h2><p className="mt-1 text-sm text-slate-600">ใช้หน้าจัดการเดิม ข้อมูลและการทำงานไม่เปลี่ยน</p><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{MASTER_ITEMS.map(([kind, title, description]) => <Link key={kind} href={`/master/${kind}`} className="rounded-xl border border-slate-200 p-4 transition hover:border-blue-400 hover:bg-blue-50"><span className="font-semibold text-blue-800">{title}</span><span className="mt-1 block text-sm text-slate-600">{description}</span></Link>)}</div></section>}
       </div>

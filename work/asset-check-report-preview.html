@@ -1,0 +1,191 @@
+<div id="asset-check-report-preview" class="viz-dotted-background">
+  <style>
+    #asset-check-report-preview {
+      color-scheme: light dark;
+      display: grid;
+      gap: 22px;
+      padding: 20px;
+      font-family: Arial, "Noto Sans Thai", sans-serif;
+    }
+    #asset-check-report-preview .sheet {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 26px;
+      background: light-dark(#ffffff, #161b25);
+      color: light-dark(#172033, #edf1f7);
+      border: 1px solid light-dark(#d8dee8, #3b4557);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px light-dark(#1b2d4a12, #00000033);
+    }
+    #asset-check-report-preview .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid light-dark(#1d4ed8, #75a7ff);
+    }
+    #asset-check-report-preview .brand {
+      color: light-dark(#173d7a, #a6c5ff);
+      font-weight: 700;
+      letter-spacing: .03em;
+    }
+    #asset-check-report-preview h2 {
+      margin: 7px 0 0;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    #asset-check-report-preview .sub,
+    #asset-check-report-preview .stamp,
+    #asset-check-report-preview .hint {
+      color: light-dark(#5e697b, #b5bfd0);
+      font-size: 12px;
+    }
+    #asset-check-report-preview .stamp {
+      text-align: right;
+      white-space: nowrap;
+    }
+    #asset-check-report-preview .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 18px;
+      margin: 18px 0;
+    }
+    #asset-check-report-preview .meta div,
+    #asset-check-report-preview .box {
+      padding: 9px 11px;
+      background: light-dark(#f3f6fb, #222b39);
+      border-radius: 6px;
+    }
+    #asset-check-report-preview .label {
+      color: light-dark(#5e697b, #b5bfd0);
+      font-size: 12px;
+      margin-right: 5px;
+    }
+    #asset-check-report-preview h3 {
+      margin: 18px 0 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    #asset-check-report-preview table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    #asset-check-report-preview th {
+      text-align: left;
+      font-weight: 700;
+      color: light-dark(#334155, #dae3f1);
+      background: light-dark(#eaf0fa, #283448);
+    }
+    #asset-check-report-preview th,
+    #asset-check-report-preview td {
+      padding: 9px 8px;
+      border-bottom: 1px solid light-dark(#dce3ed, #394457);
+      vertical-align: top;
+    }
+    #asset-check-report-preview .ok { color: light-dark(#16703b, #7cdda6); font-weight: 700; }
+    #asset-check-report-preview .pending { color: light-dark(#9d6810, #f1c675); font-weight: 700; }
+    #asset-check-report-preview .issue { color: light-dark(#aa3030, #ff9a9a); font-weight: 700; }
+    #asset-check-report-preview .note {
+      margin-top: 14px;
+      padding: 11px 12px;
+      background: light-dark(#f3f6fb, #222b39);
+      border-left: 3px solid light-dark(#1d4ed8, #75a7ff);
+      font-size: 13px;
+    }
+    #asset-check-report-preview .signatures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 25px;
+      margin-top: 32px;
+    }
+    #asset-check-report-preview .signature {
+      border-top: 1px solid light-dark(#64748b, #9caac1);
+      text-align: center;
+      padding-top: 9px;
+      font-size: 13px;
+    }
+    #asset-check-report-preview .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 18px 0;
+    }
+    #asset-check-report-preview .stat {
+      padding: 11px;
+      background: light-dark(#f3f6fb, #222b39);
+      border-radius: 6px;
+    }
+    #asset-check-report-preview .stat strong { display: block; font-size: 20px; }
+    #asset-check-report-preview .stat span { font-size: 12px; color: light-dark(#5e697b, #b5bfd0); }
+    @media (max-width: 560px) {
+      #asset-check-report-preview { padding: 8px; }
+      #asset-check-report-preview .sheet { padding: 16px; }
+      #asset-check-report-preview .top { display: block; }
+      #asset-check-report-preview .stamp { text-align: left; margin-top: 6px; }
+      #asset-check-report-preview .meta, #asset-check-report-preview .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #asset-check-report-preview th, #asset-check-report-preview td { padding: 7px 4px; font-size: 11px; }
+      #asset-check-report-preview .signatures { gap: 12px; }
+    }
+  </style>
+
+  <section class="sheet" aria-label="ตัวอย่างใบตรวจยืนยันรายพนักงาน">
+    <div class="top">
+      <div>
+        <div class="brand">AMZAP Asset</div>
+        <h2>ใบตรวจยืนยันทรัพย์สินรายพนักงาน</h2>
+        <div class="sub">ตัวอย่างข้อมูลสมมติ · ไม่ใช่ใบรับมอบหรือใบคืนอุปกรณ์</div>
+      </div>
+      <div class="stamp">รอบ 1/2569<br>ตรวจวันที่ 15/06/2569</div>
+    </div>
+    <div class="meta">
+      <div><span class="label">พนักงาน</span> สมชาย ใจดี (เอก)</div>
+      <div><span class="label">รหัสพนักงาน</span> AMZ-0012</div>
+      <div><span class="label">หน่วยงาน</span> บัญชี</div>
+      <div><span class="label">สถานที่</span> Amzap โรงงาน 1</div>
+    </div>
+    <h3>รายการที่ตรวจเทียบกับของจริง</h3>
+    <table>
+      <thead><tr><th>รหัส / ประเภท</th><th>รายการ</th><th>ผลตรวจ</th></tr></thead>
+      <tbody>
+        <tr><td>F1-NB-041<br><span class="label">Asset</span></td><td>Notebook Dell Latitude<br><span class="label">S/N: DELL1234</span></td><td class="ok">พบตรง</td></tr>
+        <tr><td>F1-MON-001<br><span class="label">Asset</span></td><td>Monitor 24 นิ้ว<br><span class="label">S/N: MON5678</span></td><td class="ok">พบตรง</td></tr>
+        <tr><td>Mouse<br><span class="label">Accessory</span></td><td>Logitech M185 · 1 ชิ้น</td><td class="ok">พบตรง</td></tr>
+      </tbody>
+    </table>
+    <div class="note">ผลรวม: <strong>ตรง 3 รายการ</strong> · ไม่ตรง 0 · ไม่พบ 0<br><span class="label">หมายเหตุ</span> ไม่มี</div>
+    <div class="signatures">
+      <div class="signature">ลายเซ็นพนักงาน<br><span class="label">วันที่ ____ / ____ / ______</span></div>
+      <div class="signature">ลายเซ็นผู้ตรวจ (IT)<br><span class="label">วันที่ ____ / ____ / ______</span></div>
+    </div>
+  </section>
+
+  <section class="sheet" aria-label="ตัวอย่างรายงานสรุปรอบตรวจ">
+    <div class="top">
+      <div>
+        <div class="brand">AMZAP Asset</div>
+        <h2>รายงานสรุปรอบตรวจยืนยันทรัพย์สิน</h2>
+        <div class="sub">ตัวอย่างข้อมูลสมมติ · สำหรับ IT ติดตามงานและเก็บหลักฐาน</div>
+      </div>
+      <div class="stamp">รอบ 1/2569<br>ช่วงตรวจ 1–30 มิ.ย. 2569</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong>48</strong><span>พนักงาน Active</span></div>
+      <div class="stat"><strong>41</strong><span>ตรวจตรงและเซ็นแล้ว</span></div>
+      <div class="stat"><strong>5</strong><span>ยังค้างตรวจ / รอเซ็น</span></div>
+      <div class="stat"><strong>2</strong><span>พบข้อมูลไม่ตรง</span></div>
+    </div>
+    <h3>รายการที่ต้องติดตาม</h3>
+    <table>
+      <thead><tr><th>พนักงาน</th><th>สถานะ</th><th>สิ่งที่ต้องทำ</th></tr></thead>
+      <tbody>
+        <tr><td>พิมพ์ชนก (AMZ-0032)</td><td class="issue">ข้อมูลไม่ตรง</td><td>ไม่พบ Monitor F1-MON-017 · ตรวจสอบต่อ</td></tr>
+        <tr><td>อาคม (AMZ-0047)</td><td class="issue">ข้อมูลไม่ตรง</td><td>NB แสดง Asset Owner เดิม · ยืนยันผู้ถือจริง</td></tr>
+        <tr><td>วิชัย (AMZ-0051)</td><td class="pending">รอเซ็น</td><td>ตรวจของแล้ว รอใบที่เซ็นกลับ</td></tr>
+      </tbody>
+    </table>
+    <div class="note">ขอบเขต: พนักงาน Active ทุกคน รวมผู้ที่ไม่มีอุปกรณ์ · ของในคลัง IT ตรวจนับแยก</div>
+  </section>
+</div>

@@ -8,6 +8,7 @@ const REPORT_TABS = [
     view: "handover",
     label: "ใบรับมอบ Asset/Accessory",
   },
+  { href: "/reports/return-forms", view: "return-forms", label: "ใบคืนทรัพย์สิน (ลาออก)" },
   { href: "/reports/verifications", view: "verifications", label: "ตรวจยืนยันทรัพย์สินประจำรอบ" },
   { href: "/reports/custody", view: "custody", label: "ผู้ถือครองและเบิก–คืน" },
   { href: "/reports/offboarding", view: "offboarding", label: "ลาออก · คืนของค้าง" },
@@ -16,7 +17,7 @@ const REPORT_TABS = [
 // Layout กลางของหน้ารายงานรวมเมนูย่อย ขณะที่แต่ละ route โหลดเฉพาะข้อมูลที่ใช้
 export default function ReportsShell({ children, description, title, view, canViewOperational = false }) {
   const tabs = REPORT_TABS.filter((tab) =>
-    canViewOperational || !["custody", "offboarding"].includes(tab.view));
+    canViewOperational || !["custody", "offboarding", "return-forms"].includes(tab.view));
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">

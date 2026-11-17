@@ -9,7 +9,7 @@ const inputClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3
 const emptyItem = () => ({ name: '', quantity: 1, returnedAssetId: '', replacementAssetId: '', details: '' });
 
 export default function RequisitionForm({
-  users, types, stockAssets, heldAssets, initialUserId, today, initialRequest = null,
+  users, types, stockAssets, heldAssets, initialUserId, today, initialRequest = null, defaultItStaffName = '',
 }) {
   const router = useRouter();
   const [userId, setUserId] = useState(initialRequest?.request_payload?.userId || initialUserId);
@@ -20,7 +20,7 @@ export default function RequisitionForm({
     replacementAssetId: item.replacementAssetId ||
       initialRequest.request_payload?.items?.[index]?.originalAssetId || '',
   })) || [emptyItem()]);
-  const [itStaffName, setItStaffName] = useState(initialRequest?.it_staff_name || '');
+  const [itStaffName, setItStaffName] = useState(initialRequest ? initialRequest.it_staff_name || '' : defaultItStaffName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submitting = useRef(false);

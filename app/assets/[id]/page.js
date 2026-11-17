@@ -610,10 +610,6 @@ export default async function AssetDetailPage({ params }) {
                   ? `${asset.registration_site_code} — ${asset.registration_site_name}`
                   : "ยังไม่ได้กำหนด",
               ],
-              [
-                "รหัสเดิม",
-                asset.history_assets,
-              ],
               ["ประเภทอุปกรณ์", asset.asset_type],
               ["ชื่อทรัพย์สิน", asset.asset_name],
               ["Asset Owner", ownerName],

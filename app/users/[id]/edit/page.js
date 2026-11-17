@@ -17,7 +17,9 @@ export default function EditUserPage() {
   const [form, setForm] = useState({
     employee_code: "",
     full_name: "",
+    full_name_en: "",
     nickname: "",
+    nickname_en: "",
     email: "",
     position: "",
     department_id: "",
@@ -91,7 +93,11 @@ export default function EditUserPage() {
 
           full_name: user.full_name || "",
 
+          full_name_en: user.full_name_en || "",
+
           nickname: user.nickname || "",
+
+          nickname_en: user.nickname_en || "",
 
           email: user.email || "",
 
@@ -246,7 +252,7 @@ export default function EditUserPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Full Name *</label>
+              <label className="mb-2 block font-medium">Full Name (Thai) *</label>
 
               <input
                 name="full_name"
@@ -258,11 +264,33 @@ export default function EditUserPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Nickname</label>
+              <label className="mb-2 block font-medium">Full Name (English)</label>
+              <input
+                name="full_name_en"
+                value={form.full_name_en}
+                onChange={handleChange}
+                maxLength={200}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block font-medium">Nickname (Thai)</label>
 
               <input
                 name="nickname"
                 value={form.nickname}
+                onChange={handleChange}
+                maxLength={100}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block font-medium">Nickname (English)</label>
+              <input
+                name="nickname_en"
+                value={form.nickname_en}
                 onChange={handleChange}
                 maxLength={100}
                 className={inputClass}

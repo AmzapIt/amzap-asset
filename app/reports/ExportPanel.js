@@ -42,17 +42,17 @@ function matchesAsset(asset, search) {
   ].some((value) => normalize(value).includes(keyword));
 }
 
-export default function ExportPanel({ accessories, assets, users, view }) {
+export default function ExportPanel({ accessories, assets, users, view, initialRecipient = "", initialAssetIds = [], defaultDeliveredBy = "" }) {
   // รายงานทั่วไปและใบรับมอบต้องมี selection คนละชุด เพื่อไม่ให้ Asset
   // ที่เลือกจากรายงานทั่วไปค้างไปอยู่ในเอกสารของพนักงานอีกคน
   const [reportSelected, setReportSelected] = useState([]);
-  const [handoverSelected, setHandoverSelected] = useState([]);
+  const [handoverSelected, setHandoverSelected] = useState(initialAssetIds);
   const [reportSearch, setReportSearch] = useState("");
   const [handoverSearch, setHandoverSearch] = useState("");
   const [status, setStatus] = useState("");
   const [holder, setHolder] = useState("");
-  const [recipient, setRecipient] = useState("");
-  const [form, setForm] = useState({ kind: "พนักงานใหม่" });
+  const [recipient, setRecipient] = useState(initialRecipient);
+  const [form, setForm] = useState({ kind: "พนักงานใหม่", deliveredBy: defaultDeliveredBy });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -293,11 +293,6 @@ export default function ExportPanel({ accessories, assets, users, view }) {
                   </td>
                   <td className="p-3 font-medium">
                     {asset.asset_code}
-                    {asset.legacy_asset_codes && (
-                      <span className="block text-xs font-normal text-amber-700">
-                        เดิม: {asset.legacy_asset_codes}
-                      </span>
-                    )}
                   </td>
                   <td className="p-3">{asset.asset_name || "-"}</td>
                   <td className="p-3">{asset.status || "-"}</td>

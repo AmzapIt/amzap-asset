@@ -58,6 +58,7 @@ export default function PhotoStorageSettings({ initialSettings, editable, driveC
       <fieldset disabled={!editable || busy} className="grid gap-3 sm:grid-cols-2">
         {[
           ["google_drive", "Google Drive", "เหมาะกับเว็บ Vercel และการเปิดรูปจากหลายเครื่อง"],
+          ["supabase", "Supabase Storage", "ใช้ร่วมกันได้ทั้ง local server, Vercel และโทรศัพท์"],
           ["local", "Local server", "เก็บไฟล์ลงโฟลเดอร์บนเครื่องเซิร์ฟเวอร์นี้"],
         ].map(([value, label, description]) => (
           <label key={value} className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${settings.photoStorageMode === value ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}>

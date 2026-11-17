@@ -8,6 +8,7 @@ import {
   LocalPhotoStorageError,
   readLocalAssetPhoto,
 } from "@/lib/local-asset-photos";
+import { downloadSupabasePhoto, isSupabaseAssetPhotoUrl } from "@/lib/supabase-storage";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,8 @@ export async function GET(_request, { params }) {
         return new Response(null, { status: 404 });
       }
       original = await readLocalAssetPhoto(assetId, fileName);
+    } else if (isSupabaseAssetPhotoUrl(photo.storage_path)) {
+      original = await downloadSupabasePhoto(photo.storage_path);
     } else {
       original = await downloadGoogleDrivePhoto(photo.storage_path);
     }

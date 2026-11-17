@@ -2,6 +2,7 @@ import { query } from "@/lib/db";
 import UserTable from "./UserTable";
 import Link from "next/link";
 import { getOffboardingSummaries } from "@/lib/offboarding";
+import { summarizeUserAssets } from "@/lib/user-asset-filter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,10 +97,8 @@ export default async function UsersPage() {
   const factoryTwoUsers = users.filter(
     (user) => Number(user.location_id) === 2,
   ).length;
-  const usersWithAssets = users.filter(
-    (user) => Number(user.current_asset_count) > 0,
-  ).length;
-  const usersWithoutAssets = users.length - usersWithAssets;
+  const { assigned: usersWithAssets, unassigned: usersWithoutAssets } =
+    summarizeUserAssets(users);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
@@ -116,12 +115,17 @@ export default async function UsersPage() {
               จัดการรายชื่อพนักงานและสิทธิ์การใช้งานในระบบ
             </p>
           </div>
+          <div className="flex flex-wrap gap-3">
+          <Link href="/users/prepare" className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-center font-semibold text-white shadow-sm hover:bg-blue-500 sm:w-auto">
+            เตรียมอุปกรณ์พนักงาน
+          </Link>
           <Link
             href="/users/add"
             className="w-full rounded-lg bg-white px-4 py-2.5 text-center font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 sm:w-auto"
           >
             + Add Employee
           </Link>
+          </div>
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">

@@ -33,7 +33,7 @@ export default function EmployeePicker({
         value={selectedId}
         required={required}
         disabled={disabled}
-        className={inputClass}
+        className={`${inputClass} ${selectedUser?.is_active === false ? "text-slate-500" : "text-slate-900"}`}
         onChange={(event) => {
           const id = event.target.value;
           if (value === undefined) setInternalId(id);
@@ -46,7 +46,7 @@ export default function EmployeePicker({
           <option value={selectedId} disabled>ไม่พบพนักงานในรายการ (ID: {selectedId})</option>
         )}
         {orderEmployeesByCompany(users).map((user) => (
-          <option key={user.id} value={String(user.id)}>
+          <option key={user.id} value={String(user.id)} style={{ color: user.is_active === false ? "#64748b" : "#0f172a" }}>
             {formatEmployeeOptionLabel(user)}{user.is_active === false ? " (Inactive)" : ""}
           </option>
         ))}

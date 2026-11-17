@@ -7,7 +7,7 @@ import LabelManager from "./LabelManager";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default async function LabelsPage() {
+export default async function LabelsPage({ searchParams }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -40,6 +40,9 @@ export default async function LabelsPage() {
                 MAX(printed_at) AS last_printed_at
            FROM public.asset_label_prints p
            JOIN public.asset_label_print_batches b ON b.id=p.batch_id
+           JOIN public.assets current_code ON current_code.id=p.asset_id
+          -- นับเฉพาะสติ๊กเกอร์ของรหัสปัจจุบัน: เมื่อเปลี่ยนรหัส เครื่องจะกลับเป็น ยังไม่เคยพิมพ์
+          WHERE p.asset_code=current_code.asset_code
           GROUP BY p.asset_id
        ) prints ON prints.asset_id=a.id
       ORDER BY a.asset_code ASC, a.id ASC`,
@@ -51,6 +54,10 @@ export default async function LabelsPage() {
     }) || null,
   }));
 
+  const params = await searchParams;
+  const requestedIds = typeof params?.assetIds === "string" ? params.assetIds.split(",") : [];
+  const initialSelected = assets.filter((asset) => requestedIds.includes(asset.id)).slice(0, 100).map((asset) => asset.id);
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-8 xl:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -59,7 +66,7 @@ export default async function LabelsPage() {
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">พิมพ์ Asset Code และ QR</h1>
           <p className="mt-2 text-blue-100">QR เก็บ Asset Code ตรงตัว เลือก Asset แล้วดูตัวอย่างก่อนพิมพ์</p>
         </header>
-        <LabelManager initialAssets={assets} />
+        <LabelManager initialAssets={assets} initialSelected={initialSelected} />
       </div>
     </main>
   );

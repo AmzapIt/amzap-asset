@@ -15,7 +15,9 @@ export async function GET() {
         u.id,
         u.employee_code,
         u.full_name,
+        u.full_name_en,
         u.nickname,
+        u.nickname_en,
         u.email,
         u.department_id,
         d.name AS department_name,
@@ -80,8 +82,16 @@ export async function POST(request) {
         ? body.full_name.trim()
         : "";
 
+    const fullNameEn =
+      typeof body.full_name_en === "string"
+        ? body.full_name_en.trim()
+        : "";
+
     const nickname =
       typeof body.nickname === "string" ? body.nickname.trim() : "";
+
+    const nicknameEn =
+      typeof body.nickname_en === "string" ? body.nickname_en.trim() : "";
 
     const email =
       typeof body.email === "string"
@@ -187,7 +197,14 @@ export async function POST(request) {
       }
     }
 
-    if (nickname.length > 100) {
+    if (fullNameEn.length > 200) {
+      return Response.json(
+        { error: "Full Name (English) ต้องไม่เกิน 200 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
+    if (nickname.length > 100 || nicknameEn.length > 100) {
       return Response.json(
         { error: "Nickname ต้องไม่เกิน 100 ตัวอักษร" },
         { status: 400 },
@@ -231,7 +248,9 @@ export async function POST(request) {
           location_id,
           position,
           is_active,
-          nickname
+          nickname,
+          full_name_en,
+          nickname_en
         )
         VALUES (
           $1,
@@ -241,13 +260,17 @@ export async function POST(request) {
           $5,
           $6,
           $7,
-          $8
+          $8,
+          $9,
+          $10
         )
         RETURNING
           id,
           employee_code,
           full_name,
+          full_name_en,
           nickname,
+          nickname_en,
           email,
           department_id,
           location_id,
@@ -264,6 +287,8 @@ export async function POST(request) {
         position || null,
         isActive,
         nickname || null,
+        fullNameEn || null,
+        nicknameEn || null,
       ]
     );
 

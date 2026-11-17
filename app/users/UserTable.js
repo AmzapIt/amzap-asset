@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getCurrentAssetCount,
+  matchesUserAssetFilter,
+  summarizeUserAssets,
+} from "@/lib/user-asset-filter";
 
-function getCurrentAssetCount(user) {
-  const count = Number(user.current_asset_count);
-  return Number.isFinite(count) ? count : 0;
+const USER_LIST_STORAGE_KEY = "amzap:user-list-filters:v2";
+const LEGACY_USER_LIST_STORAGE_KEY = "amzap:user-list-filters:v1";
+
+function storedSearch(value) {
+  return typeof value === "string" && value.length <= 500 ? value : "";
 }
 
 function OffboardingBadge({ user }) {
@@ -29,6 +37,7 @@ function OffboardingBadge({ user }) {
 }
 
 export default function UserTable({ users }) {
+  const router = useRouter();
   // ==================================================
   // State
   // ==================================================
@@ -41,7 +50,7 @@ export default function UserTable({ users }) {
   const [search, setSearch] = useState("");
 
   // Filter สถานะ
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   // Filter Location ของพนักงาน
   const [locationFilter, setLocationFilter] = useState("all");
@@ -49,8 +58,69 @@ export default function UserTable({ users }) {
   // Filter การครอบครอง Asset
   const [assetFilter, setAssetFilter] = useState("all");
 
+  // อ่านค่าที่เคยใช้ก่อนบันทึกค่าเริ่มต้นทับลงใน sessionStorage
+  const [hasRestoredFilters, setHasRestoredFilters] = useState(false);
+
   // เก็บ ID ของ User ที่กำลัง Update
   const [updatingId, setUpdatingId] = useState(null);
+
+  useEffect(() => {
+    const restoreTimer = window.setTimeout(() => {
+      try {
+        const current = window.sessionStorage.getItem(USER_LIST_STORAGE_KEY);
+        const saved = current ?? window.sessionStorage.getItem(LEGACY_USER_LIST_STORAGE_KEY);
+        if (saved) {
+          const filters = JSON.parse(saved);
+          if (filters && typeof filters === "object" && !Array.isArray(filters)) {
+            const validLocations = new Set([
+              "all",
+              "__amzap__",
+              "__none__",
+              ...users
+                .filter((user) => user.location_id != null)
+                .map((user) => String(user.location_id)),
+            ]);
+            setSearch(storedSearch(filters.search));
+            setStatusFilter(
+              current && ["all", "active", "inactive"].includes(filters.statusFilter)
+                ? filters.statusFilter
+                : "active",
+            );
+            setLocationFilter(
+              validLocations.has(filters.locationFilter)
+                ? filters.locationFilter
+                : "all",
+            );
+            setAssetFilter(
+              ["all", "assigned", "unassigned"].includes(filters.assetFilter)
+                ? filters.assetFilter
+                : "all",
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("Restore User filters error:", error);
+        window.sessionStorage.removeItem(USER_LIST_STORAGE_KEY);
+      } finally {
+        setHasRestoredFilters(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, [users]);
+
+  useEffect(() => {
+    if (!hasRestoredFilters) return;
+
+    try {
+      window.sessionStorage.setItem(
+        USER_LIST_STORAGE_KEY,
+        JSON.stringify({ search, statusFilter, locationFilter, assetFilter }),
+      );
+    } catch (error) {
+      console.warn("Save User filters error:", error);
+    }
+  }, [hasRestoredFilters, search, statusFilter, locationFilter, assetFilter]);
 
   // ==================================================
   // Search + Filter
@@ -124,38 +194,25 @@ export default function UserTable({ users }) {
   }, [userList, search, statusFilter, locationFilter]);
 
   const filteredUsers = useMemo(() => {
-    return usersBeforeAssetFilter.filter((user) => {
-      const hasCurrentAssets = getCurrentAssetCount(user) > 0;
-      const matchAsset =
-        assetFilter === "all" ||
-        (assetFilter === "assigned" && hasCurrentAssets) ||
-        (assetFilter === "unassigned" && !hasCurrentAssets);
-
-      return matchAsset;
-    });
+    return usersBeforeAssetFilter.filter((user) =>
+      matchesUserAssetFilter(user, assetFilter),
+    );
   }, [usersBeforeAssetFilter, assetFilter]);
 
   const assetSummary = useMemo(() => {
-    const assigned = usersBeforeAssetFilter.filter(
-      (user) => getCurrentAssetCount(user) > 0,
-    ).length;
-
-    return {
-      assigned,
-      unassigned: usersBeforeAssetFilter.length - assigned,
-    };
+    return summarizeUserAssets(usersBeforeAssetFilter);
   }, [usersBeforeAssetFilter]);
 
   const activeFilterCount = [
     search.trim(),
-    statusFilter !== "all",
+    statusFilter !== "active",
     locationFilter !== "all",
     assetFilter !== "all",
   ].filter(Boolean).length;
 
   function resetFilters() {
     setSearch("");
-    setStatusFilter("all");
+    setStatusFilter("active");
     setLocationFilter("all");
     setAssetFilter("all");
   }
@@ -206,6 +263,7 @@ export default function UserTable({ users }) {
             : user
         )
       );
+      router.refresh();
     } catch (error) {
       console.error(
         "Update user status error:",

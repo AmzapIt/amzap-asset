@@ -4,6 +4,7 @@ import { getRequisitionOptions, listRequisitions } from '@/lib/asset-requisition
 import { formatUserDisplayName } from '@/lib/user-display';
 import ReportsShell, { ReportLoadError } from '../ReportsShell';
 import RequisitionForm from './RequisitionForm';
+import { getItSignerName } from '@/lib/document-settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,11 +16,12 @@ export default async function RequisitionsPage({ searchParams }) {
   const search = single(params.q).slice(0, 200);
   const kind = ['additional', 'replacement'].includes(params.kind) ? params.kind : '';
   const page = /^\d{1,6}$/.test(single(params.page)) ? Math.max(1, Math.min(100000, Number(params.page))) : 1;
-  let history, options = { users: [], types: [], stockAssets: [], heldAssets: [] };
+  let history, options = { users: [], types: [], stockAssets: [], heldAssets: [] }, itSignerName = '';
   try {
-    [history, options] = await Promise.all([
+    [history, options, itSignerName] = await Promise.all([
       listRequisitions({ search, kind, page }),
       account.canWrite ? getRequisitionOptions() : options,
+      account.canWrite ? getItSignerName() : '',
     ]);
   } catch (error) {
     console.error('Requisition report load failed', error);
@@ -31,7 +33,7 @@ export default async function RequisitionsPage({ searchParams }) {
   return (
     <ReportsShell view="requisitions" canViewOperational={account.canWrite} title="ใบขอเบิก / เปลี่ยนอุปกรณ์"
       description="บันทึกคำขอ พิมพ์ให้เซ็น และค้นหาใบเดิม — ไม่เปลี่ยนเจ้าของ ไม่ตัดคลัง และไม่รับคืนอัตโนมัติ">
-      {account.canWrite && <RequisitionForm {...options} initialUserId={initialUserId} today={today} />}
+      {account.canWrite && <RequisitionForm {...options} initialUserId={initialUserId} today={today} defaultItStaffName={itSignerName} />}
       <section id="history" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-xl font-bold">ประวัติใบขอเบิก</h2>
         <form action="/reports/requisitions#history" className="my-4 flex flex-wrap items-end gap-3">

@@ -498,7 +498,7 @@ export default function AddAssetPage() {
   );
   const assetCodePrefix =
     selectedRegistrationSite?.site_code && selectedType?.prefix
-      ? `${selectedRegistrationSite.site_code}-${selectedType.prefix}-`
+      ? buildAssetCodePreview(selectedRegistrationSite.site_code, selectedType.prefix).replace(/XXX$/, "")
       : "---";
   const canLoadLatestAssetCode = Boolean(
     form.registrationSiteId && selectedType?.id,
@@ -534,7 +534,7 @@ export default function AddAssetPage() {
           throw new Error(data.error || "ไม่สามารถตรวจรหัสล่าสุดได้");
         }
 
-        // F1/F2 ใช้เลขร่วมกัน แต่ M1 มีชุดเลขแยกตาม Asset Type
+        // เลขรันแยกตามกลุ่มบริษัท (F1/F2 = AMZAP, M1 = MEMO) + ปี + Asset Type
         setLatestAssetCodeNumber(data.latestNumber || null);
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -688,7 +688,7 @@ export default function AddAssetPage() {
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-              {/* Registration Site ต้องเลือกก่อน เพราะเป็น F1/F2/M1 ในรหัสถาวร */}
+              {/* Registration Site ใช้เลือกกลุ่มบริษัทในรหัส: F1/F2 = AMZAP, M1 = MEMO */}
               <div>
                 <label htmlFor="registrationSiteId" className="mb-2 block font-medium">
                   สถานที่ขึ้นทะเบียน <span className="text-red-600">*</span>

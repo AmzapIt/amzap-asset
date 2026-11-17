@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { formatAssetCodeNumber } from "@/lib/asset-code";
+import { assetCodeSeriesPattern, formatAssetCodeNumber } from "@/lib/asset-code";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ function validBigintId(value) {
     BigInt(value) <= 9223372036854775807n
   );
 }
-// F1/F2 share a running number per Asset Type; M1 has a separate sequence.
+// Running numbers are per company group (AMZAP/MEMO), year and Asset Type.
 // This read-only result does not reserve a number. Creation checks again.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -29,19 +29,7 @@ export async function GET(request) {
   try {
     const result = await query(
       `
-        SELECT
-          asset_type.prefix,
-          (
-            SELECT max(right(asset.asset_code, 3)::integer)
-            FROM public.assets asset
-            WHERE asset.asset_type_id = asset_type.id
-              AND right(asset.asset_code, 3) ~ '^[0-9]{3}$'
-              AND asset.asset_code ~ CASE
-                WHEN registration_site.site_code = 'M1'
-                  THEN '^M1-[A-Z0-9]{2,10}-[0-9]{3}$'
-                ELSE '^F[0-9]{1,3}-[A-Z0-9]{2,10}-[0-9]{3}$'
-              END
-          ) AS latest_number
+        SELECT registration_site.site_code, asset_type.prefix
         FROM public.asset_registration_sites registration_site
         CROSS JOIN public.asset_types asset_type
         WHERE registration_site.id = $1
@@ -60,7 +48,14 @@ export async function GET(request) {
       );
     }
 
-    const row = result.rows[0];
+    const { site_code: siteCode, prefix } = result.rows[0];
+    const latest = await query(
+      `SELECT max(right(asset_code, 3)::integer) AS latest_number
+         FROM public.assets
+        WHERE asset_type_id = $1 AND asset_code ~ $2`,
+      [assetTypeId, assetCodeSeriesPattern(siteCode, prefix)],
+    );
+    const row = { prefix, latest_number: latest.rows[0].latest_number };
     const latestNumber = formatAssetCodeNumber(row.latest_number);
 
     return Response.json({

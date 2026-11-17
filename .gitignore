@@ -48,3 +48,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database backups (contain personal data)
+/work/backups/
+# work samples with employee data
+/work/*.xlsx
+/work/*.pdf

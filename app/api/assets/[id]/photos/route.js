@@ -13,6 +13,7 @@ import {
   removeLocalAssetPhoto,
   saveLocalAssetPhoto,
 } from "@/lib/local-asset-photos";
+import { deleteSupabaseAssetPhoto, uploadSupabaseAssetPhoto } from "@/lib/supabase-storage";
 
 export const runtime = "nodejs";
 
@@ -112,11 +113,14 @@ export async function POST(request, { params }) {
   const fileName = `${asset.asset_code}-${Date.now()}.${extension}`;
   let driveFile;
   let localFile;
+  let supabaseFile;
 
   try {
     const storageMode = assetPhotoStorageMode();
     if (storageMode === "local") {
       localFile = await saveLocalAssetPhoto({ assetId: id, buffer, mimeType: photo.type });
+    } else if (storageMode === "supabase") {
+      supabaseFile = await uploadSupabaseAssetPhoto({ buffer, fileName, mimeType: photo.type });
     } else {
       driveFile = await uploadAssetPhotoToGoogleDrive({
         buffer,
@@ -127,7 +131,7 @@ export async function POST(request, { params }) {
     }
     const storedPhoto = localFile
       ? { name: fileName, webViewLink: localFile.storagePath, mimeType: photo.type, size: buffer.length }
-      : driveFile;
+      : supabaseFile || driveFile;
 
     const client = await getDbPool().connect();
     try {
@@ -201,6 +205,13 @@ export async function POST(request, { params }) {
         await deleteGoogleDriveFile(driveFile.id);
       } catch (cleanupError) {
         console.error("Google Drive photo cleanup failed", cleanupError);
+      }
+    }
+    if (supabaseFile?.name) {
+      try {
+        await deleteSupabaseAssetPhoto(supabaseFile.name);
+      } catch (cleanupError) {
+        console.error("Supabase photo cleanup failed", cleanupError);
       }
     }
 

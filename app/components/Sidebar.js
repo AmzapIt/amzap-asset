@@ -72,6 +72,9 @@ export default function Sidebar({ user }) {
       view: "handover",
       label: "ใบรับมอบ Asset/Accessory",
     },
+    ...(["Admin", "IT Staff"].includes(user?.role)
+      ? [{ href: "/reports/return-forms", view: "return-forms", label: "ใบคืนทรัพย์สิน (ลาออก)" }]
+      : []),
     { href: "/reports/verifications", view: "verifications", label: "ตรวจยืนยันทรัพย์สินประจำรอบ" },
     ...(["Admin", "IT Staff"].includes(user?.role)
       ? [

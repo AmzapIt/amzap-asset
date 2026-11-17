@@ -436,7 +436,8 @@ export default function EditAssetPage() {
                 </p>
               </div>
 
-              {previousAssetCode && (
+              {/* รหัสเดิมเก็บไว้ใน DB สำหรับค้นหาเท่านั้น ไม่แสดงบนหน้าจอ */}
+              {false && previousAssetCode && (
                 <div>
                   <label className="mb-2 block font-medium">รหัสเดิม</label>
                   <input
@@ -594,13 +595,13 @@ export default function EditAssetPage() {
                   name="assetOwner"
                   value={form.assetOwner}
                   disabled
-                  className={`${inputClass} cursor-not-allowed opacity-70`}
+                  className={`${inputClass} cursor-not-allowed opacity-70 ${currentOwner ? "text-slate-500" : ""}`}
                 >
                   <option value="">-- ไม่มี Asset Owner --</option>
 
                   {/* Owner เดิมที่ไม่อยู่ใน Active Users: ใช้ชื่อจาก GET Asset และคง ID เดิมไว้เมื่อบันทึก */}
                   {currentOwner && (
-                    <option value={String(currentOwner.id)}>
+                    <option value={String(currentOwner.id)} style={{ color: "#64748b" }}>
                       {formatEmployeeOptionLabel(currentOwner, { showCode: false })} (Inactive)
                     </option>
                   )}
