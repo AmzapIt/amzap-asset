@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assetCodeGroup,
+  assetCompanyOptions,
   assetCodeSeriesPattern,
   assetCodeYear,
   buildAssetCode,
+  nextAssetCodeNumber,
   buildAssetCodePreview,
   formatAssetCodeNumber,
   parseAssetCodeNumber,
@@ -44,21 +46,28 @@ test("uses the Bangkok calendar year for the code year", () => {
   assert.equal(assetCodeYear(new Date("2026-06-01T00:00:00Z")), "26");
 });
 
-test("running-number series includes legacy codes only in 2026", () => {
+test("running-number series is per company group, year and type", () => {
   const amzap26 = new RegExp(assetCodeSeriesPattern("F2", "NB", "26"));
   assert.ok(amzap26.test("AMZAP26-NB-054"));
-  assert.ok(amzap26.test("F1-NB-054"));
+  assert.ok(!amzap26.test("AMZAP26-MON-054"));
   assert.ok(!amzap26.test("M1-NB-001"));
   assert.ok(!amzap26.test("MEMO26-NB-001"));
   assert.ok(!amzap26.test("AMZAP27-NB-001"));
 
   const memo26 = new RegExp(assetCodeSeriesPattern("M1", "NB", "26"));
-  assert.ok(memo26.test("M1-NB-001") && memo26.test("MEMO26-NB-001"));
-  assert.ok(!memo26.test("F1-NB-001"));
+  assert.ok(memo26.test("MEMO26-NB-001"));
+  assert.ok(!memo26.test("AMZAP26-NB-001"));
 
   const amzap27 = new RegExp(assetCodeSeriesPattern("F1", "NB", "27"));
   assert.ok(amzap27.test("AMZAP27-NB-001"));
-  assert.ok(!amzap27.test("F1-NB-001") && !amzap27.test("AMZAP26-NB-001"));
+  assert.ok(!amzap27.test("AMZAP26-NB-001"));
+});
+
+test("suggests the next running number", () => {
+  assert.equal(nextAssetCodeNumber(null), "001");
+  assert.equal(nextAssetCodeNumber("054"), "055");
+  assert.equal(nextAssetCodeNumber("009"), "010");
+  assert.equal(nextAssetCodeNumber("999"), "");
 });
 
 test("formats the shared latest running number without a site prefix", () => {
@@ -90,4 +99,18 @@ test("rejects missing or malformed registration-site IDs", () => {
   for (const value of ["", "0", "-1", "1.5", 1, "9223372036854775808"]) {
     assert.throws(() => parseRegistrationSiteId(value));
   }
+});
+
+test("offers AMZAP and MEMO as company choices backed by a representative site", () => {
+  const sites = [
+    { id: "2", site_code: "F2" },
+    { id: "1", site_code: "F1" },
+    { id: "5", site_code: "M1" },
+  ];
+  assert.deepEqual(assetCompanyOptions(sites), [
+    { id: "1", label: "AMZAP", site_code: "F1" },
+    { id: "5", label: "MEMO", site_code: "M1" },
+  ]);
+  assert.deepEqual(assetCompanyOptions([{ id: "2", site_code: "F2" }]).map((c) => c.label), ["AMZAP"]);
+  assert.deepEqual(assetCompanyOptions([]), []);
 });

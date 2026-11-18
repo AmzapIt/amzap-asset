@@ -206,7 +206,7 @@ export async function POST(request) {
 
     if (registrationSiteResult.rows.length === 0) {
       return Response.json(
-        { error: "ไม่พบสถานที่ขึ้นทะเบียน หรือสถานที่ถูกปิดใช้งาน" },
+        { error: "ไม่พบบริษัทที่เลือก หรือถูกปิดใช้งาน" },
         { status: 400 },
       );
     }

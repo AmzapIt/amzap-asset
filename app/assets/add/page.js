@@ -8,7 +8,7 @@ import {
   additionalFieldNames,
   emptyAdditionalForm,
 } from "@/lib/asset-additional";
-import { buildAssetCodePreview } from "@/lib/asset-code";
+import { assetCompanyOptions, buildAssetCodePreview, nextAssetCodeNumber } from "@/lib/asset-code";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -424,7 +424,7 @@ export default function AddAssetPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || "ไม่สามารถโหลดสถานที่ขึ้นทะเบียนได้");
+          throw new Error(data.error || "ไม่สามารถโหลดรายชื่อบริษัทได้");
         }
 
         setRegistrationSites(data.sites || []);
@@ -432,7 +432,7 @@ export default function AddAssetPage() {
         if (error.name !== "AbortError") {
           console.error("Load registration sites error:", error);
           setRegistrationSitesError(
-            error.message || "ไม่สามารถโหลดสถานที่ขึ้นทะเบียนได้",
+            error.message || "ไม่สามารถโหลดรายชื่อบริษัทได้",
           );
         }
       } finally {
@@ -536,6 +536,11 @@ export default function AddAssetPage() {
 
         // เลขรันแยกตามกลุ่มบริษัท (F1/F2 = AMZAP, M1 = MEMO) + ปี + Asset Type
         setLatestAssetCodeNumber(data.latestNumber || null);
+        // เติมเลขถัดไปให้อัตโนมัติ ผู้ใช้ยังแก้เองได้ และ API ตรวจซ้ำอีกครั้งตอนบันทึก
+        setForm((previous) => ({
+          ...previous,
+          assetCodeNumber: nextAssetCodeNumber(data.latestNumber),
+        }));
       } catch (error) {
         if (error.name !== "AbortError") {
           console.error("Load latest Asset Code error:", error);
@@ -577,7 +582,7 @@ export default function AddAssetPage() {
     setMessage("");
 
     if (!form.registrationSiteId) {
-      setMessage("กรุณาเลือกสถานที่ขึ้นทะเบียนก่อนบันทึก");
+      setMessage("กรุณาเลือกบริษัทก่อนบันทึก");
       return;
     }
 
@@ -688,10 +693,10 @@ export default function AddAssetPage() {
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-              {/* Registration Site ใช้เลือกกลุ่มบริษัทในรหัส: F1/F2 = AMZAP, M1 = MEMO */}
+              {/* เลือกบริษัทในรหัส (AMZAP/MEMO) เบื้องหลังส่ง registrationSiteId ของสาขาตัวแทน */}
               <div>
                 <label htmlFor="registrationSiteId" className="mb-2 block font-medium">
-                  สถานที่ขึ้นทะเบียน <span className="text-red-600">*</span>
+                  บริษัท <span className="text-red-600">*</span>
                 </label>
 
                 <select
@@ -705,18 +710,18 @@ export default function AddAssetPage() {
                 >
                   <option value="">
                     {loadingRegistrationSites
-                      ? "กำลังโหลดสถานที่ขึ้นทะเบียน..."
-                      : "-- เลือกสถานที่ขึ้นทะเบียน --"}
+                      ? "กำลังโหลดรายชื่อบริษัท..."
+                      : "-- เลือกบริษัท --"}
                   </option>
-                  {registrationSites.map((site) => (
-                    <option key={site.id} value={site.id}>
-                      {site.site_code} — {site.name}
+                  {assetCompanyOptions(registrationSites).map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.label}
                     </option>
                   ))}
                 </select>
 
                 <p className="mt-1 text-xs text-gray-500">
-                  ใช้สร้างรหัสถาวรและจะไม่เปลี่ยนเมื่อย้าย Location ภายหลัง
+                  ใช้เป็นคำนำหน้ารหัส เช่น AMZAP26-NB-001 · รหัสไม่เปลี่ยนเมื่อย้าย Location
                 </p>
                 {registrationSitesError && (
                   <p className="mt-1 text-sm text-red-600">
@@ -741,7 +746,7 @@ export default function AddAssetPage() {
                     {loadingAssetTypes
                       ? "กำลังโหลด Asset Types..."
                       : !form.registrationSiteId
-                        ? "-- เลือกสถานที่ขึ้นทะเบียนก่อน --"
+                        ? "-- เลือกบริษัทก่อน --"
                         : "-- เลือก Asset Type --"}
                   </option>
 
