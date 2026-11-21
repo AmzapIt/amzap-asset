@@ -23,9 +23,24 @@ $os = Get-CimInstance Win32_OperatingSystem
 $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
 $cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
 
-# Serial (ignore placeholder values from some motherboards)
+# Placeholder values that some motherboards / self-built PCs report instead of real data
+$placeholder = 'O\.E\.M|Default string|System (Serial|Product|Manufacturer|Version)|Not Specified|Not Applicable|^0+$|^0?123456789$|^N/?A$|^None$|^Invalid$'
+
+# Serial
 $serial = Clean $bios.SerialNumber
-if ($serial -match 'O\.E\.M|Default string|System Serial|^0+$|^N/?A$') { $serial = '' }
+if ($serial -match $placeholder) { $serial = '' }
+
+# Brand / Model (Lenovo keeps the model name, e.g. "ThinkPad T14 Gen 2", in Version;
+# its Model is a type number like "20W0CTO1WW")
+$cs = Get-CimInstance Win32_ComputerSystem
+$csp = Get-CimInstance Win32_ComputerSystemProduct
+$brand = Clean $cs.Manufacturer
+if ($brand -match $placeholder) { $brand = '' }
+$model = Clean $cs.Model
+if ($brand -match '^Lenovo' -and (Clean $csp.Version) -and (Clean $csp.Version) -notmatch $placeholder) {
+  $model = Clean $csp.Version
+}
+if ($model -match $placeholder) { $model = '' }
 
 # Operating system, e.g. "Windows 11 Pro 24H2 (build 26100.2314)"
 $osText = Clean ($os.Caption -replace '^Microsoft ', '')
@@ -182,6 +197,8 @@ if ($winLicense) {
 $specs = [ordered]@{
   amzapSpecs      = 1
   serialNumber    = $serial
+  brand           = $brand
+  model           = $model
   hostname        = Clean $env:COMPUTERNAME
   ipAddress       = Clean $ip
   macAddress      = $mac
@@ -203,7 +220,9 @@ Write-Host ''
 Write-Host 'AMZAP Asset - machine specs' -ForegroundColor Cyan
 Write-Host '----------------------------------------'
 Write-Host ('Serial Number    : ' + $specs.serialNumber)
-Write-Host ('Hostname         : ' + $specs.hostname)
+Write-Host ('Brand            : ' + $specs.brand)
+Write-Host ('Model            : ' + $specs.model)
+Write-Host ('Hostname        : ' + $specs.hostname)
 Write-Host ('IP Address       : ' + $specs.ipAddress)
 Write-Host ('MAC Address      : ' + $specs.macAddress + ' (' + $macSource + ')')
 Write-Host ('Operating System : ' + $specs.operatingSystem)
@@ -224,4 +243,25 @@ Write-Host '----------------------------------------'
 $json = $specs | ConvertTo-Json -Compress
 Set-Clipboard -Value $json
 Write-Host 'Copied to clipboard.' -ForegroundColor Green
-Write-Host 'Open this asset''s edit page and click the blue "paste from script" button.'
+
+# Also save <Serial>.json in a "specs" folder next to this script (e.g. on a USB drive)
+# so IT can import many machines at once on the "machine specs import" page.
+$fileBase = $specs.serialNumber -replace '[^A-Za-z0-9_-]', '_'
+if (-not $fileBase) { $fileBase = 'NO-SERIAL-' + ($specs.hostname -replace '[^A-Za-z0-9_-]', '_') }
+$saved = $false
+try {
+  $folder = Join-Path (Split-Path -Parent $env:AMZAP_SELF) 'specs'
+  New-Item -ItemType Directory -Force -Path $folder -ErrorAction Stop | Out-Null
+  $file = Join-Path $folder "$fileBase.json"
+  [IO.File]::WriteAllText($file, $json, (New-Object System.Text.UTF8Encoding $false))
+  $saved = $true
+  Write-Host ('Saved file: ' + $file) -ForegroundColor Green
+} catch {
+  Write-Host ('Could not save the file next to the script: ' + $_.Exception.Message) -ForegroundColor Yellow
+}
+if (-not $specs.serialNumber -and $saved) {
+  Write-Host 'No serial number was found, so this file cannot be matched on the import page.' -ForegroundColor Yellow
+}
+Write-Host ''
+Write-Host 'Next: import the specs folder on the IT computer,'
+Write-Host 'or open this asset''s edit page here and click the blue "paste from script" button.'

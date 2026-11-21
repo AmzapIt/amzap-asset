@@ -8,6 +8,15 @@ hw=$(system_profiler SPHardwareDataType 2>/dev/null)
 field() { printf '%s\n' "$hw" | awk -F': ' -v k="$1" 'index($1, k) {print $2; exit}' | sed 's/^ *//; s/ *$//'; }
 
 serial=$(field "Serial Number")
+# Model: e.g. "MacBook Air M2" (Apple silicon) or "MacBook Pro (MacBookPro16,1)" (Intel)
+model=$(field "Model Name")
+chip=$(field "Chip" | sed 's/^Apple //')
+if [ -n "$chip" ]; then
+  model="$model $chip"
+else
+  model_id=$(field "Model Identifier")
+  [ -n "$model_id" ] && model="$model ($model_id)"
+fi
 firmware=$(field "System Firmware Version")
 [ -z "$firmware" ] && firmware=$(field "Boot ROM Version")
 [ -n "$firmware" ] && firmware="Apple $firmware"
@@ -62,8 +71,8 @@ case "$office_account" in *@*) ;; *) office_account="" ;; esac
 
 esc() { printf '%s' "$1" | tr -d '\r\n\t' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
-json=$(printf '{"amzapSpecs":1,"serialNumber":"%s","hostname":"%s","ipAddress":"%s","macAddress":"%s","operatingSystem":"%s","cpu":"%s","ramGb":"%s","storageGb":"%s","biosFirmware":"%s","screenSize":"","resolution":"%s","officeProduct":"%s","officeVersion":"%s","officeLicense":"%s","officeAccount":"%s","windowsActivation":""}' \
-  "$(esc "$serial")" "$(esc "$host")" "$(esc "$ip")" "$(esc "$mac")" "$(esc "$os")" \
+json=$(printf '{"amzapSpecs":1,"serialNumber":"%s","brand":"Apple","model":"%s","hostname":"%s","ipAddress":"%s","macAddress":"%s","operatingSystem":"%s","cpu":"%s","ramGb":"%s","storageGb":"%s","biosFirmware":"%s","screenSize":"","resolution":"%s","officeProduct":"%s","officeVersion":"%s","officeLicense":"%s","officeAccount":"%s","windowsActivation":""}' \
+  "$(esc "$serial")" "$(esc "$model")" "$(esc "$host")" "$(esc "$ip")" "$(esc "$mac")" "$(esc "$os")" \
   "$(esc "$cpu")" "$(esc "$ram")" "$(esc "$storage")" "$(esc "$firmware")" "$(esc "$resolution")" \
   "$(esc "$office_product")" "$(esc "$office_version")" "$(esc "$office_license")" "$(esc "$office_account")")
 
@@ -71,6 +80,8 @@ echo ""
 echo "AMZAP Asset - machine specs"
 echo "----------------------------------------"
 echo "Serial Number    : $serial"
+echo "Brand            : Apple"
+echo "Model            : $model"
 echo "Hostname         : $host"
 echo "IP Address       : $ip"
 echo "MAC Address      : $mac ($mac_source)"
@@ -90,4 +101,18 @@ echo "----------------------------------------"
 
 printf '%s' "$json" | pbcopy
 echo "Copied to clipboard."
-echo "Open this asset's edit page and click \"Paste from script\"."
+
+# Also save <Serial>.json in a "specs" folder next to this script (e.g. on a USB drive)
+file_base=$(printf '%s' "$serial" | sed 's/[^A-Za-z0-9_-]/_/g')
+[ -z "$file_base" ] && file_base="NO-SERIAL-$(printf '%s' "$host" | sed 's/[^A-Za-z0-9_-]/_/g')"
+script_dir=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+folder="${script_dir:-$HOME}/specs"
+if mkdir -p "$folder" 2>/dev/null && printf '%s' "$json" > "$folder/$file_base.json" 2>/dev/null; then
+  echo "Saved file: $folder/$file_base.json"
+  [ -z "$serial" ] && echo "No serial number was found, so this file cannot be matched on the import page."
+else
+  echo "Could not save the file next to the script."
+fi
+echo ""
+echo "Next: import the specs folder on the IT computer,"
+echo "or open this asset's edit page here and click \"Paste from script\"."

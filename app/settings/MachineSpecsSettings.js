@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { readApiResponse } from "@/lib/client-api";
@@ -71,12 +72,29 @@ export default function MachineSpecsSettings({ initialEnabled }) {
         </a>
       </div>
 
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p className="font-semibold text-blue-900">วิธีที่ 1: รันจาก USB แล้วนำเข้าทีละหลายเครื่อง (ไม่ต้องล็อกอินบนเครื่องผู้ใช้)</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
+          <li>ใส่สคริปต์ไว้ใน USB แล้วรันบนเครื่องผู้ใช้ สคริปต์จะบันทึกไฟล์ไว้ในโฟลเดอร์ specs ข้างสคริปต์</li>
+          <li>กลับมาที่เครื่อง IT แล้วนำไฟล์ในโฟลเดอร์ specs เข้าที่หน้านำเข้า ระบบจับคู่ Asset ด้วย Serial</li>
+        </ol>
+        {enabled ? (
+          <Link href="/assets/specs-import" className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
+            ไปหน้านำเข้าสเปกเครื่อง
+          </Link>
+        ) : (
+          <p className="mt-3 text-sm text-blue-900">เปิดสวิตช์ด้านบนก่อนจึงจะใช้หน้านำเข้าได้</p>
+        )}
+      </div>
+
+      <p className="font-semibold text-slate-800">วิธีที่ 2: วางข้อมูลทีละเครื่องบนเครื่องผู้ใช้</p>
       <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
         <li>รันสคริปต์บนเครื่องที่ต้องการตรวจ สคริปต์จะคัดลอกข้อมูลไว้ให้</li>
         <li>เปิดหน้าแก้ไข Asset ของเครื่องนั้นบนเครื่องเดียวกัน</li>
         <li>กด &quot;วางข้อมูลจากสคริปต์&quot; ระบบจะกรอกและกางหัวข้อ Technical Information กับ Software ให้ ตรวจค่า แล้วกดบันทึก</li>
       </ol>
       <p className="text-xs text-slate-500">
+        Asset: Brand / Model (เขียนทับ) และ Serial (เติมเฉพาะตอนว่าง) ·
         Technical: Hostname, IP, MAC (Wi-Fi), OS, CPU, RAM, Storage, BIOS, Resolution และขนาดจอ (Windows) ·
         Software: Office Product, Version, License, Account และ Windows Activation (Mac ได้เฉพาะ Office Version / Account) ·
         VLAN และ Management IP ต้องกรอกเอง · ถ้า Serial ไม่ตรงกับ Asset จะเตือนก่อนกรอก

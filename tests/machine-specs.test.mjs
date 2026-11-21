@@ -1,6 +1,71 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareSerial, normalizeSerial, parseMachineSpecs } from "../lib/machine-specs.js";
+import {
+  assetIdentityChanges,
+  compareSerial,
+  normalizeBrand,
+  normalizeSerial,
+  parseMachineSpecs,
+  planMachineSpecsImport,
+} from "../lib/machine-specs.js";
+
+test("normalizes brand names from the machine", () => {
+  const cases = {
+    "Hewlett-Packard": "HP", HP: "HP", LENOVO: "Lenovo", "Dell Inc.": "Dell",
+    "ASUSTeK COMPUTER INC.": "ASUS", "Micro-Star International Co., Ltd.": "MSI",
+    "Apple Inc.": "Apple", "Contoso Corporation": "Contoso", "System manufacturer": "",
+    "To be filled by O.E.M.": "",
+  };
+  for (const [input, expected] of Object.entries(cases)) assert.equal(normalizeBrand(input), expected, input);
+});
+
+test("reads brand and model separately and drops placeholder values", () => {
+  const specs = parseMachineSpecs(JSON.stringify({
+    amzapSpecs: 1, serialNumber: "Default string", brand: "LENOVO", model: "ThinkPad T14 Gen 2i", hostname: "PC-1",
+  }));
+  assert.deepEqual(specs.asset, { brand: "Lenovo", model: "ThinkPad T14 Gen 2i" });
+  assert.equal(specs.serialNumber, "");
+  assert.equal("brand" in specs.values, false);
+
+  const custom = parseMachineSpecs(JSON.stringify({
+    amzapSpecs: 1, serialNumber: "To be filled by O.E.M.", brand: "System manufacturer", model: "System Product Name",
+  }));
+  assert.deepEqual(custom.asset, {});
+  assert.equal(normalizeSerial("0123456789"), "");
+  assert.equal(normalizeSerial("000000"), "");
+});
+
+test("serial is only filled when empty; brand and model overwrite unless turned off", () => {
+  const specs = { asset: { brand: "HP", model: "HP Laptop 15-fc0xxx" }, serialNumber: "5CD61208BJ" };
+
+  assert.deepEqual(assetIdentityChanges({ brand: "hp", model: "HP 15", serialNumber: "" }, specs), {
+    brand: { from: "hp", to: "HP" },
+    model: { from: "HP 15", to: "HP Laptop 15-fc0xxx" },
+    serialNumber: { from: "", to: "5CD61208BJ" },
+  });
+  // ไม่เขียนทับ: เติมเฉพาะช่องว่าง · Serial ที่มีอยู่แล้วไม่ถูกแตะ
+  assert.deepEqual(
+    assetIdentityChanges({ brand: "hp", model: "", serialNumber: "OTHER" }, specs, { overwrite: false }),
+    { model: { from: "", to: "HP Laptop 15-fc0xxx" } },
+  );
+  // สคริปต์อ่านค่าไม่ได้ ไม่ลบค่าเดิม · ค่าเท่าเดิมไม่นับว่าเปลี่ยน
+  assert.deepEqual(assetIdentityChanges({ brand: "HP", model: "X1", serialNumber: "5CD61208BJ" }, { asset: { brand: "HP" }, serialNumber: "5CD61208BJ" }), {});
+});
+
+test("plans an import: invalid files, missing serials and duplicate serials are skipped", () => {
+  const spec = (serial, hostname) => JSON.stringify({ amzapSpecs: 1, serialNumber: serial, hostname });
+  const plan = planMachineSpecsImport([
+    { fileName: "a.json", text: spec("abc 123", "PC-OLD") },
+    { fileName: "b.json", text: "not json" },
+    { fileName: "c.json", text: spec("", "PC-NOSERIAL") },
+    { fileName: "d.json", text: spec("ABC123", "PC-NEW") },
+  ]);
+  assert.deepEqual(plan.map((item) => item.status), ["duplicate", "invalid", "no_serial", "ok"]);
+  assert.equal(plan[3].serialNumber, "ABC123");
+  assert.equal(plan[3].values.hostname, "PC-NEW");
+  assert.deepEqual(plan[3].machine, {});
+  assert.match(plan[1].error, /ไม่ใช่ผลจากสคริปต์/);
+});
 
 // ผลจริงจากสคริปต์ Windows (public/tools/amzap-specs-windows.bat)
 const windowsOutput = JSON.stringify({

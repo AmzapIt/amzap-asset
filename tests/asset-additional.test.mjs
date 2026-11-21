@@ -2,9 +2,35 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   additionalFromApi,
+  mergeAssetTechnical,
   parseAssetAdditional,
   saveAssetAdditional,
 } from "../lib/asset-additional.js";
+
+test("imported specs keep existing values for fields the file does not have", async () => {
+  const existing = {
+    hostname: "OLD-NAME", vlan: 20, management_ip: "10.0.0.5", ram_gb: "8.00",
+    extra_specs: { screenSize: "15.6\"", officeAccount: "old@example.com" },
+  };
+  const calls = [];
+  const client = {
+    query: async (sql, values) => {
+      calls.push({ sql, values });
+      return { rows: sql.includes("SELECT") ? [existing] : [], rowCount: 1 };
+    },
+  };
+
+  await mergeAssetTechnical(client, "7", { hostname: "NEW-NAME", ramGb: "16", officeProduct: "Microsoft 365" });
+
+  assert.match(calls[0].sql, /FOR UPDATE/);
+  const insert = calls.find(({ sql }) => sql.includes("INSERT INTO public.asset_technical"));
+  const [assetId, hostname, , , , , ramGb, , , vlan, managementIp] = insert.values;
+  assert.deepEqual([assetId, hostname, ramGb, vlan, managementIp], ["7", "NEW-NAME", "16", 20, "10.0.0.5"]);
+  const extra = JSON.parse(insert.values.at(-1));
+  assert.equal(extra.screenSize, "15.6\"");
+  assert.equal(extra.officeAccount, "old@example.com");
+  assert.equal(extra.officeProduct, "Microsoft 365");
+});
 
 test("software fields are saved in extra_specs and read back into the form", async () => {
   const software = {

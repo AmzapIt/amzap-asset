@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { compareSerial, parseMachineSpecs } from "@/lib/machine-specs";
+import { assetIdentityChanges, compareSerial, parseMachineSpecs } from "@/lib/machine-specs";
 
 // ปุ่มวางข้อมูลจากสคริปต์ตรวจเครื่อง: อ่าน Clipboard แล้วกรอกช่อง Technical Information และ Software
 // ยังไม่บันทึกจนกว่าผู้ใช้จะกดบันทึกฟอร์มเอง
@@ -31,13 +31,18 @@ export default function MachineSpecsPaste({ form, onChange, onApplied }) {
       return;
     }
 
-    const entries = Object.entries(specs.values);
+    // ฟอร์มให้ตรวจค่าก่อนกดบันทึกอยู่แล้ว จึงเขียนทับ Brand / Model ได้เลย · Serial เติมเฉพาะตอนว่าง
+    const identity = assetIdentityChanges(form, specs, { overwrite: true });
+    const entries = [
+      ...Object.entries(identity).map(([name, change]) => [name, change.to]),
+      ...Object.entries(specs.values),
+    ];
     for (const [name, value] of entries) onChange({ target: { name, value } });
     onApplied?.();
     setManual(false);
     setText("");
     const serialNote = serial === "match" ? " · Serial ตรงกับ Asset"
-      : serial === "unknown" && specs.serialNumber ? ` · Serial เครื่อง: ${specs.serialNumber}` : "";
+      : identity.serialNumber ? ` · เติม Serial ${specs.serialNumber} ให้แล้ว` : "";
     setMessage(`กรอกแล้ว ${entries.length} ช่อง ตรวจค่าแล้วกดบันทึก${serialNote}`);
   }
 
