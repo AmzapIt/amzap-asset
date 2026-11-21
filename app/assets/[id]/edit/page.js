@@ -116,6 +116,17 @@ export default function EditAssetPage() {
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
 
+  // ปุ่ม "วางข้อมูลจากสคริปต์" เปิด/ปิดที่ Settings → สคริปต์ตรวจเครื่อง
+  const [machineSpecsEnabled, setMachineSpecsEnabled] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/settings/machine-specs", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setMachineSpecsEnabled(data?.enabled === true))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
   // ==================================================
   // Helper แปลง DATE จาก PostgreSQL
   //
@@ -773,6 +784,7 @@ export default function EditAssetPage() {
             existingDocuments={existingDocuments}
             existingMaintenance={existingMaintenance}
             allowRepairDispatch
+            machineSpecsEnabled={machineSpecsEnabled}
           />
 
           <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-6">

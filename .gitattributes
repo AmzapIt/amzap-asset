@@ -1,0 +1,3 @@
+# สคริปต์ที่ให้ดาวน์โหลด: .bat ต้องเป็น CRLF ไม่งั้น cmd อ่านผิด, .sh ต้องเป็น LF ไม่งั้น bash บน Mac error
+*.bat text eol=crlf
+*.sh text eol=lf

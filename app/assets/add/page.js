@@ -163,8 +163,7 @@ const collapsibleGroups = [
       { name: "biosFirmware", label: "BIOS / Firmware" },
       { name: "vlan", label: "VLAN", type: "number", min: "1", max: "4094" },
       { name: "managementIp", label: "Management IP" },
-      { name: "rack", label: "Rack" },
-      { name: "rackU", label: "U Position", type: "number", min: "1" },
+      // Rack / Rack U ซ่อนไว้ (คอลัมน์ใน DB ยังอยู่)
 
       // แสดงเฉพาะเมื่อเลือกประเภท Monitor
       { name: "screenSize", label: "Screen Size", types: ["Monitor"] },

@@ -833,14 +833,33 @@ export default async function AssetDetailPage({ params }) {
                 ["BIOS / Firmware", technical.bios_firmware],
                 ["VLAN", technical.vlan],
                 ["Management IP", technical.management_ip],
-                ["Rack", technical.rack],
-                ["Rack U", technical.rack_u],
                 [
                   "Screen Size",
                   technical.extra_specs?.screenSize ??
                     technical.extra_specs?.screen_size,
                 ],
                 ["Resolution", technical.extra_specs?.resolution],
+              ]}
+            />
+          )}
+        </DetailSection>
+
+        {/* ================= SOFTWARE (เก็บใน asset_technical.extra_specs) ================= */}
+        <DetailSection title="Software">
+          {!technical?.extra_specs?.officeProduct && !technical?.extra_specs?.officeVersion &&
+           !technical?.extra_specs?.officeLicense && !technical?.extra_specs?.officeAccount &&
+           !technical?.extra_specs?.windowsActivation ? (
+            <p className="text-sm text-gray-500">
+              ยังไม่มีข้อมูล Software สำหรับ Asset นี้
+            </p>
+          ) : (
+            <InfoGrid
+              rows={[
+                ["Office Product", technical.extra_specs.officeProduct],
+                ["Office Version", technical.extra_specs.officeVersion],
+                ["Office License", technical.extra_specs.officeLicense],
+                ["Office Account", technical.extra_specs.officeAccount],
+                ["Windows Activation", technical.extra_specs.windowsActivation],
               ]}
             />
           )}

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { isViewableAssetDocumentUrl } from "@/lib/asset-photo-links";
+import MachineSpecsPaste from "@/app/assets/MachineSpecsPaste";
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100";
@@ -11,8 +13,14 @@ const technicalFields = [
   ["cpu", "CPU"], ["ramGb", "RAM (GB)", "number"],
   ["storageGb", "Storage (GB)", "number"], ["biosFirmware", "BIOS / Firmware"],
   ["vlan", "VLAN", "number"], ["managementIp", "Management IP"],
-  ["rack", "Rack"], ["rackU", "Rack U", "number"],
+  // Rack / Rack U ซ่อนไว้ (คอลัมน์ใน DB ยังอยู่ ค่าเดิมยังถูกส่งกลับตอนบันทึก)
   ["screenSize", "Screen Size"], ["resolution", "Resolution"],
+];
+
+const softwareFields = [
+  ["officeProduct", "Office Product"], ["officeVersion", "Office Version"],
+  ["officeLicense", "Office License"], ["officeAccount", "Office Account"],
+  ["windowsActivation", "Windows Activation"],
 ];
 
 const securityFields = [
@@ -29,19 +37,29 @@ function Field({ name, label, type = "text", form, onChange, ...props }) {
   return <label className="block"><span className="mb-2 block font-medium">{label}</span>{type === "textarea" ? <textarea {...common} rows={3} /> : <input {...common} type={type} />}</label>;
 }
 
-function Section({ title, description, children }) {
-  return <details className="rounded-2xl border border-slate-200/70 bg-white shadow-sm"><summary className="cursor-pointer px-4 py-4 text-lg font-semibold sm:px-6 sm:py-5">{title}</summary><div className="border-t border-slate-200 px-4 py-5 sm:px-6"><p className="mb-5 text-sm text-slate-500">{description}</p>{children}</div></details>;
+function Section({ title, description, children, open, onToggle }) {
+  return <details open={open} onToggle={onToggle} className="rounded-2xl border border-slate-200/70 bg-white shadow-sm"><summary className="cursor-pointer px-4 py-4 text-lg font-semibold sm:px-6 sm:py-5">{title}</summary><div className="border-t border-slate-200 px-4 py-5 sm:px-6"><p className="mb-5 text-sm text-slate-500">{description}</p>{children}</div></details>;
 }
 
 export default function AssetAdditionalFields({
-  form, onChange, sections = ["technical", "security", "documents", "maintenance"],
+  form, onChange, sections = ["technical", "software", "security", "documents", "maintenance"],
   existingDocuments = [], existingMaintenance = [], allowRepairDispatch = false,
+  machineSpecsEnabled = false,
 }) {
+  // กางหัวข้อ Technical / Software หลังวางข้อมูลจากสคริปต์ ให้เห็นค่าที่กรอก
+  const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [softwareOpen, setSoftwareOpen] = useState(false);
+
   return <>
-    {sections.includes("technical") && <Section title="Technical Information" description="ข้อมูล Hardware, Network และระบบปฏิบัติการ">
+    {machineSpecsEnabled && sections.includes("technical") &&
+      <MachineSpecsPaste form={form} onChange={onChange} onApplied={() => { setTechnicalOpen(true); setSoftwareOpen(true); }} />}
+    {sections.includes("technical") && <Section title="Technical Information" description="ข้อมูล Hardware, Network และระบบปฏิบัติการ" open={technicalOpen} onToggle={(e) => setTechnicalOpen(e.currentTarget.open)}>
       <div className="grid gap-5 md:grid-cols-2">{technicalFields.map(([name, label, type]) => <Field key={name} name={name} label={label} type={type} form={form} onChange={onChange} min={type === "number" ? (name === "vlan" || name === "rackU" ? "1" : "0") : undefined} max={name === "vlan" ? "4094" : undefined} step={name === "ramGb" || name === "storageGb" ? "0.01" : undefined} />)}</div>
     </Section>}
-    {sections.includes("security") && <Section title="Security / Compliance" description="ข้อมูล Encryption, Endpoint Protection และการตรวจสอบล่าสุด">
+    {sections.includes("software") && <Section title="Software" description="Microsoft Office และการ Activate Windows" open={softwareOpen} onToggle={(e) => setSoftwareOpen(e.currentTarget.open)}>
+      <div className="grid gap-5 md:grid-cols-2">{softwareFields.map(([name, label]) => <Field key={name} name={name} label={label} form={form} onChange={onChange} />)}</div>
+    </Section>}
+    {sections.includes("security") &&<Section title="Security / Compliance" description="ข้อมูล Encryption, Endpoint Protection และการตรวจสอบล่าสุด">
       <div className="grid gap-5 md:grid-cols-2"><label className="block"><span className="mb-2 block font-medium">Encryption</span><select name="encryptionEnabled" value={form.encryptionEnabled ?? ""} onChange={onChange} className={inputClass}><option value="">ยังไม่ระบุ</option><option value="true">Enabled</option><option value="false">Disabled</option></select></label>{securityFields.map(([name, label, type]) => <Field key={name} name={name} label={label} type={type} form={form} onChange={onChange} />)}</div>
     </Section>}
     {sections.includes("documents") && <Section title="Documents" description="เพิ่มลิงก์ HTTPS ของเอกสารที่เก็บใน Google Drive หรือพื้นที่จัดเก็บที่ได้รับอนุญาต">

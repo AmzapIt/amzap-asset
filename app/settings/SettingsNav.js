@@ -7,6 +7,7 @@ export default function SettingsNav({ view, admin = false }) {
       ["photos", "การจัดเก็บรูป Asset", "/settings?tab=photos"],
       ["labels", "การพิมพ์สติ๊กเกอร์", "/settings?tab=labels"],
       ["documents", "รูปแบบเอกสาร", "/settings?tab=documents"],
+      ["machine", "สคริปต์ตรวจเครื่อง", "/settings?tab=machine"],
       ["master", "Master Data", "/settings?tab=master"],
       ["accounts", "System Accounts", "/accounts"],
     ] : []),

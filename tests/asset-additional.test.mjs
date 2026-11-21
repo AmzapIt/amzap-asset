@@ -1,9 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  additionalFromApi,
   parseAssetAdditional,
   saveAssetAdditional,
 } from "../lib/asset-additional.js";
+
+test("software fields are saved in extra_specs and read back into the form", async () => {
+  const software = {
+    officeProduct: "Microsoft 365 Apps for business",
+    officeVersion: "16.0.18129.20158 (x64)",
+    officeLicense: "Subscription (Microsoft 365)",
+    officeAccount: "user@example.com",
+    windowsActivation: "Activated (OEM)",
+  };
+  const parsed = parseAssetAdditional({ ...software, screenSize: "15.6\"" });
+  assert.equal(parsed.technicalHasValues, true);
+
+  const calls = [];
+  const client = { query: async (sql, values) => { calls.push({ sql, values }); return { rowCount: 1 }; } };
+  await saveAssetAdditional(client, "10", parsed);
+  const insert = calls.find(({ sql }) => sql.includes("INSERT INTO public.asset_technical"));
+  const extraSpecs = JSON.parse(insert.values.at(-1));
+  assert.deepEqual(extraSpecs, { screenSize: "15.6\"", resolution: null, ...software });
+
+  const form = additionalFromApi({ technical: { extra_specs: extraSpecs } });
+  for (const [name, value] of Object.entries(software)) assert.equal(form[name], value);
+  assert.equal(form.screenSize, "15.6\"");
+});
 
 test("blank additional form does not create history records", () => {
   const parsed = parseAssetAdditional({});
