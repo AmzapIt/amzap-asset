@@ -4,6 +4,7 @@ import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
 import AssetAdditionalFields from "@/app/assets/AssetAdditionalFields";
 import AssetPhotoField from "@/app/assets/AssetPhotoField";
+import AssetSubtypeSelect from "@/app/assets/AssetSubtypeSelect";
 import {
   additionalFieldNames,
   emptyAdditionalForm,
@@ -31,6 +32,7 @@ const initialForm = {
   // General Information
   registrationSiteId: "",
   type: "",
+  subtypeId: "",
   assetCodeNumber: "",
   receivedDate: "",
   assetName: "",
@@ -349,6 +351,7 @@ const supportedFields = [
   "location",
   "vendor",
   "type",
+  "subtypeId",
   "receivedDate",
   "assetName",
   "brand",
@@ -563,9 +566,11 @@ export default function AddAssetPage() {
 
     // ...previous = เก็บค่า Field อื่นไว้เหมือนเดิม
     // [name]: value = เปลี่ยนเฉพาะ Field ที่ผู้ใช้แก้
+    // เปลี่ยน Asset Type แล้วล้างประเภทย่อย เพราะเป็นรายการของประเภทเดิม
     setForm((previous) => ({
       ...previous,
       [name]: value,
+      ...(name === "type" && value !== previous.type ? { subtypeId: "" } : {}),
     }));
   }
 
@@ -763,6 +768,13 @@ export default function AddAssetPage() {
                   <p className="mt-1 text-sm text-red-600">{assetTypesError}</p>
                 )}
               </div>
+
+              <AssetSubtypeSelect
+                assetTypeId={selectedType?.id == null ? "" : String(selectedType.id)}
+                value={form.subtypeId}
+                onChange={handleChange}
+                className={inputClass}
+              />
 
               <div className="md:col-span-2">
                 <label htmlFor="assetCodeNumber" className="mb-2 block font-medium">

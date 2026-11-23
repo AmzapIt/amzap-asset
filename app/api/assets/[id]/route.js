@@ -4,6 +4,8 @@ import { requireWrite } from "@/lib/access";
 import { auth } from "@/auth";
 import { parseAssetDisposalReason, recordAssetEdit } from "@/lib/asset-history";
 import { getItStockLocation } from "@/lib/it-stock";
+import { parseSubtypeId, validateAssetSubtype } from "@/lib/asset-subtypes";
+import { AssetWorkflowError } from "@/lib/asset-scan";
 import {
   parseAssetAdditional,
   saveAssetAdditional,
@@ -58,6 +60,7 @@ export async function GET(request, { params }) {
           a.warranty_start::text AS warranty_start,
           a.warranty_end::text AS warranty_end,
           t.name AS asset_type,
+          subtype.name AS asset_subtype,
           registration_site.site_code AS registration_site_code,
           registration_site.name AS registration_site_name,
           u.full_name AS asset_owner_name,
@@ -67,6 +70,8 @@ export async function GET(request, { params }) {
         FROM public.assets a
         LEFT JOIN public.asset_types t
           ON t.id = a.asset_type_id
+        LEFT JOIN public.asset_subtypes subtype
+          ON subtype.id = a.subtype_id
         LEFT JOIN public.asset_registration_sites registration_site
           ON registration_site.id = a.registration_site_id
         LEFT JOIN public."user" u
@@ -260,13 +265,27 @@ export async function PATCH(request, { params }) {
       await client.query("BEGIN");
       const existing = (await client.query(
         `SELECT *,received_date::text AS received_date,purchase_date::text AS purchase_date,
-          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end
+          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end,
+          (SELECT name FROM public.asset_subtypes WHERE id=assets.subtype_id) AS subtype
           FROM public.assets WHERE id=$1 FOR UPDATE`,
         [id],
       )).rows[0];
       if (!existing) {
         await client.query("ROLLBACK");
         return Response.json({ error: "Asset not found" }, { status: 404 });
+      }
+      // ประเภทย่อยเปลี่ยนได้ แต่ต้องอยู่ในประเภทหลักเดิมของ Asset
+      let subtypeId = existing.subtype_id;
+      if (Object.hasOwn(body, "subtypeId")) {
+        try {
+          subtypeId = await validateAssetSubtype(
+            client, parseSubtypeId(body.subtypeId), existing.asset_type_id, existing.subtype_id,
+          );
+        } catch (error) {
+          if (!(error instanceof AssetWorkflowError)) throw error;
+          await client.query("ROLLBACK");
+          return Response.json({ error: error.message }, { status: 400 });
+        }
       }
       if (additional.maintenance?.sentAt && body.status !== "Repair") {
         await client.query("ROLLBACK");
@@ -334,10 +353,12 @@ export async function PATCH(request, { params }) {
           cost_center = $16,
           notes = $17,
           vendor_id = CASE WHEN $19 THEN $20::bigint ELSE vendor_id END,
+          subtype_id = $21::bigint,
           updated_at = NOW()
         WHERE id = $18
         RETURNING *,received_date::text AS received_date,purchase_date::text AS purchase_date,
-          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end
+          warranty_start::text AS warranty_start,warranty_end::text AS warranty_end,
+          (SELECT name FROM public.asset_subtypes WHERE id=$21::bigint) AS subtype
       `,
       [
         body.assetName?.trim() || null,
@@ -360,6 +381,7 @@ export async function PATCH(request, { params }) {
         id,
         // Vendor ยังแก้ในหน้า Edit ได้ตามเดิม ส่วน Movement fields ไม่อยู่ใน UPDATE นี้
         Object.hasOwn(body, "vendor"), body.vendor || null,
+        subtypeId,
       ]
     );
 

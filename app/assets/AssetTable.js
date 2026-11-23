@@ -116,6 +116,8 @@ export default function AssetTable({ assets }) {
 
   // เก็บประเภทที่เลือก เช่น Monitor
   const [selectedType, setSelectedType] = useState("");
+  // ประเภทย่อย ใช้ได้เมื่อเลือก Asset Type แล้ว · "__none__" = ยังไม่ระบุประเภทย่อย
+  const [selectedSubtype, setSelectedSubtype] = useState("");
 
   // เก็บสถานะที่เลือก เช่น In Use
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -181,6 +183,7 @@ export default function AssetTable({ assets }) {
           if (stored && typeof stored === "object" && !Array.isArray(stored)) {
             setSearchText(storedText(stored.searchText));
             setSelectedType(storedText(stored.selectedType));
+            setSelectedSubtype(storedText(stored.selectedSubtype));
             setSelectedStatus(storedText(stored.selectedStatus));
             setSelectedLocation(storedText(stored.selectedLocation));
             setSelectedHolder(
@@ -221,6 +224,7 @@ export default function AssetTable({ assets }) {
         JSON.stringify({
           searchText,
           selectedType,
+          selectedSubtype,
           selectedStatus,
           selectedLocation,
           selectedHolder,
@@ -236,6 +240,7 @@ export default function AssetTable({ assets }) {
     selectedHolder,
     selectedLocation,
     selectedStatus,
+    selectedSubtype,
     selectedType,
     sortConfig,
   ]);
@@ -268,6 +273,18 @@ export default function AssetTable({ assets }) {
     };
   }, [assets]);
 
+  // ตัวเลือกประเภทย่อยของ Asset Type ที่เลือกอยู่ พร้อมจำนวน
+  const subtypeOptions = useMemo(() => {
+    if (!selectedType) return { names: [], counts: new Map(), noneCount: 0 };
+    const ofType = assets.filter((asset) => asset.asset_type === selectedType);
+    const counts = getOptionCounts(ofType, "asset_subtype");
+    return {
+      names: [...counts.keys()].sort(compareNaturalText),
+      counts,
+      noneCount: ofType.filter((asset) => !asset.asset_subtype).length,
+    };
+  }, [assets, selectedType]);
+
   // ==================================================
   // 4. กรองข้อมูลด้วย JavaScript
   // ไม่ได้แก้หรือลบข้อมูลใน PostgreSQL
@@ -284,6 +301,7 @@ export default function AssetTable({ assets }) {
           asset.asset_code,
           asset.legacy_asset_codes,
           asset.asset_type,
+          asset.asset_subtype,
           asset.asset_name,
           asset.brand,
           asset.model,
@@ -303,6 +321,10 @@ export default function AssetTable({ assets }) {
     const matchesType =
       !selectedType ||
       asset.asset_type === selectedType;
+
+    const matchesSubtype =
+      !selectedSubtype ||
+      (selectedSubtype === "__none__" ? !asset.asset_subtype : asset.asset_subtype === selectedSubtype);
 
     // ถ้ายังไม่เลือกสถานะ ให้ผ่านทั้งหมด
     const matchesStatus =
@@ -324,6 +346,7 @@ export default function AssetTable({ assets }) {
     return (
       matchesSearch &&
       matchesType &&
+      matchesSubtype &&
       matchesStatus &&
       matchesLocation &&
       matchesHolder
@@ -335,6 +358,7 @@ export default function AssetTable({ assets }) {
     selectedHolder,
     selectedLocation,
     selectedStatus,
+    selectedSubtype,
     selectedType,
   ]);
 
@@ -456,6 +480,7 @@ export default function AssetTable({ assets }) {
   const activeFilterCount = [
     searchText.trim(),
     selectedType,
+    selectedSubtype,
     selectedStatus,
     selectedLocation,
     selectedHolder,
@@ -464,6 +489,7 @@ export default function AssetTable({ assets }) {
   function resetFilters() {
     setSearchText("");
     setSelectedType("");
+    setSelectedSubtype("");
     setSelectedStatus("");
     setSelectedLocation("");
     setSelectedHolder("");
@@ -540,11 +566,10 @@ export default function AssetTable({ assets }) {
           <select
             id="typeFilter"
             value={selectedType}
-            onChange={(event) =>
-              setSelectedType(
-                event.target.value
-              )
-            }
+            onChange={(event) => {
+              setSelectedType(event.target.value);
+              setSelectedSubtype("");
+            }}
             className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
             <option value="">ทุกประเภท ({assets.length})</option>
@@ -559,6 +584,34 @@ export default function AssetTable({ assets }) {
             ))}
           </select>
         </div>
+
+        {/* กรองประเภทย่อย: แสดงเมื่อ Asset Type ที่เลือกมีประเภทย่อย */}
+        {selectedType && subtypeOptions.names.length > 0 && (
+          <div>
+            <label
+              htmlFor="subtypeFilter"
+              className="mb-2 block text-sm font-medium"
+            >
+              ประเภทย่อย
+            </label>
+            <select
+              id="subtypeFilter"
+              value={selectedSubtype}
+              onChange={(event) => setSelectedSubtype(event.target.value)}
+              className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="">ทุกประเภทย่อย</option>
+              {subtypeOptions.names.map((name) => (
+                <option key={name} value={name}>
+                  {name} ({subtypeOptions.counts.get(name)})
+                </option>
+              ))}
+              {subtypeOptions.noneCount > 0 && (
+                <option value="__none__">ยังไม่ระบุ ({subtypeOptions.noneCount})</option>
+              )}
+            </select>
+          </div>
+        )}
 
         {/* กรองสถานะ */}
         <div>
@@ -733,7 +786,7 @@ export default function AssetTable({ assets }) {
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <div>
                 <dt className="text-xs text-slate-500">ประเภท</dt>
-                <dd className="mt-0.5 break-words text-slate-700">{asset.asset_type || "-"}</dd>
+                <dd className="mt-0.5 break-words text-slate-700">{asset.asset_type || "-"}{asset.asset_subtype && <span className="block text-xs text-slate-500">{asset.asset_subtype}</span>}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Brand / Model</dt>
@@ -871,6 +924,7 @@ export default function AssetTable({ assets }) {
                 {/* ประเภท */}
                 <td className="px-5 py-5 text-slate-700">
                   {asset.asset_type || "-"}
+                  {asset.asset_subtype && <span className="block text-xs text-slate-500">{asset.asset_subtype}</span>}
                 </td>
 
                 {/* Serial Number */}

@@ -3,6 +3,8 @@ import { getDbPool, query } from "@/lib/db";
 import { requireWrite } from "@/lib/access";
 import { auth } from "@/auth";
 import { getItStockLocation } from "@/lib/it-stock";
+import { parseSubtypeId, validateAssetSubtype } from "@/lib/asset-subtypes";
+import { AssetWorkflowError } from "@/lib/asset-scan";
 import {
   parseAssetAdditional,
   saveAssetAdditional,
@@ -218,6 +220,13 @@ export async function POST(request) {
 
     // เอา ID ของประเภทมาใช้เป็น Foreign Key
     const assetTypeId = typeResult.rows[0].id;
+    let subtypeId;
+    try {
+      subtypeId = await validateAssetSubtype({ query }, parseSubtypeId(body.subtypeId), assetTypeId);
+    } catch (error) {
+      if (!(error instanceof AssetWorkflowError)) throw error;
+      return Response.json({ error: error.message }, { status: 400 });
+    }
     const assetCode = buildAssetCode(
       registrationSiteResult.rows[0].site_code,
       typeResult.rows[0].prefix,
@@ -230,6 +239,7 @@ export async function POST(request) {
     const fields = [
       ["asset_code", assetCode],
       ["asset_type_id", assetTypeId],
+      ["subtype_id", subtypeId],
       ["registration_site_id", registrationSiteId],
       ["received_date", receivedDate],
       ["asset_owner_id", null],

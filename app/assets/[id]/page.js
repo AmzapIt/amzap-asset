@@ -163,8 +163,9 @@ async function getAssetDetail(id) {
           a.warranty_start::text AS warranty_start,
           a.warranty_end::text AS warranty_end,
 
-      -- ชื่อประเภท Asset
+      -- ชื่อประเภท Asset และประเภทย่อย
       t.name AS asset_type,
+      subtype.name AS asset_subtype,
       registration_site.site_code AS registration_site_code,
       registration_site.name AS registration_site_name,
 
@@ -184,6 +185,9 @@ async function getAssetDetail(id) {
 
     LEFT JOIN public.asset_types t
       ON t.id = a.asset_type_id
+
+    LEFT JOIN public.asset_subtypes subtype
+      ON subtype.id = a.subtype_id
 
     LEFT JOIN public.asset_registration_sites registration_site
       ON registration_site.id = a.registration_site_id
@@ -611,6 +615,7 @@ export default async function AssetDetailPage({ params }) {
                   : "ยังไม่ได้กำหนด",
               ],
               ["ประเภทอุปกรณ์", asset.asset_type],
+              ["ประเภทย่อย", asset.asset_subtype],
               ["ชื่อทรัพย์สิน", asset.asset_name],
               ["Asset Owner", ownerName],
               ["ยี่ห้อ", asset.brand],

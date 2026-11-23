@@ -4,6 +4,7 @@ import Link from "next/link";
 import AssetLookups from "@/app/components/AssetLookups";
 import AssetAdditionalFields from "@/app/assets/AssetAdditionalFields";
 import AssetPhotoField from "@/app/assets/AssetPhotoField";
+import AssetSubtypeSelect from "@/app/assets/AssetSubtypeSelect";
 import {
   additionalFromApi,
   emptyAdditionalForm,
@@ -98,6 +99,9 @@ export default function EditAssetPage() {
   const [assetCode, setAssetCode] = useState("");
   const [originalStatus, setOriginalStatus] = useState("");
   const [assetType, setAssetType] = useState("");
+  const [assetTypeId, setAssetTypeId] = useState("");
+  // ประเภทย่อยเดิม ใช้แสดงในตัวเลือกแม้ถูกปิดใช้ภายหลัง
+  const [originalSubtypeId, setOriginalSubtypeId] = useState("");
   const [registrationSite, setRegistrationSite] = useState("");
   const [previousAssetCode, setPreviousAssetCode] = useState("");
 
@@ -173,6 +177,7 @@ export default function EditAssetPage() {
           department: asset.owning_department_id == null ? "" : String(asset.owning_department_id),
           location: asset.location_id == null ? "" : String(asset.location_id),
           vendor: asset.vendor_id == null ? "" : String(asset.vendor_id),
+          subtypeId: asset.subtype_id == null ? "" : String(asset.subtype_id),
           assetName: asset.asset_name || "",
           brand: asset.brand || "",
           model: asset.model || "",
@@ -262,6 +267,8 @@ export default function EditAssetPage() {
         // ----------------------------------------------
         setAssetCode(asset.asset_code || "");
         setAssetType(asset.asset_type || "");
+        setAssetTypeId(asset.asset_type_id == null ? "" : String(asset.asset_type_id));
+        setOriginalSubtypeId(asset.subtype_id == null ? "" : String(asset.subtype_id));
         setRegistrationSite(
           asset.registration_site_code && asset.registration_site_name
             ? `${asset.registration_site_code} — ${asset.registration_site_name}`
@@ -476,6 +483,14 @@ export default function EditAssetPage() {
                   Asset Type ไม่สามารถแก้ไขได้
                 </p>
               </div>
+
+              <AssetSubtypeSelect
+                assetTypeId={assetTypeId}
+                value={form.subtypeId}
+                onChange={handleChange}
+                currentSubtypeId={originalSubtypeId}
+                className={inputClass}
+              />
 
               {/* Asset Name */}
               <div>

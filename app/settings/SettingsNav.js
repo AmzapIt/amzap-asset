@@ -9,6 +9,7 @@ export default function SettingsNav({ view, admin = false }) {
       ["documents", "รูปแบบเอกสาร", "/settings?tab=documents"],
       ["machine", "สคริปต์ตรวจเครื่อง", "/settings?tab=machine"],
       ["master", "Master Data", "/settings?tab=master"],
+      ["subtypes", "ประเภทย่อย", "/settings?tab=subtypes"],
       ["accounts", "System Accounts", "/accounts"],
     ] : []),
     ["password", "Change Password", "/account/password"],

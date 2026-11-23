@@ -9,6 +9,7 @@ import SettingsNav from "./SettingsNav";
 import DocumentSettings from "./DocumentSettings";
 import { getItSignerName } from "@/lib/document-settings";
 import MachineSpecsSettings from "./MachineSpecsSettings";
+import AssetSubtypeSettings from "./AssetSubtypeSettings";
 import { getMachineSpecsEnabled } from "@/lib/machine-specs-settings";
 
 export const runtime = "nodejs";
@@ -26,7 +27,7 @@ export default async function SettingsPage({ searchParams }) {
   const account = await workflowPageAccount();
   const admin = account.role === "Admin";
   const requested = (await searchParams)?.tab;
-  const allowed = new Set(admin ? ["overview", "photos", "labels", "documents", "machine", "master"] : ["overview"]);
+  const allowed = new Set(admin ? ["overview", "photos", "labels", "documents", "machine", "master", "subtypes"] : ["overview"]);
   const tab = typeof requested === "string" && allowed.has(requested) ? requested : "overview";
   const photoSettings = admin ? readServerSettings() : null;
   const itSignerName = admin && tab === "documents" ? await getItSignerName().catch(() => "") : "";
@@ -71,6 +72,8 @@ export default async function SettingsPage({ searchParams }) {
         {tab === "documents" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">รูปแบบเอกสาร</h2><p className="mt-2 text-sm text-slate-600">เอกสารปัจจุบันใช้ชื่อบริษัท AMZAP Group และโลโก้จากไฟล์ resources/reports/logo.png ส่วนชื่อผู้เซ็นฝั่ง IT ตั้งค่าได้ด้านล่าง</p><DocumentSettings initialName={itSignerName} /><div className="mt-5 grid gap-3 sm:grid-cols-2">{[["ชื่อบริษัท", "AMZAP Group"], ["โลโก้", "โลโก้ AMZAP ที่มากับระบบ"]].map(([name, value]) => <div key={name} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">{name}</p><p className="mt-2 font-semibold">{value}</p></div>)}</div><p className="mt-5 text-sm text-amber-800">ส่วนนี้แสดงค่าที่ใช้อยู่จริง ชื่อบริษัทและโลโก้ยังไม่เปิดให้แก้จากหน้าเว็บ เพื่อไม่ให้เอกสารจาก local server และ Vercel ใช้คนละแบบโดยไม่ตั้งใจ</p><Link href="/reports/handover" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-blue-200 px-4 font-medium text-blue-700 hover:bg-blue-50">ไปหน้าเอกสาร</Link></section>}
 
         {tab === "machine" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">สคริปต์ตรวจเครื่อง</h2><p className="mt-1 text-sm text-slate-600">อ่านสเปกจากเครื่องจริง แล้ววางลงหน้าแก้ไข Asset ได้ในครั้งเดียว</p><MachineSpecsSettings initialEnabled={machineSpecsEnabled} /></section>}
+
+        {tab === "subtypes" && admin && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">ประเภทย่อยของ Asset</h2><p className="mt-1 text-sm text-slate-600">ใช้แยกอุปกรณ์ภายในประเภทเดียวกัน เช่น NET → Firewall, OTH → License</p><AssetSubtypeSettings /></section>}
 
         {tab === "master" && admin &&<section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-xl font-bold">Master Data</h2><p className="mt-1 text-sm text-slate-600">ใช้หน้าจัดการเดิม ข้อมูลและการทำงานไม่เปลี่ยน</p><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{MASTER_ITEMS.map(([kind, title, description]) => <Link key={kind} href={`/master/${kind}`} className="rounded-xl border border-slate-200 p-4 transition hover:border-blue-400 hover:bg-blue-50"><span className="font-semibold text-blue-800">{title}</span><span className="mt-1 block text-sm text-slate-600">{description}</span></Link>)}</div></section>}
       </div>
