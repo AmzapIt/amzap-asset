@@ -8,9 +8,7 @@ export default function SettingsNav({ view, admin = false }) {
       ["labels", "การพิมพ์สติ๊กเกอร์", "/settings?tab=labels"],
       ["documents", "รูปแบบเอกสาร", "/settings?tab=documents"],
       ["machine", "สคริปต์ตรวจเครื่อง", "/settings?tab=machine"],
-      ["master", "Master Data", "/settings?tab=master"],
-      ["subtypes", "ประเภทย่อย", "/settings?tab=subtypes"],
-      ["accounts", "System Accounts", "/accounts"],
+      ["master", "Master Data", "/settings?tab=master"],      ["accounts", "System Accounts", "/accounts"],
     ] : []),
     ["password", "Change Password", "/account/password"],
   ];
