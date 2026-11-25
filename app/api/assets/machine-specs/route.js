@@ -194,6 +194,7 @@ export async function PUT(request) {
         await client.query("BEGIN");
         const changes = await saveIdentity(client, item, account.id, overwrite);
         await mergeAssetTechnical(client, item.asset.id, item.values);
+        await client.query("UPDATE public.assets SET specs_imported_at=NOW() WHERE id=$1", [item.asset.id]);
         await client.query("COMMIT");
         results.push({ ...publicItem(item), changes, status: "saved" });
       } catch (error) {

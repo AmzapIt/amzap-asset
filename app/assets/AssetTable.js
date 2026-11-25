@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { compareNaturalText } from "@/lib/asset-sort";
 import AssetNote from "./AssetNote";
 import AssetPhotoPreview from "./AssetPhotoPreview";
+import AssetSpecs from "./AssetSpecs";
 
 const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
 const DEFAULT_SORT_CONFIG = {
@@ -791,7 +792,7 @@ export default function AssetTable({ assets }) {
               <div>
                 <dt className="text-xs text-slate-500">Brand / Model</dt>
                 <dd className="mt-0.5 break-words text-slate-700">
-                  {[asset.brand, asset.model].filter(Boolean).join(" / ") || "-"}
+                  <AssetSpecs asset={asset}>{[asset.brand, asset.model].filter(Boolean).join(" / ") || "-"}</AssetSpecs>
                 </dd>
               </div>
               <div>
@@ -936,11 +937,10 @@ export default function AssetTable({ assets }) {
 
                 {/* ยี่ห้อ / รุ่น */}
                 <td className="px-5 py-5 text-slate-700">
-                  {asset.brand || "-"}
-
-                  {asset.model
-                    ? ` / ${asset.model}`
-                    : ""}
+                  <AssetSpecs asset={asset}>
+                    {asset.brand || "-"}
+                    {asset.model ? ` / ${asset.model}` : ""}
+                  </AssetSpecs>
                 </td>
 
                 {/* ผู้ครอบครองปัจจุบัน */}

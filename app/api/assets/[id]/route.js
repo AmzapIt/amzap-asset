@@ -354,6 +354,8 @@ export async function PATCH(request, { params }) {
           notes = $17,
           vendor_id = CASE WHEN $19 THEN $20::bigint ELSE vendor_id END,
           subtype_id = $21::bigint,
+          -- จดเฉพาะตอนวางข้อมูลจากสคริปต์ ไม่ใช่พิมพ์แก้เอง
+          specs_imported_at = CASE WHEN $22::boolean THEN NOW() ELSE specs_imported_at END,
           updated_at = NOW()
         WHERE id = $18
         RETURNING *,received_date::text AS received_date,purchase_date::text AS purchase_date,
@@ -382,6 +384,7 @@ export async function PATCH(request, { params }) {
         // Vendor ยังแก้ในหน้า Edit ได้ตามเดิม ส่วน Movement fields ไม่อยู่ใน UPDATE นี้
         Object.hasOwn(body, "vendor"), body.vendor || null,
         subtypeId,
+        body.specsImported === true,
       ]
     );
 

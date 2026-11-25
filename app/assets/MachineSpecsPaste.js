@@ -38,6 +38,8 @@ export default function MachineSpecsPaste({ form, onChange, onApplied }) {
       ...Object.entries(specs.values),
     ];
     for (const [name, value] of entries) onChange({ target: { name, value } });
+    // ให้ API จดวันที่นำเข้าสเปกเมื่อกดบันทึกฟอร์ม
+    onChange({ target: { name: "specsImported", value: true } });
     onApplied?.();
     setManual(false);
     setText("");
