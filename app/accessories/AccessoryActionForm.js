@@ -5,7 +5,7 @@ import Link from "next/link";
 import EmployeePicker from "@/app/components/EmployeePicker";
 import { accessoryFetch, buttonClass, inputClass, primaryClass, stockLabel, todayBangkok } from "./accessory-ui";
 
-const titles = { receive:"รับ Accessories เข้าคลังกลาง",issue:"เบิก Accessories ให้พนักงาน",editStock:"แก้ไขข้อมูล Stock",disposeStock:"เบิก Accessories ออกจาก Stock",edit:"แก้ไขรายการที่ถืออยู่",return:"คืน Accessories เข้าคลัง",transfer:"โอน Accessories ให้พนักงานอื่น",dispose:"ตัดออกจากรายการที่พนักงานถืออยู่" };
+const titles = { receive:"รับ Accessories เข้าคลังกลาง",issue:"เบิก Accessories ให้พนักงาน",editStock:"แก้ไขข้อมูล Stock",disposeStock:"นำออกจากคลัง (ไม่ได้ให้พนักงาน)",edit:"แก้ไขรายการที่ถืออยู่",return:"คืน Accessories เข้าคลัง",transfer:"โอน Accessories ให้พนักงานอื่น",dispose:"ตัดออกจากรายการที่พนักงานถืออยู่" };
 
 function Field({ label, children, hint }) {
   return <label className="block space-y-1.5 text-sm font-medium text-slate-700"><span>{label}</span>{children}{hint && <span className="block text-xs font-normal text-slate-500">{hint}</span>}</label>;
@@ -13,7 +13,7 @@ function Field({ label, children, hint }) {
 
 // A retry with unchanged input reuses its request ID, including after a network
 // failure. The server commits balances and the audit record in one transaction.
-export default function AccessoryActionForm({ mode, stock, holding, userId, offboardingActive = false, stocks, types, users, onSuccess, onCancel }) {
+export default function AccessoryActionForm({ className = "rounded-2xl border border-blue-200 bg-blue-50/60 p-4 sm:p-5", mode, stock, holding, userId, offboardingActive = false, stocks, types, users, onSuccess, onCancel }) {
   const [form,setForm] = useState(()=>({
     stock_item_id:String(stock?.id || holding?.stock_item_id || ""),
     accessory_type_id:String(stock?.accessory_type_id || ""),
@@ -75,7 +75,7 @@ export default function AccessoryActionForm({ mode, stock, holding, userId, offb
   }
   const selectableStocks = stocks.filter(s=>(s.is_active && s.available_quantity>0) || (mode==="receive" && s.is_active) || s.id===holding?.stock_item_id);
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 sm:p-5">
+    <form onSubmit={submit} className={className}>
       <h3 className="text-lg font-semibold text-slate-900">{titles[mode]}</h3>
       {(stock || holding) && <p className="mt-1 text-sm text-slate-600">{stockLabel(stock || holding)}</p>}
       {mode==="edit" && <p className="mt-2 text-sm text-blue-800">จำนวนที่แก้คือจำนวนที่ถืออยู่ตอนนี้ ส่วนต่างจะเพิ่มหรือลด Stock อัตโนมัติ</p>}
@@ -95,15 +95,15 @@ export default function AccessoryActionForm({ mode, stock, holding, userId, offb
           {!types.some(t=>t.is_active) && <p className="text-sm text-amber-800">เพิ่มประเภทใน <Link href="/master/accessory_types" className="underline">Master Data</Link> ก่อนรับเข้า</p>}
         </>}
         {(mode==="transfer" || (mode==="issue" && !userId)) && <EmployeePicker name="to_user_id" label={mode==="transfer"?"พนักงานผู้รับโอน":"พนักงานผู้รับ"} users={users.filter(u=>String(u.id)!==String(userId))} value={form.to_user_id} onChange={(id)=>setForm(previous=>({...previous,to_user_id:id}))} required />}
-        {hasQuantity && <Field label={mode==="edit" ? "จำนวนที่ถืออยู่หลังแก้ไข *" : isStockWithdrawal ? "จำนวนที่เบิกออก *" : "จำนวน *"} hint={["return","transfer","dispose"].includes(mode)?`ถืออยู่ ${holding.remaining_quantity} ชิ้น เลือกทำบางส่วนหรือทั้งหมดได้`:isStockWithdrawal?`มีใน Stock ${selectedStock.available_quantity} ชิ้น`:undefined}><input type="number" name="quantity" min="1" max={metadata && form.serial_number ? 1 : Math.min(100000,maxQuantity)} step="1" value={form.quantity} onChange={change} required className={inputClass} /></Field>}
+        {hasQuantity && <Field label={mode==="edit" ? "จำนวนที่ถืออยู่หลังแก้ไข *" : isStockWithdrawal ? "จำนวนที่นำออก *" : "จำนวน *"} hint={["return","transfer","dispose"].includes(mode)?`ถืออยู่ ${holding.remaining_quantity} ชิ้น เลือกทำบางส่วนหรือทั้งหมดได้`:isStockWithdrawal?`มีใน Stock ${selectedStock.available_quantity} ชิ้น`:undefined}><input type="number" name="quantity" min="1" max={metadata && form.serial_number ? 1 : Math.min(100000,maxQuantity)} step="1" value={form.quantity} onChange={change} required className={inputClass} /></Field>}
         {(mode==="issue" || mode==="edit") && <Field label="วันที่เบิก *"><input type="date" name="issued_date" value={form.issued_date} onChange={change} max={todayBangkok()} required className={inputClass} /></Field>}
-        {mode!=="issue" && <Field label={mode==="edit"?"วันที่แก้ไข *":isStockWithdrawal?"วันที่เบิกออก *":"วันที่ดำเนินการ *"}><input type="date" name="event_date" value={form.event_date} onChange={change} min={holding?.issued_date} max={todayBangkok()} required className={inputClass} /></Field>}
+        {mode!=="issue" && <Field label={mode==="edit"?"วันที่แก้ไข *":isStockWithdrawal?"วันที่นำออก *":"วันที่ดำเนินการ *"}><input type="date" name="event_date" value={form.event_date} onChange={change} min={holding?.issued_date} max={todayBangkok()} required className={inputClass} /></Field>}
         {mode==="dispose" ? <>
           <Field label="เหตุผลตัดออก *"><select name="disposal_reason" value={form.disposal_reason} onChange={change} className={inputClass}>{["เสีย","สูญหาย","หมดอายุ/เสื่อมสภาพ","อื่นๆ"].map(value=><option key={value}>{value}</option>)}</select></Field>
           <Field label={form.disposal_reason==="อื่นๆ"?"รายละเอียดเหตุผล *":"รายละเอียดเหตุผล"}><input name="disposal_detail" value={form.disposal_detail} onChange={change} maxLength={450} required={form.disposal_reason==="อื่นๆ"} className={inputClass} /></Field>
-        </> : mode!=="issue" && <Field label={mode==="receive" ? "ที่มา / เหตุผลรับเข้า *" : isStockWithdrawal ? "เหตุผลการเบิกออก *" : "เหตุผล *"}><input name="reason" value={form.reason} onChange={change} maxLength={500} required className={inputClass} placeholder={mode==="receive"?"เช่น ซื้อเข้า / พบจากตรวจนับ":isStockWithdrawal?"เช่น เบิกใช้ในงานติดตั้ง / ใช้ภายใน":""} /></Field>}
+        </> : mode!=="issue" && <Field label={mode==="receive" ? "ที่มา / เหตุผลรับเข้า *" : isStockWithdrawal ? "เหตุผลที่นำออก *" : "เหตุผล *"}><input name="reason" value={form.reason} onChange={change} maxLength={500} required className={inputClass} placeholder={mode==="receive"?"เช่น ซื้อเข้า / พบจากตรวจนับ":isStockWithdrawal?"เช่น ใช้ในงานติดตั้ง / เสีย / สูญหาย":""} /></Field>}
         {mode!=="editStock" && <div className="sm:col-span-2"><Field label="หมายเหตุ"><textarea name="notes" value={form.notes} onChange={change} maxLength={10000} rows={2} className={inputClass} /></Field></div>}
-        <div className="flex flex-wrap gap-2 sm:col-span-2"><button type="submit" className={isStockWithdrawal?"min-h-10 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50":isDisposal?"min-h-10 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50":primaryClass}>{busy?"กำลังบันทึก…":isStockWithdrawal?"ยืนยันเบิกออก":isDisposal?"ยืนยันตัดออก":"บันทึก"}</button><button type="button" className={buttonClass} onClick={onCancel}>ยกเลิก</button></div>
+        <div className="flex flex-wrap gap-2 sm:col-span-2"><button type="submit" className={isStockWithdrawal?"min-h-10 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50":isDisposal?"min-h-10 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50":primaryClass}>{busy?"กำลังบันทึก…":isStockWithdrawal?"ยืนยันนำออก":isDisposal?"ยืนยันตัดออก":"บันทึก"}</button><button type="button" className={buttonClass} onClick={onCancel}>ยกเลิก</button></div>
       </fieldset>
     </form>
   );

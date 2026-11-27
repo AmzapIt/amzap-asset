@@ -61,7 +61,7 @@ test("stock withdrawal requires a reason before changing the balance",async()=>{
   });
   await assert.rejects(
     disposeStock("1",{request_id:randomUUID(),expected_version:0,quantity:1,event_date:"2024-01-01",reason:""},"1",pool),
-    error=>error instanceof AccessoryError && error.message.includes("เหตุผลการเบิกออก"),
+    error=>error instanceof AccessoryError && error.message.includes("เหตุผลที่นำออก"),
   );
   assert.equal(pool.calls.some(sql=>sql.startsWith("UPDATE public.accessory_stock_items")),false);
   assert.equal(pool.calls.at(-2),"ROLLBACK");
