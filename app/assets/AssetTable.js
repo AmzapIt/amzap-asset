@@ -7,6 +7,7 @@ import { compareNaturalText } from "@/lib/asset-sort";
 import AssetNote from "./AssetNote";
 import AssetPhotoPreview from "./AssetPhotoPreview";
 import AssetSpecs from "./AssetSpecs";
+import { ASSET_ISSUES } from "@/lib/dashboard-summary";
 
 const ASSET_LIST_STORAGE_KEY = "amzap:asset-list-state:v1";
 const DEFAULT_SORT_CONFIG = {
@@ -111,21 +112,23 @@ function SortableHeader({
 // 2. Component รับข้อมูลจากหน้า Assets
 // assets คือ Array ที่ PostgreSQL ส่งมา
 // ==================================================
-export default function AssetTable({ assets }) {
+// linkFilters: ตัวกรองจากลิงก์ Dashboard ใช้แทนค่าที่จำไว้ และไม่บันทึกทับค่าที่จำไว้
+export default function AssetTable({ assets, linkFilters = null, today = "" }) {
   // เก็บข้อความที่ผู้ใช้พิมพ์ค้นหา
   const [searchText, setSearchText] = useState("");
 
   // เก็บประเภทที่เลือก เช่น Monitor
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState(linkFilters?.type || "");
   // ประเภทย่อย ใช้ได้เมื่อเลือก Asset Type แล้ว · "__none__" = ยังไม่ระบุประเภทย่อย
   const [selectedSubtype, setSelectedSubtype] = useState("");
 
   // เก็บสถานะที่เลือก เช่น In Use
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState(linkFilters?.status || "");
 
   // Location และสถานะการครอบครองช่วยแยกรายการที่ต้องติดตามได้เร็วขึ้น
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState(linkFilters?.location || "");
   const [selectedHolder, setSelectedHolder] = useState("");
+  const issue = linkFilters?.issue ? ASSET_ISSUES[linkFilters.issue] : null;
 
   // ป้องกันค่าเริ่มต้นเขียนทับ sessionStorage ก่อนอ่านค่าที่เคยใช้เสร็จ
   const [hasRestoredFilters, setHasRestoredFilters] = useState(false);
@@ -172,6 +175,7 @@ export default function AssetTable({ assets }) {
 
   // จำ Search / Filter / Sort ภายใน Browser tab เดิม เมื่อออกไปหน้าอื่นแล้วกลับมา
   useEffect(() => {
+    if (linkFilters) return;
     const restoreTimer = window.setTimeout(() => {
       try {
         const storedValue = window.sessionStorage.getItem(
@@ -214,7 +218,7 @@ export default function AssetTable({ assets }) {
     }, 0);
 
     return () => window.clearTimeout(restoreTimer);
-  }, []);
+  }, [linkFilters]);
 
   useEffect(() => {
     if (!hasRestoredFilters) return;
@@ -346,6 +350,7 @@ export default function AssetTable({ assets }) {
     // ต้องตรงกับเงื่อนไขทั้งหมด
     return (
       matchesSearch &&
+      (!issue || issue.match(asset, today)) &&
       matchesType &&
       matchesSubtype &&
       matchesStatus &&
@@ -361,6 +366,8 @@ export default function AssetTable({ assets }) {
     selectedStatus,
     selectedSubtype,
     selectedType,
+    issue,
+    today,
   ]);
 
   // ==================================================
@@ -485,9 +492,16 @@ export default function AssetTable({ assets }) {
     selectedStatus,
     selectedLocation,
     selectedHolder,
+    issue,
   ].filter(Boolean).length;
 
   function resetFilters() {
+    if (linkFilters) {
+      // ออกจากตัวกรองของลิงก์ และไม่กลับไปใช้ค่าที่จำไว้ ให้เห็นทุกรายการ
+      try { window.sessionStorage.removeItem(ASSET_LIST_STORAGE_KEY); } catch { /* ไม่จำค่าก็ใช้งานได้ */ }
+      router.replace("/assets");
+      return;
+    }
     setSearchText("");
     setSelectedType("");
     setSelectedSubtype("");
@@ -509,6 +523,12 @@ export default function AssetTable({ assets }) {
               เลือกหลายเงื่อนไขพร้อมกัน ระบบจะจำค่าไว้เมื่อกลับมาหน้านี้
             </p>
           </div>
+
+          {linkFilters && (
+            <p className="order-last w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              กำลังกรองจาก Dashboard{issue ? `: ${issue.label}` : ""}
+            </p>
+          )}
 
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <button

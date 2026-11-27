@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getReportAssets } from "@/lib/asset-report";
 import AssetTable from "./AssetTable";
+import { bangkokToday, parseAssetLinkFilters } from "@/lib/dashboard-summary";
 
 // ==================================================
 // 1. ให้หน้านี้ทำงานบน Node.js
@@ -15,7 +16,9 @@ export const dynamic = "force-dynamic";
 // 2. Server Component
 // ทำหน้าที่อ่านข้อมูลจาก PostgreSQL
 // ==================================================
-export default async function AssetsPage() {
+export default async function AssetsPage({ searchParams }) {
+  // ตัวกรองจากลิงก์ใน Dashboard เช่น ?status=In+Stock
+  const linkFilters = parseAssetLinkFilters(await searchParams);
   let assets = [];
   let loadError = false;
 
@@ -80,7 +83,12 @@ export default async function AssetsPage() {
           </div>
         ) : (
           // ส่ง Array จาก PostgreSQL ไปให้ Client Component
-          <AssetTable assets={assets} />
+          <AssetTable
+            key={JSON.stringify(linkFilters)}
+            assets={assets}
+            linkFilters={linkFilters}
+            today={bangkokToday()}
+          />
         )}
       </div>
     </main>
