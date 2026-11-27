@@ -62,3 +62,24 @@ test('IDs and operation keys reject invalid values', () => {
   assert.equal(inventoryRequestId(randomUUID()).length, 36);
   assert.throws(() => inventoryRequestId('bad'), { status: 400 });
 });
+
+test('License status, order, search and Read-only redaction', async () => {
+  const { licenseStatus, sortLicenses, matchesLicenseSearch, redactLicenseInventory, LICENSE_FILTERS } = await import('../lib/license-status.js');
+  const today = '2026-11-26';
+  const lic = (name, expiration_date, is_active = true) => ({ name, expiration_date, is_active });
+  assert.deepEqual(['2026-11-25', '2026-11-26', '2026-12-26', '2026-12-27', null].map(d => licenseStatus(lic('x', d), today).key),
+    ['expired', 'soon', 'soon', 'ok', 'noExpiry']);
+  assert.equal(licenseStatus(lic('x', '2026-11-20', false), today).key, 'inactive');
+  assert.equal(licenseStatus(lic('x', '2026-11-24'), today).label, 'เลยกำหนด 2 วัน');
+  const order = sortLicenses([lic('Off', '2026-01-01', false), lic('Ok', '2027-06-01'), lic('None', null),
+    lic('Soon B', '2026-12-10'), lic('Soon A', '2026-12-01'), lic('Late', '2026-11-01')], today).map(r => r.license.name);
+  assert.deepEqual(order, ['Late', 'Soon A', 'Soon B', 'None', 'Ok', 'Off']);
+  assert.ok(LICENSE_FILTERS.attention.match('expired') && !LICENSE_FILTERS.attention.match('ok'));
+  const seats = [{ full_name: 'Somchai', nickname: null, employee_code: 'E01', user_devices: 'AMZAP26-NB-012' }];
+  assert.ok(matchesLicenseSearch({ name: 'M365' }, seats, 'nb-012'));
+  assert.ok(matchesLicenseSearch({ name: 'M365' }, seats, 'somchai'));
+  assert.ok(!matchesLicenseSearch({ name: 'M365' }, seats, 'adobe'));
+  const inventory = { licenses: [{ id: '1', name: 'M365', notes: 'secret', purchase_cost: '100', product_key_hint: 'ABCD' }], users: [] };
+  assert.deepEqual(redactLicenseInventory(inventory, false).licenses[0], { id: '1', name: 'M365' });
+  assert.equal(redactLicenseInventory(inventory, true).licenses[0].notes, 'secret');
+});

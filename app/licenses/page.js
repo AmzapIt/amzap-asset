@@ -9,7 +9,7 @@ export default async function LicensesPage() {
   const account = await workflowPageAccount();
   let inventory;
   try {
-    inventory = await getLicenseInventory();
+    inventory = await getLicenseInventory(undefined, { includePrivate: account.canWrite });
   } catch (error) {
     console.error('Load licenses failed:', error);
   }
